@@ -29,33 +29,35 @@ export default function SetupProfile() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900">
-      <div className="w-full max-w-md p-8 bg-gray-800 rounded-xl shadow-2xl">
-        <h1 className="text-3xl font-bold text-white mb-2">Set Up Profile</h1>
-        <p className="text-gray-400 mb-8">Choose your display name to get started</p>
+    <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#0d1117' }}>
+      <div className="w-full max-w-md p-8 rounded-xl shadow-2xl" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+        <h1 className="text-3xl font-bold mb-2 uppercase tracking-wide" style={{ color: '#c9d1d9' }}>Set Up Profile</h1>
+        <p className="mb-8 text-sm" style={{ color: '#6e7681' }}>Choose your display name to get started</p>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-300 text-sm">
+          <div className="mb-4 p-3 rounded-lg text-sm" style={{ backgroundColor: '#1a0d0d', border: '1px solid #3d1a1a', color: '#f47067' }}>
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Display Name</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: '#8b949e' }}>Display Name</label>
             <input
               type="text"
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
               required
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent"
+              style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#c9d1d9' }}
               placeholder="WarLord42"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
+            className="w-full py-2 px-4 font-medium rounded-lg transition-colors disabled:opacity-50"
+            style={{ backgroundColor: '#1a3a5c', color: '#79c0ff', border: '1px solid #2a5a8c' }}
           >
             {loading ? 'Saving...' : 'Continue'}
           </button>

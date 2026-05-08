@@ -25,58 +25,62 @@ export default function Login() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900">
-      <div className="w-full max-w-md p-8 bg-gray-800 rounded-xl shadow-2xl">
-        <h1 className="text-3xl font-bold text-white mb-2">War Game</h1>
-        <p className="text-gray-400 mb-8">Sign in to your account</p>
+    <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#0d1117' }}>
+      <div className="w-full max-w-md p-8 rounded-xl shadow-2xl" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+        <h1 className="text-3xl font-bold mb-2 uppercase tracking-wide" style={{ color: '#c9d1d9' }}>War Game</h1>
+        <p className="mb-8 text-sm" style={{ color: '#6e7681' }}>Sign in to your account</p>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-300 text-sm">
+          <div className="mb-4 p-3 rounded-lg text-sm" style={{ backgroundColor: '#1a0d0d', border: '1px solid #3d1a1a', color: '#f47067' }}>
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: '#8b949e' }}>Email</label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent"
+              style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#c9d1d9' }}
               placeholder="you@example.com"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: '#8b949e' }}>Password</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent"
+              style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#c9d1d9' }}
               placeholder="••••••••"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
+            className="w-full py-2 px-4 font-medium rounded-lg transition-colors disabled:opacity-50"
+            style={{ backgroundColor: '#1a3a5c', color: '#79c0ff', border: '1px solid #2a5a8c' }}
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
         <div className="mt-6 flex items-center gap-3">
-          <div className="flex-1 h-px bg-gray-600" />
-          <span className="text-gray-400 text-sm">or</span>
-          <div className="flex-1 h-px bg-gray-600" />
+          <div className="flex-1 h-px" style={{ backgroundColor: '#30363d' }} />
+          <span className="text-sm" style={{ color: '#4a5568' }}>or</span>
+          <div className="flex-1 h-px" style={{ backgroundColor: '#30363d' }} />
         </div>
 
         <button
           onClick={signInWithGoogle}
-          className="mt-4 w-full flex items-center justify-center gap-3 py-2 px-4 bg-white hover:bg-gray-100 text-gray-800 font-medium rounded-lg transition-colors"
+          className="mt-4 w-full flex items-center justify-center gap-3 py-2 px-4 font-medium rounded-lg transition-colors"
+          style={{ backgroundColor: '#21262d', color: '#c9d1d9', border: '1px solid #30363d' }}
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -87,9 +91,9 @@ export default function Login() {
           Sign in with Google
         </button>
 
-        <p className="mt-6 text-center text-gray-400 text-sm">
+        <p className="mt-6 text-center text-sm" style={{ color: '#6e7681' }}>
           Don't have an account?{' '}
-          <Link to="/register" className="text-blue-400 hover:text-blue-300">
+          <Link to="/register" className="hover:underline" style={{ color: '#79c0ff' }}>
             Create one
           </Link>
         </p>

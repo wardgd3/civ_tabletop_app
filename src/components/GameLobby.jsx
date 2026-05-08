@@ -28,15 +28,18 @@ export default function GameLobby() {
     }
   }
 
-  if (loading) return <div className="text-gray-400">Loading games...</div>
+  if (loading) return <div style={{ color: '#6e7681' }}>Loading games...</div>
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Games</h2>
+        <h2 className="text-xl font-bold" style={{ color: '#c9d1d9' }}>Games</h2>
         <button
           onClick={() => setShowCreate(!showCreate)}
-          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 text-sm font-medium rounded transition-colors"
+          style={showCreate
+            ? { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }
+            : { backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }}
         >
           {showCreate ? 'Cancel' : 'New Game'}
         </button>
@@ -49,12 +52,14 @@ export default function GameLobby() {
             value={gameName}
             onChange={e => setGameName(e.target.value)}
             placeholder="Game name..."
-            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+            className="flex-1 px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/50"
+            style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#c9d1d9' }}
           />
           <button
             type="submit"
             disabled={creating}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded transition-colors disabled:opacity-50"
+            style={{ backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }}
           >
             Create
           </button>
@@ -63,19 +68,27 @@ export default function GameLobby() {
 
       {invites.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-yellow-400 mb-3">Game Invites</h3>
+          <h3 className="text-lg font-semibold mb-3" style={{ color: '#8b949e' }}>Game Invites</h3>
           <ul className="space-y-2">
             {invites.map(inv => (
-              <li key={inv.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-yellow-900/20 border border-yellow-700/30 rounded-lg">
+              <li key={inv.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
                 <div className="min-w-0">
-                  <span className="text-white font-medium truncate block">{inv.game?.name}</span>
-                  <span className="text-gray-400 text-sm">from {inv.inviter?.display_name}</span>
+                  <span className="font-medium truncate block" style={{ color: '#c9d1d9' }}>{inv.game?.name}</span>
+                  <span className="text-sm" style={{ color: '#6e7681' }}>from {inv.inviter?.display_name}</span>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => acceptInvite(inv)} className="flex-1 sm:flex-none px-3 py-1.5 sm:py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg">
+                  <button
+                    onClick={() => acceptInvite(inv)}
+                    className="flex-1 sm:flex-none px-3 py-1.5 sm:py-1 text-sm rounded transition-colors"
+                    style={{ backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }}
+                  >
                     Join
                   </button>
-                  <button onClick={() => declineInvite(inv.id)} className="flex-1 sm:flex-none px-3 py-1.5 sm:py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded-lg">
+                  <button
+                    onClick={() => declineInvite(inv.id)}
+                    className="flex-1 sm:flex-none px-3 py-1.5 sm:py-1 text-sm rounded transition-colors"
+                    style={{ backgroundColor: '#21262d', color: '#6e7681', border: '1px solid #30363d' }}
+                  >
                     Decline
                   </button>
                 </div>
@@ -87,18 +100,21 @@ export default function GameLobby() {
 
       <div className="space-y-3">
         {games.length === 0 ? (
-          <p className="text-gray-400 text-sm">No games yet. Create one to get started!</p>
+          <p className="text-sm" style={{ color: '#6e7681' }}>No games yet. Create one to get started!</p>
         ) : (
           games.map(game => (
-            <div key={game.id} className="p-3 sm:p-4 bg-gray-700/50 rounded-lg">
+            <div key={game.id} className="p-3 sm:p-4 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                 <div className="min-w-0">
-                  <span className="text-white font-semibold text-base sm:text-lg truncate block">{game.name}</span>
-                  <span className={`inline-block mt-1 sm:mt-0 sm:ml-3 text-xs font-medium px-2 py-0.5 rounded-full ${
-                    game.status === 'lobby' ? 'bg-yellow-600/30 text-yellow-400' :
-                    game.status === 'active' ? 'bg-green-600/30 text-green-400' :
-                    'bg-gray-600/30 text-gray-400'
-                  }`}>
+                  <span className="font-semibold text-base sm:text-lg truncate block" style={{ color: '#c9d1d9' }}>{game.name}</span>
+                  <span
+                    className="inline-block mt-1 sm:mt-0 sm:ml-3 text-[10px] font-semibold font-mono uppercase tracking-widest px-2 py-0.5 rounded"
+                    style={
+                      game.status === 'lobby' ? { backgroundColor: '#1e2a1e', color: '#7a9a7a', border: '1px solid #2e3e2e' } :
+                      game.status === 'active' ? { backgroundColor: '#1a2535', color: '#5a9abf', border: '1px solid #2a3a50' } :
+                      { backgroundColor: '#21262d', color: '#4a5568', border: '1px solid #30363d' }
+                    }
+                  >
                     {game.status}
                   </span>
                 </div>
@@ -106,7 +122,8 @@ export default function GameLobby() {
                   {game.status === 'active' && (
                     <button
                       onClick={() => navigate(`/game/${game.id}`)}
-                      className="flex-1 sm:flex-none px-4 py-2 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                      className="flex-1 sm:flex-none px-4 py-2 sm:py-1.5 text-sm font-medium rounded transition-colors"
+                      style={{ backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }}
                     >
                       Play
                     </button>
@@ -115,14 +132,16 @@ export default function GameLobby() {
                     <>
                       <button
                         onClick={() => setInvitingGameId(invitingGameId === game.id ? null : game.id)}
-                        className="flex-1 sm:flex-none px-3 py-2 sm:py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors"
+                        className="flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-sm rounded transition-colors"
+                        style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
                       >
                         Invite
                       </button>
                       <button
                         onClick={() => startGame(game.id)}
                         disabled={game.players?.length < 2}
-                        className="flex-1 sm:flex-none px-4 py-2 sm:py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                        className="flex-1 sm:flex-none px-4 py-2 sm:py-1.5 text-sm font-medium rounded transition-colors disabled:opacity-40"
+                        style={{ backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }}
                       >
                         Start
                       </button>
@@ -132,22 +151,31 @@ export default function GameLobby() {
               </div>
 
               <div className="flex flex-wrap gap-2 mb-2">
-                {game.players?.map(p => (
-                  <span
-                    key={p.player_id}
-                    className="text-sm px-2 py-0.5 rounded-full text-white"
-                    style={{ backgroundColor: p.color + '40', borderColor: p.color, borderWidth: 1 }}
-                  >
-                    {p.wg_profiles?.display_name}
-                  </span>
-                ))}
+                {game.players?.map((p, i) => {
+                  const tagColors = [
+                    { bg: '#15253a', color: '#5a9abf', border: '#1e3550' },
+                    { bg: '#2a1a1a', color: '#b07070', border: '#3a2a2a' },
+                    { bg: '#1a2a1e', color: '#6a9a72', border: '#2a3a2e' },
+                    { bg: '#2a2518', color: '#b0953a', border: '#3a3528' },
+                  ]
+                  const tc = tagColors[i % tagColors.length]
+                  return (
+                    <span
+                      key={p.player_id}
+                      className="text-xs px-2 py-0.5 rounded font-mono"
+                      style={{ backgroundColor: tc.bg, border: `1px solid ${tc.border}`, color: tc.color }}
+                    >
+                      {p.wg_profiles?.display_name}
+                    </span>
+                  )
+                })}
               </div>
 
               {invitingGameId === game.id && (
-                <div className="mt-3 p-3 bg-gray-800 rounded-lg">
-                  <p className="text-sm text-gray-300 mb-2">Invite a friend:</p>
+                <div className="mt-3 p-3 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #30363d' }}>
+                  <p className="text-sm mb-2" style={{ color: '#8b949e' }}>Invite a friend:</p>
                   {friends.length === 0 ? (
-                    <p className="text-gray-400 text-sm">Add friends first to invite them.</p>
+                    <p className="text-sm" style={{ color: '#6e7681' }}>Add friends first to invite them.</p>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {friends.map(friend => (
@@ -161,7 +189,8 @@ export default function GameLobby() {
                               alert(err.message)
                             }
                           }}
-                          className="px-3 py-1 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 text-sm rounded-lg transition-colors"
+                          className="px-3 py-1 text-sm rounded transition-colors"
+                          style={{ backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }}
                         >
                           {friend.display_name}
                         </button>

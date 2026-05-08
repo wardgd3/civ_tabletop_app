@@ -1,14 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function GameBoard({
   game, players, units, unitTypes, currentPlayer, isMyTurn,
   deployUnit, moveUnit, attackUnit, endTurn,
 }) {
-  const [selectedUnit, setSelectedUnit] = useState(null)
+  const [selectedUnitId, setSelectedUnitId] = useState(null)
   const [selectedUnitType, setSelectedUnitType] = useState(null)
   const [mode, setMode] = useState('select')
   const [error, setError] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
+
+  const selectedUnit = selectedUnitId ? units.find(u => u.id === selectedUnitId) || null : null
+
+  useEffect(() => {
+    if (selectedUnitId && !units.find(u => u.id === selectedUnitId)) {
+      setSelectedUnitId(null)
+      setMode('select')
+    }
+  }, [units, selectedUnitId])
 
   const rows = game.grid_rows
   const cols = game.grid_cols
@@ -70,23 +79,23 @@ export default function GameBoard({
         setSelectedUnitType(null)
       } else if (mode === 'move' && selectedUnit) {
         await moveUnit(selectedUnit.id, row, col)
-        setSelectedUnit(null)
+        setSelectedUnitId(null)
         setMode('select')
       } else if (mode === 'attack' && selectedUnit) {
         const target = getUnitAt(row, col)
         if (target && target.owner_id !== currentPlayer?.player_id) {
           await attackUnit(selectedUnit.id, target.id)
-          setSelectedUnit(null)
+          setSelectedUnitId(null)
           setMode('select')
         }
       } else {
         const unit = getUnitAt(row, col)
         if (unit && unit.owner_id === currentPlayer?.player_id) {
-          setSelectedUnit(unit)
+          setSelectedUnitId(unit.id)
           setMode('select')
           setPanelOpen(true)
         } else {
-          setSelectedUnit(null)
+          setSelectedUnitId(null)
         }
       }
     } catch (err) {
@@ -176,7 +185,7 @@ export default function GameBoard({
 
           <div className="flex gap-2 lg:flex-col">
             <button
-              onClick={() => { setMode('deploy'); setSelectedUnit(null) }}
+              onClick={() => { setMode('deploy'); setSelectedUnitId(null) }}
               className="flex-1 lg:w-full px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors"
               style={mode === 'deploy'
                 ? { backgroundColor: '#1a3a2a', color: '#7ee787', border: '1px solid #2a5a3a' }
