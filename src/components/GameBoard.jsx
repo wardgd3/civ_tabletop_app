@@ -19,6 +19,7 @@ function hexDistance(r1, c1, r2, c2) {
 export default function GameBoard({
   game, players, units, unitTypes, currentPlayer, isMyTurn,
   deployUnit, moveUnit, attackUnit, endTurn,
+  isFullscreen, onExitFullscreen,
 }) {
   const [selectedUnitId, setSelectedUnitId] = useState(null)
   const [selectedUnitType, setSelectedUnitType] = useState(null)
@@ -594,6 +595,15 @@ export default function GameBoard({
         </button>
         {panelOpen && (
           <div className="p-3 max-h-[50vh] overflow-y-auto" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #2a3140' }}>
+            {isFullscreen && (
+              <button
+                onClick={onExitFullscreen}
+                className="w-full mb-3 px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                style={{ backgroundColor: '#2a1a1a', color: '#f47067', border: '1px solid #3d2525' }}
+              >
+                Exit Fullscreen
+              </button>
+            )}
             {sidebarContent}
           </div>
         )}

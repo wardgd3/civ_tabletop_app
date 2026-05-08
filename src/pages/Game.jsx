@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useGameState } from '../hooks/useGameState'
 import GameBoard from '../components/GameBoard'
@@ -9,20 +9,22 @@ export default function Game() {
   const gameState = useGameState(id)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
+  useEffect(() => {
+    function onFsChange() {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => document.removeEventListener('fullscreenchange', onFsChange)
+  }, [])
+
   const toggleFullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen()
-        try {
-          await screen.orientation?.lock?.('landscape')
-        } catch {}
-        setIsFullscreen(true)
+        try { await screen.orientation?.lock?.('landscape') } catch {}
       } else {
         await document.exitFullscreen()
-        try {
-          screen.orientation?.unlock?.()
-        } catch {}
-        setIsFullscreen(false)
+        try { screen.orientation?.unlock?.() } catch {}
       }
     } catch {}
   }, [])
@@ -50,24 +52,26 @@ export default function Game() {
 
   return (
     <div className="h-screen flex flex-col p-2 sm:p-4 pb-16 lg:pb-4 overflow-hidden" style={{ backgroundColor: '#0d1117' }}>
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <div className="flex items-center gap-2 sm:gap-4">
+      {!isFullscreen && (
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <button
+              onClick={() => navigate('/')}
+              className="text-slate-500 hover:text-slate-300 transition-colors text-sm cursor-pointer"
+            >
+              &larr; Back
+            </button>
+            <h1 className="text-lg sm:text-xl font-bold text-slate-200 uppercase tracking-wide truncate">{gameState.game.name}</h1>
+          </div>
           <button
-            onClick={() => navigate('/')}
-            className="text-slate-500 hover:text-slate-300 transition-colors text-sm cursor-pointer"
+            onClick={toggleFullscreen}
+            className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+            style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
           >
-            &larr; Back
+            Fullscreen
           </button>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-200 uppercase tracking-wide truncate">{gameState.game.name}</h1>
         </div>
-        <button
-          onClick={toggleFullscreen}
-          className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-          style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
-        >
-          {isFullscreen ? 'Exit' : 'Fullscreen'}
-        </button>
-      </div>
+      )}
 
       <div className="flex-1 min-h-0">
         <GameBoard
@@ -81,6 +85,8 @@ export default function Game() {
           moveUnit={gameState.moveUnit}
           attackUnit={gameState.attackUnit}
           endTurn={gameState.endTurn}
+          isFullscreen={isFullscreen}
+          onExitFullscreen={toggleFullscreen}
         />
       </div>
     </div>
