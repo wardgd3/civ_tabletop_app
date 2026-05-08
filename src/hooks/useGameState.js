@@ -2,6 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 
+function hexDistance(r1, c1, r2, c2) {
+  const q1 = c1 - ((r1 - (r1 & 1)) >> 1)
+  const q2 = c2 - ((r2 - (r2 & 1)) >> 1)
+  const s1 = -q1 - r1
+  const s2 = -q2 - r2
+  return Math.max(Math.abs(q1 - q2), Math.abs(r1 - r2), Math.abs(s1 - s2))
+}
+
 export function useGameState(gameId) {
   const { session } = useAuth()
   const userId = session?.user?.id
@@ -65,6 +73,36 @@ export function useGameState(gameId) {
     const occupied = units.find(u => u.grid_row === row && u.grid_col === col)
     if (occupied) throw new Error('Cell is occupied')
 
+    const myCC = units.find(u => u.owner_id === userId && u.wg_unit_types?.name === 'Command Center')
+    const myBases = units.filter(u => u.owner_id === userId && u.wg_unit_types?.name === 'Base')
+    const myStructures = myCC ? [myCC, ...myBases] : []
+
+    function distToNearest(r, c, structs) {
+      let min = Infinity
+      for (const s of structs) {
+        const d = hexDistance(s.grid_row, s.grid_col, r, c)
+        if (d < min) min = d
+      }
+      return min
+    }
+
+    if (unitType.name === 'Command Center') {
+      if (myCC) throw new Error('Only one Command Center allowed')
+      const isEdge = row === 0 || row === game.grid_rows - 1 || col === 0 || col === game.grid_cols - 1
+      if (!isEdge) throw new Error('Command Center must be on an edge or corner')
+      const enemyCCs = units.filter(u => u.owner_id !== userId && u.wg_unit_types?.name === 'Command Center')
+      const tooClose = enemyCCs.some(cc => hexDistance(cc.grid_row, cc.grid_col, row, col) < 20)
+      if (tooClose) throw new Error('Too close to enemy Command Center (min 20 tiles)')
+    } else if (unitType.name === 'Base') {
+      if (!myCC) throw new Error('Deploy a Command Center first')
+      const dist = distToNearest(row, col, myStructures)
+      if (dist > 4) throw new Error('Base must be within 4 tiles of Command Center or another Base')
+    } else {
+      if (!myCC) throw new Error('Deploy a Command Center first')
+      const dist = distToNearest(row, col, myStructures)
+      if (dist > unitType.movement) throw new Error('Too far from Command Center or Base')
+    }
+
     const { error: unitError } = await supabase.from('wg_units').insert({
       game_id: gameId,
       owner_id: userId,
@@ -89,7 +127,7 @@ export function useGameState(gameId) {
     if (!unit || unit.owner_id !== userId) throw new Error('Not your unit')
     if (unit.has_moved) throw new Error('Unit already moved')
 
-    const dist = Math.abs(unit.grid_row - newRow) + Math.abs(unit.grid_col - newCol)
+    const dist = hexDistance(unit.grid_row, unit.grid_col, newRow, newCol)
     if (dist > unit.wg_unit_types.movement) throw new Error('Too far')
 
     const occupied = units.find(u => u.grid_row === newRow && u.grid_col === newCol && u.id !== unitId)
@@ -112,7 +150,7 @@ export function useGameState(gameId) {
     if (attacker.has_attacked) throw new Error('Unit already attacked')
     if (target.owner_id === userId) throw new Error("Can't attack your own unit")
 
-    const dist = Math.abs(attacker.grid_row - target.grid_row) + Math.abs(attacker.grid_col - target.grid_col)
+    const dist = hexDistance(attacker.grid_row, attacker.grid_col, target.grid_row, target.grid_col)
     if (dist > attacker.wg_unit_types.attack_range) throw new Error('Out of range')
 
     const damage = Math.max(1, attacker.wg_unit_types.attack - target.wg_unit_types.defense)

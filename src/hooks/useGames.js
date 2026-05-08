@@ -54,7 +54,7 @@ export function useGames() {
     fetchGames()
   }, [fetchGames])
 
-  async function createGame(name, gridRows = 12, gridCols = 16, maxPlayers = 2) {
+  async function createGame(name, gridRows = 32, gridCols = 48, maxPlayers = 2) {
     const { data, error } = await supabase
       .from('wg_games')
       .insert({ name, host_id: userId, grid_rows: gridRows, grid_cols: gridCols, max_players: maxPlayers })

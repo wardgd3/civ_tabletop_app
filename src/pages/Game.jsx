@@ -29,7 +29,7 @@ export default function Game() {
   }
 
   return (
-    <div className="min-h-screen p-2 sm:p-4 pb-16 lg:pb-4" style={{ backgroundColor: '#0d1117' }}>
+    <div className="h-screen flex flex-col p-2 sm:p-4 pb-16 lg:pb-4 overflow-hidden" style={{ backgroundColor: '#0d1117' }}>
       <div className="flex items-center justify-between mb-3 sm:mb-4">
         <div className="flex items-center gap-2 sm:gap-4">
           <button
@@ -42,18 +42,20 @@ export default function Game() {
         </div>
       </div>
 
-      <GameBoard
-        game={gameState.game}
-        players={gameState.players}
-        units={gameState.units}
-        unitTypes={gameState.unitTypes}
-        currentPlayer={gameState.currentPlayer}
-        isMyTurn={gameState.isMyTurn}
-        deployUnit={gameState.deployUnit}
-        moveUnit={gameState.moveUnit}
-        attackUnit={gameState.attackUnit}
-        endTurn={gameState.endTurn}
-      />
+      <div className="flex-1 min-h-0">
+        <GameBoard
+          game={gameState.game}
+          players={gameState.players}
+          units={gameState.units}
+          unitTypes={gameState.unitTypes}
+          currentPlayer={gameState.currentPlayer}
+          isMyTurn={gameState.isMyTurn}
+          deployUnit={gameState.deployUnit}
+          moveUnit={gameState.moveUnit}
+          attackUnit={gameState.attackUnit}
+          endTurn={gameState.endTurn}
+        />
+      </div>
     </div>
   )
 }
