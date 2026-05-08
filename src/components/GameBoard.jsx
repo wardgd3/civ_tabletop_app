@@ -489,7 +489,11 @@ export default function GameBoard({
         onMouseUp={handleBoardMouseUp}
         onMouseLeave={handleBoardMouseUp}
       >
-        <div style={{ width: boardPixelW * zoom, height: boardPixelH * zoom }}>
+        <div style={{
+          width: boardPixelW * zoom,
+          height: boardPixelH * zoom,
+          padding: `${boardPixelH * zoom * 0.5}px ${boardPixelW * zoom * 0.5}px`,
+        }}>
           <div
             className="relative"
             style={{
