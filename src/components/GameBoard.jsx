@@ -490,17 +490,19 @@ export default function GameBoard({
         onMouseLeave={handleBoardMouseUp}
       >
         <div style={{
-          width: boardPixelW * zoom,
-          height: boardPixelH * zoom,
-          padding: `${boardPixelH * zoom * 0.5}px ${boardPixelW * zoom * 0.5}px`,
+          width: boardPixelW * zoom * 1.4,
+          height: boardPixelH * zoom * 1.4,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}>
           <div
-            className="relative"
+            className="relative shrink-0"
             style={{
               width: boardPixelW,
               height: boardPixelH,
               transform: `scale(${zoom})`,
-              transformOrigin: '0 0',
+              transformOrigin: 'center center',
             }}
           >
             {Array.from({ length: rows * cols }, (_, i) => {
