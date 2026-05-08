@@ -211,12 +211,48 @@ export default function GameBoard({
     })
   }, [])
 
+  // Pinch-to-zoom for touch
+  const pinchRef = useRef(null)
+
+  const handleTouchStart = useCallback((e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault()
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      pinchRef.current = Math.hypot(dx, dy)
+    }
+  }, [])
+
+  const handleTouchMove = useCallback((e) => {
+    if (e.touches.length === 2 && pinchRef.current !== null) {
+      e.preventDefault()
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      const dist = Math.hypot(dx, dy)
+      const scale = dist / pinchRef.current
+      pinchRef.current = dist
+      setZoom(prev => Math.min(3, Math.max(0.3, prev * scale)))
+    }
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    pinchRef.current = null
+  }, [])
+
   useEffect(() => {
     const el = boardRef.current
     if (!el) return
     el.addEventListener('wheel', handleWheel, { passive: false })
-    return () => el.removeEventListener('wheel', handleWheel)
-  }, [handleWheel])
+    el.addEventListener('touchstart', handleTouchStart, { passive: false })
+    el.addEventListener('touchmove', handleTouchMove, { passive: false })
+    el.addEventListener('touchend', handleTouchEnd)
+    return () => {
+      el.removeEventListener('wheel', handleWheel)
+      el.removeEventListener('touchstart', handleTouchStart)
+      el.removeEventListener('touchmove', handleTouchMove)
+      el.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [handleWheel, handleTouchStart, handleTouchMove, handleTouchEnd])
 
   function handleBoardMouseDown(e) {
     if (!spaceHeld) return
@@ -414,16 +450,14 @@ export default function GameBoard({
                 key={ut.id}
                 onClick={() => setSelectedUnitType(ut.id)}
                 disabled={cantAfford || needsCC || alreadyHasCC || baseNeedsCC}
-                className="flex items-center justify-between p-3 rounded text-base transition-colors disabled:opacity-20 cursor-pointer"
+                className="flex flex-col lg:flex-row items-center lg:justify-between p-2 lg:p-3 rounded text-sm lg:text-base transition-colors disabled:opacity-20 cursor-pointer gap-1 lg:gap-3"
                 style={selectedUnitType === ut.id
                   ? { backgroundColor: '#1a2a3a', color: '#c9d1d9', border: '1px solid #3a4a5a' }
                   : { backgroundColor: '#0d1117', color: '#c9d1d9', border: '1px solid #2a3140' }}
               >
-                <span className="flex items-center gap-3 truncate">
-                  <img src={`/assets/${encodeURIComponent(ut.icon)}`} alt={ut.name} className="w-20 h-20 object-contain shrink-0" />
-                  <span className="font-medium">{ut.name}</span>
-                </span>
-                <span className="ml-2 shrink-0 text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>{ut.cost}g</span>
+                <img src={`/assets/${encodeURIComponent(ut.icon)}`} alt={ut.name} className="w-10 h-10 lg:w-16 lg:h-16 object-contain shrink-0" />
+                <span className="font-medium text-xs lg:text-sm truncate max-w-full">{ut.name}</span>
+                <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>{ut.cost}g</span>
               </button>
               )
             })}
@@ -447,8 +481,8 @@ export default function GameBoard({
 
       <div
         ref={boardRef}
-        className="flex-1 overflow-auto touch-pan-x touch-pan-y"
-        style={{ cursor: boardCursor }}
+        className="flex-1 overflow-auto"
+        style={{ cursor: boardCursor, touchAction: 'pan-x pan-y' }}
         onMouseDown={handleBoardMouseDown}
         onMouseMove={handleBoardMouseMove}
         onMouseUp={handleBoardMouseUp}

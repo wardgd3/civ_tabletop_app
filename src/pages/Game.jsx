@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useGameState } from '../hooks/useGameState'
 import GameBoard from '../components/GameBoard'
@@ -6,6 +7,22 @@ export default function Game() {
   const { id } = useParams()
   const navigate = useNavigate()
   const gameState = useGameState(id)
+
+  useEffect(() => {
+    function handleOrientation() {
+      const isLandscape = window.innerWidth > window.innerHeight
+      if (isLandscape && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen?.().catch(() => {})
+      } else if (!isLandscape && document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {})
+      }
+    }
+
+    window.addEventListener('resize', handleOrientation)
+    handleOrientation()
+
+    return () => window.removeEventListener('resize', handleOrientation)
+  }, [])
 
   if (gameState.loading) {
     return (
