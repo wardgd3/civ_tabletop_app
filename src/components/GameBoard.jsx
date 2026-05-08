@@ -584,18 +584,36 @@ export default function GameBoard({
         </div>
       </div>
 
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20">
-        <button
-          onClick={() => setPanelOpen(!panelOpen)}
-          className="w-full flex items-center justify-center gap-2 py-2 text-sm font-semibold uppercase tracking-wide cursor-pointer"
-          style={{ backgroundColor: '#161b22', borderTop: '1px solid #2a3140', color: '#4a5568' }}
-        >
-          <span>{panelOpen ? 'Hide' : 'Show'} Controls</span>
-          <span className={`transition-transform ${panelOpen ? 'rotate-180' : ''}`}>&#9650;</span>
-        </button>
-        {panelOpen && (
-          <div className="p-3 max-h-[50vh] overflow-y-auto" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #2a3140' }}>
-            {isFullscreen && (
+      {/* Mobile panel: bottom-up normally, right-side in fullscreen */}
+      {!isFullscreen && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20">
+          <button
+            onClick={() => setPanelOpen(!panelOpen)}
+            className="w-full flex items-center justify-center gap-2 py-2 text-sm font-semibold uppercase tracking-wide cursor-pointer"
+            style={{ backgroundColor: '#161b22', borderTop: '1px solid #2a3140', color: '#4a5568' }}
+          >
+            <span>{panelOpen ? 'Hide' : 'Show'} Controls</span>
+            <span className={`transition-transform ${panelOpen ? 'rotate-180' : ''}`}>&#9650;</span>
+          </button>
+          {panelOpen && (
+            <div className="p-3 max-h-[50vh] overflow-y-auto" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #2a3140' }}>
+              {sidebarContent}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isFullscreen && (
+        <div className="lg:hidden fixed top-0 right-0 bottom-0 z-20 flex">
+          <button
+            onClick={() => setPanelOpen(!panelOpen)}
+            className="flex items-center justify-center px-1 cursor-pointer self-stretch"
+            style={{ backgroundColor: '#161b22', borderLeft: '1px solid #2a3140', color: '#4a5568', writingMode: 'vertical-rl' }}
+          >
+            <span className="text-xs font-semibold uppercase tracking-widest">{panelOpen ? 'Hide' : 'Menu'}</span>
+          </button>
+          {panelOpen && (
+            <div className="w-72 h-full overflow-y-auto p-3" style={{ backgroundColor: '#0d1117', borderLeft: '1px solid #2a3140' }}>
               <button
                 onClick={onExitFullscreen}
                 className="w-full mb-3 px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
@@ -603,11 +621,11 @@ export default function GameBoard({
               >
                 Exit Fullscreen
               </button>
-            )}
-            {sidebarContent}
-          </div>
-        )}
-      </div>
+              {sidebarContent}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
