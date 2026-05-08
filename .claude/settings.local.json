@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm create vite@latest . -- --template react 2>&1)",
+      "Bash(npm install *)"
+    ]
+  }
+}
