@@ -66,16 +66,16 @@ export default function GameLobby() {
           <h3 className="text-lg font-semibold text-yellow-400 mb-3">Game Invites</h3>
           <ul className="space-y-2">
             {invites.map(inv => (
-              <li key={inv.id} className="flex items-center justify-between p-3 bg-yellow-900/20 border border-yellow-700/30 rounded-lg">
-                <div>
-                  <span className="text-white font-medium">{inv.game?.name}</span>
-                  <span className="ml-2 text-gray-400 text-sm">from {inv.inviter?.display_name}</span>
+              <li key={inv.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-yellow-900/20 border border-yellow-700/30 rounded-lg">
+                <div className="min-w-0">
+                  <span className="text-white font-medium truncate block">{inv.game?.name}</span>
+                  <span className="text-gray-400 text-sm">from {inv.inviter?.display_name}</span>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => acceptInvite(inv)} className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg">
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => acceptInvite(inv)} className="flex-1 sm:flex-none px-3 py-1.5 sm:py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg">
                     Join
                   </button>
-                  <button onClick={() => declineInvite(inv.id)} className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded-lg">
+                  <button onClick={() => declineInvite(inv.id)} className="flex-1 sm:flex-none px-3 py-1.5 sm:py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded-lg">
                     Decline
                   </button>
                 </div>
@@ -90,11 +90,11 @@ export default function GameLobby() {
           <p className="text-gray-400 text-sm">No games yet. Create one to get started!</p>
         ) : (
           games.map(game => (
-            <div key={game.id} className="p-4 bg-gray-700/50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <span className="text-white font-semibold text-lg">{game.name}</span>
-                  <span className={`ml-3 text-xs font-medium px-2 py-0.5 rounded-full ${
+            <div key={game.id} className="p-3 sm:p-4 bg-gray-700/50 rounded-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <div className="min-w-0">
+                  <span className="text-white font-semibold text-base sm:text-lg truncate block">{game.name}</span>
+                  <span className={`inline-block mt-1 sm:mt-0 sm:ml-3 text-xs font-medium px-2 py-0.5 rounded-full ${
                     game.status === 'lobby' ? 'bg-yellow-600/30 text-yellow-400' :
                     game.status === 'active' ? 'bg-green-600/30 text-green-400' :
                     'bg-gray-600/30 text-gray-400'
@@ -102,11 +102,11 @@ export default function GameLobby() {
                     {game.status}
                   </span>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 shrink-0">
                   {game.status === 'active' && (
                     <button
                       onClick={() => navigate(`/game/${game.id}`)}
-                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                      className="flex-1 sm:flex-none px-4 py-2 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                     >
                       Play
                     </button>
@@ -115,14 +115,14 @@ export default function GameLobby() {
                     <>
                       <button
                         onClick={() => setInvitingGameId(invitingGameId === game.id ? null : game.id)}
-                        className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors"
+                        className="flex-1 sm:flex-none px-3 py-2 sm:py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors"
                       >
                         Invite
                       </button>
                       <button
                         onClick={() => startGame(game.id)}
                         disabled={game.players?.length < 2}
-                        className="px-4 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                        className="flex-1 sm:flex-none px-4 py-2 sm:py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
                       >
                         Start
                       </button>
@@ -131,7 +131,7 @@ export default function GameLobby() {
                 </div>
               </div>
 
-              <div className="flex gap-2 mb-2">
+              <div className="flex flex-wrap gap-2 mb-2">
                 {game.players?.map(p => (
                   <span
                     key={p.player_id}

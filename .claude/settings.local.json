@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "PowerShell(npm create vite@latest . -- --template react 2>&1)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "PowerShell(@\\(\"react\", \"react-dom\", \"react-router-dom\", \"@supabase/supabase-js\", \"vite\", \"@vitejs/plugin-react\", \"tailwindcss\", \"@tailwindcss/vite\"\\) | ForEach-Object { $exists = Test-Path \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\node_modules\\\\$_\"; \"$_ : $exists\" })",
+      "Bash(npx vite *)",
+      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__apply_migration",
+      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__execute_sql",
+      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__list_tables",
+      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__get_publishable_keys"
     ]
   }
 }

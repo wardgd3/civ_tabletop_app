@@ -29,16 +29,16 @@ export default function Game() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 p-4">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gray-900 p-2 sm:p-4 pb-16 lg:pb-4">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <button
             onClick={() => navigate('/')}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 hover:text-white transition-colors text-sm sm:text-base"
           >
             &larr; Back
           </button>
-          <h1 className="text-xl font-bold text-white">{gameState.game.name}</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-white truncate">{gameState.game.name}</h1>
         </div>
       </div>
 

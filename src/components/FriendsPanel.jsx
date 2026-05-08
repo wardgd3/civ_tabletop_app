@@ -60,21 +60,21 @@ export default function FriendsPanel() {
           </h3>
           <ul className="space-y-2">
             {pendingReceived.map(req => (
-              <li key={req.friendshipId} className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
-                <div>
+              <li key={req.friendshipId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-gray-700/50 rounded-lg">
+                <div className="min-w-0">
                   <span className="text-white font-medium">{req.display_name}</span>
                   <span className="ml-2 text-gray-400 text-sm">ELO {req.elo_rating}</span>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 shrink-0">
                   <button
                     onClick={() => acceptRequest(req.friendshipId)}
-                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
+                    className="flex-1 sm:flex-none px-3 py-2 sm:py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
                   >
                     Accept
                   </button>
                   <button
                     onClick={() => declineRequest(req.friendshipId)}
-                    className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded-lg transition-colors"
+                    className="flex-1 sm:flex-none px-3 py-2 sm:py-1 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded-lg transition-colors"
                   >
                     Decline
                   </button>
