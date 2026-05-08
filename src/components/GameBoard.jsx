@@ -23,16 +23,20 @@ export default function GameBoard({
 }) {
   const [selectedUnitId, setSelectedUnitId] = useState(null)
   const [selectedUnitType, setSelectedUnitType] = useState(null)
+  const [inspectedUnitId, setInspectedUnitId] = useState(null)
   const [mode, setMode] = useState('select')
   const [error, setError] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [spaceHeld, setSpaceHeld] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
+  const [touchPanning, setTouchPanning] = useState(false)
   const boardRef = useRef(null)
   const panStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
+  const touchPanRef = useRef(null)
 
   const selectedUnit = selectedUnitId ? units.find(u => u.id === selectedUnitId) || null : null
+  const inspectedUnit = inspectedUnitId ? units.find(u => u.id === inspectedUnitId) || null : null
 
   const myCommandCenter = units.find(u => u.owner_id === currentPlayer?.player_id && u.wg_unit_types?.name === 'Command Center')
   const hasCommandCenter = !!myCommandCenter
@@ -54,7 +58,10 @@ export default function GameBoard({
       setSelectedUnitId(null)
       setMode('select')
     }
-  }, [units, selectedUnitId])
+    if (inspectedUnitId && !units.find(u => u.id === inspectedUnitId)) {
+      setInspectedUnitId(null)
+    }
+  }, [units, selectedUnitId, inspectedUnitId])
 
   const rows = game.grid_rows
   const cols = game.grid_cols
@@ -218,9 +225,20 @@ export default function GameBoard({
   const handleTouchStart = useCallback((e) => {
     if (e.touches.length === 2) {
       e.preventDefault()
+      touchPanRef.current = null
+      setTouchPanning(false)
       const dx = e.touches[0].clientX - e.touches[1].clientX
       const dy = e.touches[0].clientY - e.touches[1].clientY
       pinchRef.current = Math.hypot(dx, dy)
+    } else if (e.touches.length === 1) {
+      const el = boardRef.current
+      touchPanRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        scrollLeft: el.scrollLeft,
+        scrollTop: el.scrollTop,
+        moved: false,
+      }
     }
   }, [])
 
@@ -233,11 +251,24 @@ export default function GameBoard({
       const scale = dist / pinchRef.current
       pinchRef.current = dist
       setZoom(prev => Math.min(3, Math.max(0.3, prev * scale)))
+    } else if (e.touches.length === 1 && touchPanRef.current) {
+      e.preventDefault()
+      const el = boardRef.current
+      const dx = e.touches[0].clientX - touchPanRef.current.x
+      const dy = e.touches[0].clientY - touchPanRef.current.y
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        touchPanRef.current.moved = true
+        setTouchPanning(true)
+      }
+      el.scrollLeft = touchPanRef.current.scrollLeft - dx
+      el.scrollTop = touchPanRef.current.scrollTop - dy
     }
   }, [])
 
   const handleTouchEnd = useCallback(() => {
     pinchRef.current = null
+    setTimeout(() => setTouchPanning(false), 50)
+    touchPanRef.current = null
   }, [])
 
   useEffect(() => {
