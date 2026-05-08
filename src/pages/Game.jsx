@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useGameState } from '../hooks/useGameState'
 import GameBoard from '../components/GameBoard'
@@ -7,21 +7,24 @@ export default function Game() {
   const { id } = useParams()
   const navigate = useNavigate()
   const gameState = useGameState(id)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
-  useEffect(() => {
-    function handleOrientation() {
-      const isLandscape = window.innerWidth > window.innerHeight
-      if (isLandscape && !document.fullscreenElement) {
-        document.documentElement.requestFullscreen?.().catch(() => {})
-      } else if (!isLandscape && document.fullscreenElement) {
-        document.exitFullscreen?.().catch(() => {})
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen()
+        try {
+          await screen.orientation?.lock?.('landscape')
+        } catch {}
+        setIsFullscreen(true)
+      } else {
+        await document.exitFullscreen()
+        try {
+          screen.orientation?.unlock?.()
+        } catch {}
+        setIsFullscreen(false)
       }
-    }
-
-    window.addEventListener('resize', handleOrientation)
-    handleOrientation()
-
-    return () => window.removeEventListener('resize', handleOrientation)
+    } catch {}
   }, [])
 
   if (gameState.loading) {
@@ -51,12 +54,19 @@ export default function Game() {
         <div className="flex items-center gap-2 sm:gap-4">
           <button
             onClick={() => navigate('/')}
-            className="text-slate-500 hover:text-slate-300 transition-colors text-sm"
+            className="text-slate-500 hover:text-slate-300 transition-colors text-sm cursor-pointer"
           >
             &larr; Back
           </button>
           <h1 className="text-lg sm:text-xl font-bold text-slate-200 uppercase tracking-wide truncate">{gameState.game.name}</h1>
         </div>
+        <button
+          onClick={toggleFullscreen}
+          className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+          style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+        >
+          {isFullscreen ? 'Exit' : 'Fullscreen'}
+        </button>
       </div>
 
       <div className="flex-1 min-h-0">
