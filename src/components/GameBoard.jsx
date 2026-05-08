@@ -210,12 +210,26 @@ export default function GameBoard({
     }
   }, [])
 
-  // Zoom with mouse wheel
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
+
+  // Zoom with mouse wheel — zooms toward cursor position
   const handleWheel = useCallback((e) => {
     e.preventDefault()
-    setZoom(prev => {
-      const delta = e.deltaY > 0 ? -0.1 : 0.1
-      return Math.min(3, Math.max(0.3, prev + delta))
+    const el = boardRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const cursorX = e.clientX - rect.left + el.scrollLeft
+    const cursorY = e.clientY - rect.top + el.scrollTop
+    const oldZoom = zoomRef.current
+    const delta = e.deltaY > 0 ? -0.1 : 0.1
+    const newZoom = Math.min(3, Math.max(0.3, oldZoom + delta))
+    const ratio = newZoom / oldZoom
+    setZoom(newZoom)
+    zoomRef.current = newZoom
+    requestAnimationFrame(() => {
+      el.scrollLeft = cursorX * ratio - (e.clientX - rect.left)
+      el.scrollTop = cursorY * ratio - (e.clientY - rect.top)
     })
   }, [])
 
@@ -229,7 +243,9 @@ export default function GameBoard({
       setTouchPanning(false)
       const dx = e.touches[0].clientX - e.touches[1].clientX
       const dy = e.touches[0].clientY - e.touches[1].clientY
-      pinchRef.current = Math.hypot(dx, dy)
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2
+      pinchRef.current = { dist: Math.hypot(dx, dy), midX, midY }
     } else if (e.touches.length === 1) {
       const el = boardRef.current
       touchPanRef.current = {
@@ -245,30 +261,52 @@ export default function GameBoard({
   const handleTouchMove = useCallback((e) => {
     if (e.touches.length === 2 && pinchRef.current !== null) {
       e.preventDefault()
+      const el = boardRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
       const dx = e.touches[0].clientX - e.touches[1].clientX
       const dy = e.touches[0].clientY - e.touches[1].clientY
       const dist = Math.hypot(dx, dy)
-      const scale = dist / pinchRef.current
-      pinchRef.current = dist
-      setZoom(prev => Math.min(3, Math.max(0.3, prev * scale)))
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2
+      const scale = dist / pinchRef.current.dist
+      const oldZoom = zoomRef.current
+      const newZoom = Math.min(3, Math.max(0.3, oldZoom * scale))
+      const ratio = newZoom / oldZoom
+
+      const focalX = pinchRef.current.midX - rect.left + el.scrollLeft
+      const focalY = pinchRef.current.midY - rect.top + el.scrollTop
+
+      setZoom(newZoom)
+      zoomRef.current = newZoom
+      pinchRef.current = { dist, midX, midY }
+
+      requestAnimationFrame(() => {
+        el.scrollLeft = focalX * ratio - (midX - rect.left)
+        el.scrollTop = focalY * ratio - (midY - rect.top)
+      })
     } else if (e.touches.length === 1 && touchPanRef.current) {
-      e.preventDefault()
-      const el = boardRef.current
       const dx = e.touches[0].clientX - touchPanRef.current.x
       const dy = e.touches[0].clientY - touchPanRef.current.y
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      if (!touchPanRef.current.moved && Math.hypot(dx, dy) > 5) {
         touchPanRef.current.moved = true
         setTouchPanning(true)
       }
-      el.scrollLeft = touchPanRef.current.scrollLeft - dx
-      el.scrollTop = touchPanRef.current.scrollTop - dy
+      if (touchPanRef.current.moved) {
+        e.preventDefault()
+        const el = boardRef.current
+        el.scrollLeft = touchPanRef.current.scrollLeft - dx
+        el.scrollTop = touchPanRef.current.scrollTop - dy
+      }
     }
   }, [])
 
   const handleTouchEnd = useCallback(() => {
     pinchRef.current = null
-    setTimeout(() => setTouchPanning(false), 50)
-    touchPanRef.current = null
+    setTimeout(() => {
+      touchPanRef.current = null
+      setTouchPanning(false)
+    }, 50)
   }, [])
 
   useEffect(() => {
@@ -312,17 +350,25 @@ export default function GameBoard({
   }
 
   async function handleCellClick(row, col) {
-    if (spaceHeld || isPanning) return
+    if (spaceHeld || isPanning || touchPanning) return
+    if (touchPanRef.current?.moved) return
     setError(null)
 
-    if (!isMyTurn) {
-      setError("It's not your turn")
-      return
+    const cellKey = `${row}-${col}`
+    const unit = getUnitAt(row, col)
+    const isVisible = visibleTiles.has(cellKey)
+    const showUnit = unit && (unit.owner_id === currentPlayer?.player_id || isVisible)
+
+    if (showUnit) {
+      setInspectedUnitId(prev => prev === unit.id ? null : unit.id)
+    } else {
+      setInspectedUnitId(null)
     }
+
+    if (!isMyTurn) return
 
     try {
       if (mode === 'deploy' && selectedUnitType) {
-        const cellKey = `${row}-${col}`
         if (!deployRange.includes(cellKey)) {
           setError(hasCommandCenter ? 'Too far from Command Center or Base' : 'Deploy a Command Center first')
           return
@@ -335,14 +381,12 @@ export default function GameBoard({
         setSelectedUnitId(null)
         setMode('select')
       } else if (mode === 'attack' && selectedUnit) {
-        const target = getUnitAt(row, col)
-        if (target && target.owner_id !== currentPlayer?.player_id) {
-          await attackUnit(selectedUnit.id, target.id)
+        if (unit && unit.owner_id !== currentPlayer?.player_id) {
+          await attackUnit(selectedUnit.id, unit.id)
           setSelectedUnitId(null)
           setMode('select')
         }
       } else {
-        const unit = getUnitAt(row, col)
         if (unit && unit.owner_id === currentPlayer?.player_id) {
           setSelectedUnitId(unit.id)
           setMode('select')
@@ -514,14 +558,14 @@ export default function GameBoard({
       <div
         ref={boardRef}
         className="flex-1 overflow-auto"
-        style={{ cursor: boardCursor, touchAction: 'pan-x pan-y' }}
+        style={{ cursor: boardCursor, touchAction: 'none' }}
         onMouseDown={handleBoardMouseDown}
         onMouseMove={handleBoardMouseMove}
         onMouseUp={handleBoardMouseUp}
         onMouseLeave={handleBoardMouseUp}
       >
         <div style={{
-          width: boardPixelW * zoom * 1.4,
+          width: boardPixelW * zoom * 1.6,
           height: boardPixelH * zoom * 1.4,
           display: 'flex',
           alignItems: 'center',
@@ -621,6 +665,44 @@ export default function GameBoard({
         </div>
       </div>
 
+      {inspectedUnit && (
+        <div
+          className="fixed bottom-16 left-1/2 -translate-x-1/2 lg:absolute lg:bottom-4 z-30 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg max-w-sm"
+          style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+        >
+          <img
+            src={`/assets/${encodeURIComponent(inspectedUnit.wg_unit_types?.icon)}`}
+            alt={inspectedUnit.wg_unit_types?.name}
+            className="w-12 h-12 object-contain shrink-0"
+            style={{ filter: `drop-shadow(0 0 3px ${getPlayerColor(inspectedUnit.owner_id)})` }}
+          />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getPlayerColor(inspectedUnit.owner_id) }} />
+              <span className="font-semibold text-sm truncate" style={{ color: '#c9d1d9' }}>
+                {inspectedUnit.wg_unit_types?.name}
+              </span>
+            </div>
+            <div className="flex gap-3 mt-1 text-xs font-mono" style={{ color: '#8b949e' }}>
+              <span>HP {inspectedUnit.current_hp}/{inspectedUnit.wg_unit_types?.hp}</span>
+              <span>ATK {inspectedUnit.wg_unit_types?.attack}</span>
+              <span>DEF {inspectedUnit.wg_unit_types?.defense}</span>
+              <span>MOV {inspectedUnit.wg_unit_types?.movement}</span>
+            </div>
+            <div className="text-xs mt-0.5" style={{ color: '#4a5568' }}>
+              {players.find(p => p.player_id === inspectedUnit.owner_id)?.wg_profiles?.display_name}
+            </div>
+          </div>
+          <button
+            onClick={() => setInspectedUnitId(null)}
+            className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs cursor-pointer"
+            style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
       {/* Mobile panel: bottom-up normally, right-side in fullscreen */}
       {!isFullscreen && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20">
@@ -650,7 +732,7 @@ export default function GameBoard({
             <span className="text-xs font-semibold uppercase tracking-widest">{panelOpen ? 'Hide' : 'Menu'}</span>
           </button>
           {panelOpen && (
-            <div className="w-72 h-full overflow-y-auto p-3" style={{ backgroundColor: '#0d1117', borderLeft: '1px solid #2a3140' }}>
+            <div className="w-54 h-full overflow-y-auto p-3" style={{ backgroundColor: '#0d1117', borderLeft: '1px solid #2a3140' }}>
               <button
                 onClick={onExitFullscreen}
                 className="w-full mb-3 px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
