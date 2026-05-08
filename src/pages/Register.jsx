@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext'
 export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
   const { signUp, signInWithGoogle } = useAuth()
@@ -16,7 +15,7 @@ export default function Register() {
     setError(null)
     setLoading(true)
     try {
-      await signUp(email, password, displayName)
+      await signUp(email, password)
       navigate('/')
     } catch (err) {
       setError(err.message)
@@ -38,17 +37,6 @@ export default function Register() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Display Name</label>
-            <input
-              type="text"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-              required
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="WarLord42"
-            />
-          </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
             <input

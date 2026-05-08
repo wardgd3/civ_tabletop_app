@@ -37,16 +37,9 @@ export function AuthProvider({ children }) {
     setLoading(false)
   }
 
-  async function signUp(email, password, displayName) {
+  async function signUp(email, password) {
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) throw error
-
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('wg_profiles')
-        .insert({ id: data.user.id, display_name: displayName })
-      if (profileError) throw profileError
-    }
     return data
   }
 
