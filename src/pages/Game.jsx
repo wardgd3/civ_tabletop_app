@@ -79,12 +79,18 @@ export default function Game() {
           players={gameState.players}
           units={gameState.units}
           unitTypes={gameState.unitTypes}
+          tiles={gameState.tiles}
+          discoveredTiles={gameState.discoveredTiles}
+          persistDiscoveredTiles={gameState.persistDiscoveredTiles}
           currentPlayer={gameState.currentPlayer}
           isMyTurn={gameState.isMyTurn}
           deployUnit={gameState.deployUnit}
           moveUnit={gameState.moveUnit}
           attackUnit={gameState.attackUnit}
+          buildRoad={gameState.buildRoad}
+          destroyRoad={gameState.destroyRoad}
           endTurn={gameState.endTurn}
+          isAdmin={gameState.isAdmin}
           isFullscreen={isFullscreen}
           onExitFullscreen={toggleFullscreen}
         />

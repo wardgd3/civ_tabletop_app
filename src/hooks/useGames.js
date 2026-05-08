@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { generateTerrain } from '../lib/terrainGen'
 
 export function useGames() {
   const { session } = useAuth()
@@ -55,17 +56,87 @@ export function useGames() {
   }, [fetchGames])
 
   async function createGame(name, gridRows = 32, gridCols = 48, maxPlayers = 2) {
+    const terrainSeed = Math.floor(Math.random() * 2147483647)
+
     const { data, error } = await supabase
       .from('wg_games')
-      .insert({ name, host_id: userId, grid_rows: gridRows, grid_cols: gridCols, max_players: maxPlayers })
+      .insert({ name, host_id: userId, grid_rows: gridRows, grid_cols: gridCols, max_players: maxPlayers, terrain_seed: terrainSeed })
       .select()
       .single()
 
     if (error) throw error
 
+    const tiles = generateTerrain(gridRows, gridCols, terrainSeed)
+    const tileRows = tiles.map(t => ({
+      game_id: data.id,
+      grid_row: t.row,
+      grid_col: t.col,
+      terrain: t.terrain,
+      resource: t.resource,
+      has_river: t.hasRiver,
+    }))
+
+    const BATCH = 500
+    for (let i = 0; i < tileRows.length; i += BATCH) {
+      const { error: tileErr } = await supabase
+        .from('wg_game_tiles')
+        .insert(tileRows.slice(i, i + BATCH))
+      if (tileErr) throw tileErr
+    }
+
     await supabase
       .from('wg_game_players')
       .insert({ game_id: data.id, player_id: userId, player_order: 0, color: '#3b82f6' })
+
+    await fetchGames()
+    return data
+  }
+
+  async function createAdminGame() {
+    const terrainSeed = Math.floor(Math.random() * 2147483647)
+    const gridRows = 32, gridCols = 48
+
+    const { data, error } = await supabase
+      .from('wg_games')
+      .insert({
+        name: `Admin ${new Date().toLocaleTimeString()}`,
+        host_id: userId,
+        grid_rows: gridRows,
+        grid_cols: gridCols,
+        max_players: 2,
+        terrain_seed: terrainSeed,
+        is_admin: true,
+        status: 'active',
+        turn_number: 1,
+        current_player_id: userId,
+        started_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    const tiles = generateTerrain(gridRows, gridCols, terrainSeed)
+    const tileRows = tiles.map(t => ({
+      game_id: data.id,
+      grid_row: t.row,
+      grid_col: t.col,
+      terrain: t.terrain,
+      resource: t.resource,
+      has_river: t.hasRiver,
+    }))
+
+    const BATCH = 500
+    for (let i = 0; i < tileRows.length; i += BATCH) {
+      const { error: tileErr } = await supabase
+        .from('wg_game_tiles')
+        .insert(tileRows.slice(i, i + BATCH))
+      if (tileErr) throw tileErr
+    }
+
+    await supabase
+      .from('wg_game_players')
+      .insert({ game_id: data.id, player_id: userId, player_order: 0, color: '#3b82f6', gold: 99999 })
 
     await fetchGames()
     return data
@@ -142,5 +213,17 @@ export function useGames() {
     await fetchGames()
   }
 
-  return { games, invites, loading, createGame, inviteToGame, acceptInvite, declineInvite, startGame, refresh: fetchGames }
+  async function deleteGame(gameId) {
+    await supabase.from('wg_units').delete().eq('game_id', gameId)
+    await supabase.from('wg_discovered_tiles').delete().eq('game_id', gameId)
+    await supabase.from('wg_game_tiles').delete().eq('game_id', gameId)
+    await supabase.from('wg_turns').delete().eq('game_id', gameId)
+    await supabase.from('wg_game_invites').delete().eq('game_id', gameId)
+    await supabase.from('wg_game_players').delete().eq('game_id', gameId)
+    const { error } = await supabase.from('wg_games').delete().eq('id', gameId)
+    if (error) throw error
+    await fetchGames()
+  }
+
+  return { games, invites, loading, createGame, createAdminGame, inviteToGame, acceptInvite, declineInvite, startGame, deleteGame, refresh: fetchGames }
 }

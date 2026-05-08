@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { TERRAIN, RESOURCES } from '../lib/terrainGen'
 
 const HEX_SIZE = 16
 const HEX_W = Math.round(Math.sqrt(3) * HEX_SIZE)
 const HEX_H = HEX_SIZE * 2
 const ROW_H = HEX_H * 0.75
-const GAP = 2
+const GAP = 0.5
 const RENDER_W = HEX_W - GAP
 const RENDER_H = HEX_H - GAP
 
@@ -16,14 +17,20 @@ function hexDistance(r1, c1, r2, c2) {
   return Math.max(Math.abs(q1 - q2), Math.abs(r1 - r2), Math.abs(s1 - s2))
 }
 
+const TERRAIN_BY_ID = Object.fromEntries(Object.values(TERRAIN).map(t => [t.id, t]))
+const RESOURCE_BY_ID = Object.fromEntries(Object.values(RESOURCES).map(r => [r.id, r]))
+const IMPASSABLE = new Set(['ocean', 'mountain', 'lake', 'river'])
+
 export default function GameBoard({
-  game, players, units, unitTypes, currentPlayer, isMyTurn,
-  deployUnit, moveUnit, attackUnit, endTurn,
+  game, players, units, unitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
+  currentPlayer, isMyTurn, isAdmin,
+  deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
   isFullscreen, onExitFullscreen,
 }) {
   const [selectedUnitId, setSelectedUnitId] = useState(null)
   const [selectedUnitType, setSelectedUnitType] = useState(null)
   const [inspectedUnitId, setInspectedUnitId] = useState(null)
+  const [hoveredTile, setHoveredTile] = useState(null)
   const [mode, setMode] = useState('select')
   const [error, setError] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -34,14 +41,19 @@ export default function GameBoard({
   const boardRef = useRef(null)
   const panStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
   const touchPanRef = useRef(null)
+  const panningRef = useRef(false)
+  const spaceRef = useRef(false)
+  const velocityRef = useRef({ vx: 0, vy: 0 })
+  const lastMoveRef = useRef({ x: 0, y: 0, t: 0 })
+  const inertiaRef = useRef(null)
 
   const selectedUnit = selectedUnitId ? units.find(u => u.id === selectedUnitId) || null : null
   const inspectedUnit = inspectedUnitId ? units.find(u => u.id === inspectedUnitId) || null : null
 
   const myCommandCenter = units.find(u => u.owner_id === currentPlayer?.player_id && u.wg_unit_types?.name === 'Command Center')
   const hasCommandCenter = !!myCommandCenter
-  const myBases = units.filter(u => u.owner_id === currentPlayer?.player_id && u.wg_unit_types?.name === 'Base')
-  const myStructures = myCommandCenter ? [myCommandCenter, ...myBases] : []
+  const myBuildings = units.filter(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Base' || u.wg_unit_types?.name === 'Factory'))
+  const myStructures = myCommandCenter ? [myCommandCenter, ...myBuildings] : []
 
   const sortedUnitTypes = [...unitTypes].sort((a, b) => {
     if (a.name === 'Command Center') return -1
@@ -69,8 +81,22 @@ export default function GameBoard({
   const boardPixelW = cols * HEX_W + HEX_W / 2 + GAP
   const boardPixelH = (rows - 1) * ROW_H + HEX_H + GAP
 
+  const tileMap = useMemo(() => {
+    const map = new Map()
+    for (const t of tiles) map.set(`${t.grid_row}-${t.grid_col}`, t)
+    return map
+  }, [tiles])
+
   const visibleTiles = (() => {
     const set = new Set()
+    if (isAdmin) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          set.add(`${r}-${c}`)
+        }
+      }
+      return set
+    }
     const myUnits = units.filter(u => u.owner_id === currentPlayer?.player_id)
     for (const u of myUnits) {
       const vis = u.wg_unit_types?.visibility ?? 2
@@ -84,6 +110,48 @@ export default function GameBoard({
     }
     return set
   })()
+
+  const prevVisibleRef = useRef(new Set())
+  useEffect(() => {
+    const newKeys = []
+    for (const key of visibleTiles) {
+      if (!discoveredTiles.has(key) && !prevVisibleRef.current.has(key)) {
+        newKeys.push(key)
+      }
+    }
+    prevVisibleRef.current = visibleTiles
+    if (newKeys.length > 0) persistDiscoveredTiles(newKeys)
+  }, [visibleTiles, discoveredTiles, persistDiscoveredTiles])
+
+  function getTileColor(row, col, isVisible, isDiscovered) {
+    const tile = tileMap.get(`${row}-${col}`)
+    if (!tile) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : '#1a2029'
+    const terrain = TERRAIN_BY_ID[tile.terrain]
+    if (!terrain) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : '#1a2029'
+    if (tile.has_road) {
+      if (isVisible) return '#8a7a60'
+      if (isDiscovered) return '#5a5040'
+      return '#1a2029'
+    }
+    if (isVisible) return terrain.color
+    if (isDiscovered) return terrain.darkColor
+    return '#1a2029'
+  }
+
+  function getTerrainInfo(row, col) {
+    const tile = tileMap.get(`${row}-${col}`)
+    if (!tile) return null
+    const terrain = TERRAIN_BY_ID[tile.terrain]
+    const resource = tile.resource ? RESOURCE_BY_ID[tile.resource] : null
+    return { terrain, resource, hasRiver: tile.has_river }
+  }
+
+  function isImpassable(row, col) {
+    const tile = tileMap.get(`${row}-${col}`)
+    if (!tile) return false
+    if (tile.has_road) return false
+    return IMPASSABLE.has(tile.terrain)
+  }
 
   function getUnitAt(row, col) {
     return units.find(u => u.grid_row === row && u.grid_col === col)
@@ -100,7 +168,7 @@ export default function GameBoard({
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const dist = hexDistance(unit.grid_row, unit.grid_col, r, c)
-        if (dist > 0 && dist <= range && !getUnitAt(r, c)) {
+        if (dist > 0 && dist <= range && !getUnitAt(r, c) && !isImpassable(r, c)) {
           cells.push(`${r}-${c}`)
         }
       }
@@ -124,11 +192,43 @@ export default function GameBoard({
     return cells
   }
 
+  function getBuildRange(unit) {
+    if (!unit?.wg_unit_types || unit.wg_unit_types.name !== 'Engineer') return []
+    const cells = []
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const dist = hexDistance(unit.grid_row, unit.grid_col, r, c)
+        if (dist !== 1) continue
+        const tile = tileMap.get(`${r}-${c}`)
+        if (!tile || tile.has_road || tile.terrain === 'mountain') continue
+        cells.push(`${r}-${c}`)
+      }
+    }
+    return cells
+  }
+
+  function getDestroyRange(unit) {
+    if (!unit?.wg_unit_types || unit.wg_unit_types.name !== 'Engineer') return []
+    const cells = []
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const dist = hexDistance(unit.grid_row, unit.grid_col, r, c)
+        if (dist !== 1) continue
+        const tile = tileMap.get(`${r}-${c}`)
+        if (!tile || !tile.has_road) continue
+        cells.push(`${r}-${c}`)
+      }
+    }
+    return cells
+  }
+
   const moveRange = mode === 'move' && selectedUnit ? getMoveRange(selectedUnit) : []
   const attackRange = mode === 'attack' && selectedUnit ? getAttackRange(selectedUnit) : []
+  const buildRange = mode === 'build' && selectedUnit ? getBuildRange(selectedUnit) : []
+  const destroyRange = mode === 'destroy' && selectedUnit ? getDestroyRange(selectedUnit) : []
 
-  function isEdgeOrCorner(r, c) {
-    return r === 0 || r === rows - 1 || c === 0 || c === cols - 1
+  function isNearEdge(r, c) {
+    return Math.min(r, rows - 1 - r, c, cols - 1 - c) <= 3
   }
 
   function isFarFromEnemyCCs(r, c) {
@@ -152,17 +252,17 @@ export default function GameBoard({
       if (hasCommandCenter) return []
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-          if (!getUnitAt(r, c) && isEdgeOrCorner(r, c) && isFarFromEnemyCCs(r, c)) {
+          if (!getUnitAt(r, c) && !isImpassable(r, c) && isNearEdge(r, c) && isFarFromEnemyCCs(r, c)) {
             cells.push(`${r}-${c}`)
           }
         }
       }
-    } else if (unitTypeData.name === 'Base') {
+    } else if (unitTypeData.name === 'Base' || unitTypeData.name === 'Factory') {
       if (!hasCommandCenter) return []
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const d = distToNearestStructure(r, c)
-          if (!getUnitAt(r, c) && d > 0 && d <= 4) {
+          if (!getUnitAt(r, c) && !isImpassable(r, c) && d > 0 && d <= 4) {
             cells.push(`${r}-${c}`)
           }
         }
@@ -172,7 +272,7 @@ export default function GameBoard({
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const d = distToNearestStructure(r, c)
-          if (!getUnitAt(r, c) && d > 0 && d <= range) {
+          if (!getUnitAt(r, c) && !isImpassable(r, c) && d > 0 && d <= range) {
             cells.push(`${r}-${c}`)
           }
         }
@@ -183,12 +283,69 @@ export default function GameBoard({
 
   const deployRange = mode === 'deploy' && selectedUnitTypeData ? getDeployRange(selectedUnitTypeData) : []
 
+  function stopInertia() {
+    if (inertiaRef.current) {
+      cancelAnimationFrame(inertiaRef.current)
+      inertiaRef.current = null
+    }
+  }
+
+  function startInertia() {
+    const el = boardRef.current
+    if (!el) return
+    const { vx, vy } = velocityRef.current
+    if (Math.abs(vx) < 0.5 && Math.abs(vy) < 0.5) return
+    const friction = 0.92
+    function tick() {
+      velocityRef.current.vx *= friction
+      velocityRef.current.vy *= friction
+      el.scrollLeft -= velocityRef.current.vx
+      el.scrollTop -= velocityRef.current.vy
+      if (Math.abs(velocityRef.current.vx) > 0.3 || Math.abs(velocityRef.current.vy) > 0.3) {
+        inertiaRef.current = requestAnimationFrame(tick)
+      }
+    }
+    inertiaRef.current = requestAnimationFrame(tick)
+  }
+
+  function beginPan(clientX, clientY) {
+    stopInertia()
+    panningRef.current = true
+    setIsPanning(true)
+    const el = boardRef.current
+    panStart.current = { x: clientX, y: clientY, scrollLeft: el.scrollLeft, scrollTop: el.scrollTop }
+    lastMoveRef.current = { x: clientX, y: clientY, t: performance.now() }
+    velocityRef.current = { vx: 0, vy: 0 }
+  }
+
+  function updatePan(clientX, clientY) {
+    if (!panningRef.current) return
+    const el = boardRef.current
+    el.scrollLeft = panStart.current.scrollLeft - (clientX - panStart.current.x)
+    el.scrollTop = panStart.current.scrollTop - (clientY - panStart.current.y)
+    const now = performance.now()
+    const dt = now - lastMoveRef.current.t || 16
+    velocityRef.current = {
+      vx: (clientX - lastMoveRef.current.x) / dt * 16,
+      vy: (clientY - lastMoveRef.current.y) / dt * 16,
+    }
+    lastMoveRef.current = { x: clientX, y: clientY, t: now }
+  }
+
+  function endPan() {
+    if (!panningRef.current) return
+    panningRef.current = false
+    startInertia()
+    setTimeout(() => setIsPanning(false), 50)
+  }
+
   // Space key tracking for pan mode
   useEffect(() => {
     function onKeyDown(e) {
       if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
         e.preventDefault()
         if (!e.repeat) {
+          spaceRef.current = true
           setSpaceHeld(true)
           document.body.style.overflow = 'hidden'
         }
@@ -197,40 +354,67 @@ export default function GameBoard({
     function onKeyUp(e) {
       if (e.code === 'Space') {
         e.preventDefault()
+        spaceRef.current = false
         setSpaceHeld(false)
-        setIsPanning(false)
+        endPan()
         document.body.style.overflow = ''
       }
     }
+    function onMouseMove(e) { updatePan(e.clientX, e.clientY) }
+    function onMouseUp() { endPan() }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
     }
   }, [])
 
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
+  const targetZoomRef = useRef(zoom)
+  const wheelAnimRef = useRef(null)
+  const wheelCursorRef = useRef({ clientX: 0, clientY: 0 })
 
-  // Zoom with mouse wheel — zooms toward cursor position
-  const handleWheel = useCallback((e) => {
-    e.preventDefault()
+  // Smooth animated zoom toward target
+  function tickWheelZoom() {
     const el = boardRef.current
     if (!el) return
+    const current = zoomRef.current
+    const target = targetZoomRef.current
+    const diff = target - current
+    if (Math.abs(diff) < 0.002) {
+      zoomRef.current = target
+      setZoom(target)
+      wheelAnimRef.current = null
+      return
+    }
     const rect = el.getBoundingClientRect()
-    const cursorX = e.clientX - rect.left + el.scrollLeft
-    const cursorY = e.clientY - rect.top + el.scrollTop
-    const oldZoom = zoomRef.current
-    const delta = e.deltaY > 0 ? -0.1 : 0.1
-    const newZoom = Math.min(3, Math.max(0.3, oldZoom + delta))
-    const ratio = newZoom / oldZoom
-    setZoom(newZoom)
-    zoomRef.current = newZoom
-    requestAnimationFrame(() => {
-      el.scrollLeft = cursorX * ratio - (e.clientX - rect.left)
-      el.scrollTop = cursorY * ratio - (e.clientY - rect.top)
-    })
+    const { clientX, clientY } = wheelCursorRef.current
+    const anchorX = clientX - rect.left + el.scrollLeft
+    const anchorY = clientY - rect.top + el.scrollTop
+    const next = current + diff * 0.25
+    const ratio = next / current
+    zoomRef.current = next
+    setZoom(next)
+    el.scrollLeft = anchorX * ratio - (clientX - rect.left)
+    el.scrollTop = anchorY * ratio - (clientY - rect.top)
+    wheelAnimRef.current = requestAnimationFrame(tickWheelZoom)
+  }
+
+  // Zoom with mouse wheel — accumulates target, animates smoothly
+  const handleWheel = useCallback((e) => {
+    e.preventDefault()
+    wheelCursorRef.current = { clientX: e.clientX, clientY: e.clientY }
+    const factor = e.deltaY > 0 ? 0.85 : 1.18
+    targetZoomRef.current = Math.min(3, Math.max(0.3, targetZoomRef.current * factor))
+    if (!wheelAnimRef.current) {
+      wheelAnimRef.current = requestAnimationFrame(tickWheelZoom)
+    }
   }, [])
 
   // Pinch-to-zoom for touch
@@ -317,6 +501,17 @@ export default function GameBoard({
     }, 50)
   }, [])
 
+  const hasCentered = useRef(false)
+  useEffect(() => {
+    const el = boardRef.current
+    if (!el || hasCentered.current) return
+    hasCentered.current = true
+    requestAnimationFrame(() => {
+      el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2
+      el.scrollTop = (el.scrollHeight - el.clientHeight) / 2
+    })
+  })
+
   useEffect(() => {
     const el = boardRef.current
     if (!el) return
@@ -333,28 +528,13 @@ export default function GameBoard({
   }, [handleWheel, handleTouchStart, handleTouchMove, handleTouchEnd])
 
   function handleBoardMouseDown(e) {
-    if (!spaceHeld) return
-    e.preventDefault()
-    setIsPanning(true)
-    const el = boardRef.current
-    panStart.current = {
-      x: e.clientX,
-      y: e.clientY,
-      scrollLeft: el.scrollLeft,
-      scrollTop: el.scrollTop,
+    if (spaceRef.current && e.button === 0) {
+      e.preventDefault()
+      beginPan(e.clientX, e.clientY)
+    } else if (e.button === 1) {
+      e.preventDefault()
+      beginPan(e.clientX, e.clientY)
     }
-  }
-
-  function handleBoardMouseMove(e) {
-    if (!isPanning) return
-    e.preventDefault()
-    const el = boardRef.current
-    el.scrollLeft = panStart.current.scrollLeft - (e.clientX - panStart.current.x)
-    el.scrollTop = panStart.current.scrollTop - (e.clientY - panStart.current.y)
-  }
-
-  function handleBoardMouseUp() {
-    setIsPanning(false)
   }
 
   async function handleCellClick(row, col) {
@@ -394,6 +574,32 @@ export default function GameBoard({
           setSelectedUnitId(null)
           setMode('select')
         }
+      } else if (mode === 'build' && selectedUnit) {
+        if (buildRange.includes(cellKey)) {
+          try {
+            await buildRoad(selectedUnit.id, row, col)
+          } catch (buildErr) {
+            setError(buildErr.message)
+            return
+          }
+          setSelectedUnitId(null)
+          setMode('select')
+        } else {
+          setError('Select an adjacent tile to build a road')
+        }
+      } else if (mode === 'destroy' && selectedUnit) {
+        if (destroyRange.includes(cellKey)) {
+          try {
+            await destroyRoad(selectedUnit.id, row, col)
+          } catch (destroyErr) {
+            setError(destroyErr.message)
+            return
+          }
+          setSelectedUnitId(null)
+          setMode('select')
+        } else {
+          setError('Select an adjacent road tile to destroy')
+        }
       } else {
         if (unit && unit.owner_id === currentPlayer?.player_id) {
           setSelectedUnitId(unit.id)
@@ -408,7 +614,7 @@ export default function GameBoard({
     }
   }
 
-  const boardCursor = spaceHeld ? (isPanning ? 'grabbing' : 'grab') : 'default'
+  const boardCursor = isPanning ? 'grabbing' : spaceHeld ? 'grab' : 'default'
 
   const hexClip = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'
 
@@ -462,7 +668,7 @@ export default function GameBoard({
               <div className="flex items-center justify-between mt-2">
                 <span className="font-mono" style={{ color: '#6e7681' }}>ATK {selectedUnit.wg_unit_types?.attack} | DEF {selectedUnit.wg_unit_types?.defense}</span>
                 <div className="flex gap-1">
-                  {!selectedUnit.has_moved && (
+                  {(isAdmin || !selectedUnit.has_moved) && (
                     <button
                       onClick={() => setMode('move')}
                       className="px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
@@ -473,16 +679,43 @@ export default function GameBoard({
                       Move
                     </button>
                   )}
-                  {!selectedUnit.has_attacked && (
-                    <button
-                      onClick={() => setMode('attack')}
-                      className="px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-                      style={mode === 'attack'
-                        ? { backgroundColor: '#4c1a1a', color: '#f47067', border: '1px solid #6e2b2b' }
-                        : { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
-                    >
-                      Attack
-                    </button>
+                  {selectedUnit.wg_unit_types?.name === 'Engineer' ? (
+                    <>
+                      {(isAdmin || !selectedUnit.has_attacked) && (
+                        <button
+                          onClick={() => setMode('build')}
+                          className="px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                          style={mode === 'build'
+                            ? { backgroundColor: '#1a3a2a', color: '#7ee787', border: '1px solid #2a5a3a' }
+                            : { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+                        >
+                          Build
+                        </button>
+                      )}
+                      {(isAdmin || !selectedUnit.has_attacked) && (
+                        <button
+                          onClick={() => setMode('destroy')}
+                          className="px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                          style={mode === 'destroy'
+                            ? { backgroundColor: '#4c1a1a', color: '#f47067', border: '1px solid #6e2b2b' }
+                            : { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+                        >
+                          Destroy
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    (isAdmin || !selectedUnit.has_attacked) && (
+                      <button
+                        onClick={() => setMode('attack')}
+                        className="px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                        style={mode === 'attack'
+                          ? { backgroundColor: '#4c1a1a', color: '#f47067', border: '1px solid #6e2b2b' }
+                          : { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+                      >
+                        Attack
+                      </button>
+                    )
                   )}
                 </div>
               </div>
@@ -525,15 +758,16 @@ export default function GameBoard({
           )}
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-1.5">
             {sortedUnitTypes.map(ut => {
-              const needsCC = ut.name !== 'Command Center' && ut.name !== 'Base' && !hasCommandCenter
+              const isBuilding = ut.name === 'Base' || ut.name === 'Factory'
+              const needsCC = ut.name !== 'Command Center' && !isBuilding && !hasCommandCenter
               const alreadyHasCC = ut.name === 'Command Center' && hasCommandCenter
-              const baseNeedsCC = ut.name === 'Base' && !hasCommandCenter
-              const cantAfford = currentPlayer?.gold < ut.cost
+              const buildingNeedsCC = isBuilding && !hasCommandCenter
+              const cantAfford = !isAdmin && currentPlayer?.gold < ut.cost
               return (
               <button
                 key={ut.id}
                 onClick={() => setSelectedUnitType(ut.id)}
-                disabled={cantAfford || needsCC || alreadyHasCC || baseNeedsCC}
+                disabled={cantAfford || needsCC || alreadyHasCC || buildingNeedsCC}
                 className="flex flex-col lg:flex-row items-center lg:justify-between p-2 lg:p-3 rounded text-sm lg:text-base transition-colors disabled:opacity-20 cursor-pointer gap-1 lg:gap-3"
                 style={selectedUnitType === ut.id
                   ? { backgroundColor: '#1a2a3a', color: '#c9d1d9', border: '1px solid #3a4a5a' }
@@ -568,13 +802,10 @@ export default function GameBoard({
         className="flex-1 overflow-auto"
         style={{ cursor: boardCursor, touchAction: 'none' }}
         onMouseDown={handleBoardMouseDown}
-        onMouseMove={handleBoardMouseMove}
-        onMouseUp={handleBoardMouseUp}
-        onMouseLeave={handleBoardMouseUp}
       >
         <div style={{
-          width: boardPixelW * zoom * 1.6,
-          height: boardPixelH * zoom * 1.4,
+          width: boardPixelW * zoom * 2.2,
+          height: boardPixelH * zoom * 2.2,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -597,16 +828,21 @@ export default function GameBoard({
               const isInMoveRange = moveRange.includes(cellKey)
               const isInAttackRange = attackRange.includes(cellKey)
               const isInDeployRange = deployRange.includes(cellKey)
+              const isInBuildRange = buildRange.includes(cellKey)
+              const isInDestroyRange = destroyRange.includes(cellKey)
               const isSelected = selectedUnit && selectedUnit.grid_row === row && selectedUnit.grid_col === col
 
+              const isDiscovered = discoveredTiles.has(cellKey)
               const showUnit = unit && (unit.owner_id === currentPlayer?.player_id || isVisible)
 
               let bg
-              if (isSelected) bg = isVisible ? '#203348' : '#1a2a3a'
-              else if (isInDeployRange) bg = isVisible ? '#203320' : '#1a2a1a'
-              else if (isInMoveRange) bg = isVisible ? '#182533' : '#121d28'
-              else if (isInAttackRange) bg = isVisible ? '#2a181d' : '#221216'
-              else bg = isVisible ? '#232a35' : '#1a2029'
+              if (isSelected) bg = '#203348'
+              else if (isInDeployRange) bg = '#203320'
+              else if (isInMoveRange) bg = '#182533'
+              else if (isInAttackRange) bg = '#2a181d'
+              else if (isInBuildRange) bg = '#2a2a1a'
+              else if (isInDestroyRange) bg = '#2a181d'
+              else bg = getTileColor(row, col, isVisible, isDiscovered)
 
               const isCC = showUnit && unit?.wg_unit_types?.name === 'Command Center'
               const ccColor = isCC ? getPlayerColor(unit.owner_id) : null
@@ -618,6 +854,8 @@ export default function GameBoard({
                 <div
                   key={cellKey}
                   onClick={() => handleCellClick(row, col)}
+                  onMouseEnter={() => setHoveredTile({ row, col })}
+                  onMouseLeave={() => setHoveredTile(null)}
                   className="absolute flex items-center justify-center cursor-pointer"
                   style={{
                     left: x,
@@ -626,6 +864,7 @@ export default function GameBoard({
                     height: RENDER_H,
                     clipPath: hexClip,
                     backgroundColor: ccColor || bg,
+                    pointerEvents: spaceHeld ? 'none' : 'auto',
                   }}
                 >
                   {isCC && (
@@ -669,6 +908,59 @@ export default function GameBoard({
                 </div>
               )
             })}
+            {(() => {
+              if (!hoveredTile) return null
+              const { row: hr, col: hc } = hoveredTile
+              const hKey = `${hr}-${hc}`
+              const hVisible = visibleTiles.has(hKey)
+              const hDiscovered = discoveredTiles.has(hKey)
+              const hu = getUnitAt(hr, hc)
+              const hShowUnit = hu && (hu.owner_id === currentPlayer?.player_id || hVisible)
+              const info = (hVisible || hDiscovered) ? getTerrainInfo(hr, hc) : null
+              if (!info && !hShowUnit) return null
+              const hx = hc * HEX_W + (hr & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
+              const hy = hr * ROW_H - 4
+              return (
+                <div
+                  className="absolute z-20 pointer-events-none"
+                  style={{
+                    left: hx,
+                    top: hy,
+                    transform: `translate(-50%, -100%) scale(${1.25 / zoom})`,
+                    transformOrigin: 'bottom center',
+                  }}
+                >
+                  <div
+                    className="hidden lg:block rounded px-2 py-1.5 shadow-lg whitespace-nowrap"
+                    style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+                  >
+                    {hShowUnit && (
+                      <div className="flex flex-col items-center gap-1 mb-1">
+                        <img
+                          src={`/assets/${encodeURIComponent(hu.wg_unit_types.icon)}`}
+                          alt={hu.wg_unit_types.name}
+                          className="object-contain"
+                          style={{ maxHeight: 80, maxWidth: 80 }}
+                        />
+                        <div className="text-xs font-semibold text-center" style={{ color: '#c9d1d9' }}>{hu.wg_unit_types.name}</div>
+                        <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>HP {hu.current_hp}/{hu.wg_unit_types.hp}</div>
+                      </div>
+                    )}
+                    {info && (
+                      <div className="text-center">
+                        <div className="text-[10px] font-semibold" style={{ color: '#8b949e' }}>
+                          {info.terrain?.name}{info.hasRiver ? ' (River)' : ''}
+                        </div>
+                        {info.resource && (
+                          <div className="text-[10px] font-mono" style={{ color: '#cca43b' }}>{info.resource.name}</div>
+                        )}
+                      </div>
+                    )}
+                    <div className="text-[9px] font-mono text-center" style={{ color: '#4a5568' }}>X{hr}/Y{hc}</div>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
       </div>
@@ -697,8 +989,9 @@ export default function GameBoard({
               <span>DEF {inspectedUnit.wg_unit_types?.defense}</span>
               <span>MOV {inspectedUnit.wg_unit_types?.movement}</span>
             </div>
-            <div className="text-xs mt-0.5" style={{ color: '#4a5568' }}>
-              {players.find(p => p.player_id === inspectedUnit.owner_id)?.wg_profiles?.display_name}
+            <div className="flex gap-2 text-xs mt-0.5" style={{ color: '#4a5568' }}>
+              <span>{players.find(p => p.player_id === inspectedUnit.owner_id)?.wg_profiles?.display_name}</span>
+              <span className="font-mono">X{inspectedUnit.grid_row}/Y{inspectedUnit.grid_col}</span>
             </div>
           </div>
           <button

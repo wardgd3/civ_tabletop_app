@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGames } from '../hooks/useGames'
 import { useFriends } from '../hooks/useFriends'
 
 export default function GameLobby() {
-  const { games, invites, loading, createGame, inviteToGame, acceptInvite, declineInvite, startGame } = useGames()
+  const { games, invites, loading, createGame, createAdminGame, inviteToGame, acceptInvite, declineInvite, startGame, deleteGame } = useGames()
   const { friends } = useFriends()
   const navigate = useNavigate()
 
@@ -12,6 +12,18 @@ export default function GameLobby() {
   const [gameName, setGameName] = useState('')
   const [creating, setCreating] = useState(false)
   const [invitingGameId, setInvitingGameId] = useState(null)
+  const [menuOpenId, setMenuOpenId] = useState(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    if (!menuOpenId) return
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpenId(null)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menuOpenId])
 
   async function handleCreate(e) {
     e.preventDefault()
@@ -34,15 +46,31 @@ export default function GameLobby() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold" style={{ color: '#c9d1d9' }}>Games</h2>
-        <button
-          onClick={() => setShowCreate(!showCreate)}
-          className="px-4 py-2 text-sm font-medium rounded transition-colors"
-          style={showCreate
-            ? { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }
-            : { backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }}
-        >
-          {showCreate ? 'Cancel' : 'New Game'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              try {
+                const g = await createAdminGame()
+                navigate(`/game/${g.id}`)
+              } catch (err) {
+                alert(err.message)
+              }
+            }}
+            className="px-4 py-2 text-sm font-medium rounded transition-colors"
+            style={{ backgroundColor: '#2a1a2a', color: '#c080c0', border: '1px solid #3d2a3d' }}
+          >
+            Admin Game
+          </button>
+          <button
+            onClick={() => setShowCreate(!showCreate)}
+            className="px-4 py-2 text-sm font-medium rounded transition-colors"
+            style={showCreate
+              ? { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }
+              : { backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }}
+          >
+            {showCreate ? 'Cancel' : 'New Game'}
+          </button>
+        </div>
       </div>
 
       {showCreate && (
@@ -118,7 +146,7 @@ export default function GameLobby() {
                     {game.status}
                   </span>
                 </div>
-                <div className="flex gap-2 shrink-0">
+                <div className="flex gap-2 shrink-0 items-center">
                   {game.status === 'active' && (
                     <button
                       onClick={() => navigate(`/game/${game.id}`)}
@@ -147,6 +175,33 @@ export default function GameLobby() {
                       </button>
                     </>
                   )}
+                  <div className="relative" ref={menuOpenId === game.id ? menuRef : null}>
+                    <button
+                      onClick={() => setMenuOpenId(menuOpenId === game.id ? null : game.id)}
+                      className="p-1.5 rounded transition-colors hover:bg-white/10"
+                      style={{ color: '#6e7681' }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <circle cx="8" cy="3" r="1.5" />
+                        <circle cx="8" cy="8" r="1.5" />
+                        <circle cx="8" cy="13" r="1.5" />
+                      </svg>
+                    </button>
+                    {menuOpenId === game.id && (
+                      <div
+                        className="absolute right-0 top-full mt-1 py-1 rounded shadow-lg z-50 min-w-[120px]"
+                        style={{ backgroundColor: '#1c2128', border: '1px solid #30363d' }}
+                      >
+                        <button
+                          onClick={() => { setMenuOpenId(null); setConfirmDeleteId(game.id) }}
+                          className="w-full text-left px-3 py-1.5 text-sm transition-colors hover:bg-white/5"
+                          style={{ color: '#f85149' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -170,6 +225,35 @@ export default function GameLobby() {
                   )
                 })}
               </div>
+
+              {confirmDeleteId === game.id && (
+                <div className="mt-3 p-3 rounded flex items-center justify-between" style={{ backgroundColor: '#1a0a0a', border: '1px solid #3a2020' }}>
+                  <span className="text-sm" style={{ color: '#f85149' }}>Delete this game? This cannot be undone.</span>
+                  <div className="flex gap-2 shrink-0 ml-3">
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="px-3 py-1 text-sm rounded transition-colors"
+                      style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await deleteGame(game.id)
+                          setConfirmDeleteId(null)
+                        } catch (err) {
+                          alert(err.message)
+                        }
+                      }}
+                      className="px-3 py-1 text-sm rounded transition-colors"
+                      style={{ backgroundColor: '#3a1515', color: '#f85149', border: '1px solid #5a2020' }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {invitingGameId === game.id && (
                 <div className="mt-3 p-3 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #30363d' }}>
