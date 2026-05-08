@@ -245,7 +245,13 @@ export default function GameBoard({
       const dy = e.touches[0].clientY - e.touches[1].clientY
       const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2
       const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2
-      pinchRef.current = { dist: Math.hypot(dx, dy), midX, midY }
+      const el = boardRef.current
+      const rect = el.getBoundingClientRect()
+      pinchRef.current = {
+        dist: Math.hypot(dx, dy),
+        contentX: midX - rect.left + el.scrollLeft,
+        contentY: midY - rect.top + el.scrollTop,
+      }
     } else if (e.touches.length === 1) {
       const el = boardRef.current
       touchPanRef.current = {
@@ -274,17 +280,19 @@ export default function GameBoard({
       const newZoom = Math.min(3, Math.max(0.3, oldZoom * scale))
       const ratio = newZoom / oldZoom
 
-      const focalX = pinchRef.current.midX - rect.left + el.scrollLeft
-      const focalY = pinchRef.current.midY - rect.top + el.scrollTop
+      const newContentX = pinchRef.current.contentX * ratio
+      const newContentY = pinchRef.current.contentY * ratio
 
       setZoom(newZoom)
       zoomRef.current = newZoom
-      pinchRef.current = { dist, midX, midY }
+      pinchRef.current = {
+        dist,
+        contentX: newContentX,
+        contentY: newContentY,
+      }
 
-      requestAnimationFrame(() => {
-        el.scrollLeft = focalX * ratio - (midX - rect.left)
-        el.scrollTop = focalY * ratio - (midY - rect.top)
-      })
+      el.scrollLeft = newContentX - (midX - rect.left)
+      el.scrollTop = newContentY - (midY - rect.top)
     } else if (e.touches.length === 1 && touchPanRef.current) {
       const dx = e.touches[0].clientX - touchPanRef.current.x
       const dy = e.touches[0].clientY - touchPanRef.current.y
