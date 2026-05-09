@@ -45,7 +45,7 @@ export default function GameBoard({
   game, players, units, unitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-  excavate, upgradeShipCompartment,
+  excavate, upgradeShipCompartment, upgradeUnit,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -862,6 +862,49 @@ export default function GameBoard({
                   Trade with Space Guild
                 </button>
               )}
+              {(() => {
+                const exLevel = (selectedUnit.upgrades || {}).example || 0
+                return (
+                  <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: '#c9d1d9' }}>
+                        ★ Example
+                      </span>
+                      <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>
+                        Lv {exLevel}/5
+                      </span>
+                    </div>
+                    <div className="flex gap-0.5 mb-1.5">
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <div
+                          key={i}
+                          className="flex-1 h-1 rounded-full"
+                          style={{
+                            backgroundColor: i < exLevel ? '#e6a020' : '#21262d',
+                            border: `1px solid ${i < exLevel ? '#e6a020' : '#30363d'}`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                    {exLevel < 5 ? (
+                      <button
+                        onClick={async () => {
+                          try { await upgradeUnit(selectedUnit.id, 'example') } catch (err) { setError(err.message) }
+                        }}
+                        className="w-full py-1 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        style={{ backgroundColor: '#e6a02020', color: '#e6a020', border: '1px solid #e6a02040' }}
+                      >
+                        <img src="/assets/iron.png" alt="Iron" className="w-3 h-3 object-contain" />
+                        10 Iron — Upgrade
+                      </button>
+                    ) : (
+                      <div className="text-[10px] font-semibold text-center py-1" style={{ color: '#e6a020' }}>
+                        MAX LEVEL
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )}
 
@@ -926,11 +969,14 @@ export default function GameBoard({
               const alreadyHasCC = isCC && hasCommandCenter
               const buildingNeedsCC = isBuilding && !hasCommandCenter
               const cantAfford = !isAdmin && (economy?.teamGold ?? currentPlayer?.gold ?? 0) < ut.cost
+              const needsCoal = ut.name === 'Factory' && !isAdmin
+              const teamCoal = needsCoal ? allPlayers.filter(p => p.color === currentPlayer?.color).reduce((s, p) => s + ((p.resources || {}).coal || 0), 0) : 0
+              const cantAffordCoal = needsCoal && teamCoal < 2
               return (
               <button
                 key={ut.id}
                 onClick={() => setSelectedUnitType(ut.id)}
-                disabled={cantAfford || needsCC || alreadyHasCC || buildingNeedsCC}
+                disabled={cantAfford || cantAffordCoal || needsCC || alreadyHasCC || buildingNeedsCC}
                 className="flex flex-col lg:flex-row items-center lg:justify-between p-2 lg:p-3 rounded text-sm lg:text-base transition-colors disabled:opacity-20 cursor-pointer gap-1 lg:gap-3"
                 style={selectedUnitType === ut.id
                   ? { backgroundColor: '#1a2a3a', color: '#c9d1d9', border: '1px solid #3a4a5a' }
@@ -938,7 +984,9 @@ export default function GameBoard({
               >
                 <img src={`/assets/${encodeURIComponent(ut.icon)}`} alt={ut.name} className="w-10 h-10 lg:w-16 lg:h-16 object-contain shrink-0" />
                 <span className="font-medium text-xs lg:text-sm truncate max-w-full">{ut.name}</span>
-                <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>⚒{ut.cost}</span>
+                <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>
+                  ⚒{ut.cost}{ut.name === 'Factory' && ' +2 coal'}
+                </span>
               </button>
               )
             })}
