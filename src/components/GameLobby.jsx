@@ -4,7 +4,7 @@ import { useGames } from '../hooks/useGames'
 import { useFriends } from '../hooks/useFriends'
 
 export default function GameLobby() {
-  const { games, invites, loading, createGame, createAdminGame, inviteToGame, acceptInvite, declineInvite, startGame, deleteGame } = useGames()
+  const { games, invites, loading, createGame, createAdminGame, inviteToGame, acceptInvite, declineInvite, startGame, deleteGame, updatePlayerColor, updatePlayerSpace } = useGames()
   const { friends } = useFriends()
   const navigate = useNavigate()
 

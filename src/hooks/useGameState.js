@@ -24,8 +24,25 @@ export function useGameState(gameId) {
   const debounceRef = useRef(null)
 
   const currentPlayer = players.find(p => p.player_id === userId)
-  const isMyTurn = game?.current_player_id === userId
+  const myColor = currentPlayer?.color
+  const isMyTurn = game?.current_team_color
+    ? game.current_team_color === myColor && !currentPlayer?.has_ended_turn
+    : game?.current_player_id === userId
   const isAdmin = !!game?.is_admin
+
+  const productionPerTurn = (() => {
+    if (!currentPlayer) return 0
+    const teamPlayerIds = players.filter(p => p.color === myColor).map(p => p.player_id)
+    const teamUnits = units.filter(u => teamPlayerIds.includes(u.owner_id))
+    const ccCount = teamUnits.filter(u =>
+      u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'
+    ).length
+    const factoryCount = teamUnits.filter(u => u.wg_unit_types?.name === 'Factory').length
+    const teamResources = currentPlayer.resources || {}
+    const coalAvailable = teamResources.coal || 0
+    const activeFactories = Math.min(factoryCount, coalAvailable)
+    return ccCount + activeFactories
+  })()
 
   const fetchAll = useCallback(async () => {
     if (!gameId || !userId) return
@@ -60,7 +77,7 @@ export function useGameState(gameId) {
     const allDiscovered = []
     let discOffset = 0
     while (true) {
-      const { data } = await supabase.from('wg_discovered_tiles').select('grid_row, grid_col').eq('game_id', gameId).eq('player_id', userId).range(discOffset, discOffset + PAGE - 1)
+      const { data } = await supabase.from('wg_discovered_tiles').select('grid_row, grid_col, board').eq('game_id', gameId).eq('player_id', userId).range(discOffset, discOffset + PAGE - 1)
       if (!data || data.length === 0) break
       allDiscovered.push(...data)
       if (data.length < PAGE) break
@@ -69,7 +86,7 @@ export function useGameState(gameId) {
     setDiscoveredTiles(prev => {
       if (allDiscovered.length === 0) return prev
       const next = new Set(prev)
-      for (const d of allDiscovered) next.add(`${d.grid_row}-${d.grid_col}`)
+      for (const d of allDiscovered) next.add(`${d.board || 'ground'}-${d.grid_row}-${d.grid_col}`)
       return next
     })
     setLoading(false)
@@ -96,7 +113,6 @@ export function useGameState(gameId) {
     }
   }, [gameId, fetchAll, debouncedFetch])
 
-  // Persist newly discovered tiles to DB
   const persistDiscoveryRef = useRef(new Set())
 
   const persistDiscoveredTiles = useCallback(async (newKeys) => {
@@ -104,8 +120,11 @@ export function useGameState(gameId) {
     const toInsert = newKeys
       .filter(k => !persistDiscoveryRef.current.has(k))
       .map(k => {
-        const [r, c] = k.split('-').map(Number)
-        return { game_id: gameId, player_id: userId, grid_row: r, grid_col: c }
+        const parts = k.split('-')
+        if (parts.length === 3) {
+          return { game_id: gameId, player_id: userId, board: parts[0], grid_row: Number(parts[1]), grid_col: Number(parts[2]) }
+        }
+        return { game_id: gameId, player_id: userId, board: 'ground', grid_row: Number(parts[0]), grid_col: Number(parts[1]) }
       })
     if (toInsert.length === 0) return
     for (const k of newKeys) persistDiscoveryRef.current.add(k)
@@ -118,12 +137,15 @@ export function useGameState(gameId) {
   async function deployUnit(unitTypeId, row, col) {
     const unitType = unitTypes.find(t => t.id === unitTypeId)
     if (!unitType || !currentPlayer) throw new Error('Invalid deployment')
-    if (!isAdmin && currentPlayer.gold < unitType.cost) throw new Error('Not enough gold')
+    if (!isAdmin && currentPlayer.gold < unitType.cost) throw new Error('Not enough production')
 
     const occupied = units.find(u => u.grid_row === row && u.grid_col === col)
     if (occupied) throw new Error('Cell is occupied')
 
-    const myCC = units.find(u => u.owner_id === userId && u.wg_unit_types?.name === 'Command Center')
+    const unitBoard = unitType.board || 'ground'
+    const boardTiles = tiles.filter(t => (t.board || 'ground') === unitBoard)
+
+    const myCC = units.find(u => u.owner_id === userId && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
     const myBuildings = units.filter(u => u.owner_id === userId && (u.wg_unit_types?.name === 'Base' || u.wg_unit_types?.name === 'Factory'))
     const myStructures = myCC ? [myCC, ...myBuildings] : []
 
@@ -136,26 +158,33 @@ export function useGameState(gameId) {
       return min
     }
 
-    if (unitType.name === 'Command Center') {
-      if (myCC) throw new Error('Only one Command Center allowed')
+    const isMiningStation = unitType.name === 'Mining Station'
+
+    if (unitType.name === 'Command Center' || unitType.name === 'Command Ship') {
+      if (myCC) throw new Error('Only one Command Center/Ship allowed')
       const distFromEdge = Math.min(row, game.grid_rows - 1 - row, col, game.grid_cols - 1 - col)
-      if (distFromEdge > 3) throw new Error('Command Center must be within 3 tiles of an edge')
-      const enemyCCs = units.filter(u => u.owner_id !== userId && u.wg_unit_types?.name === 'Command Center')
+      if (distFromEdge > 3) throw new Error('Must be within 3 tiles of an edge')
+      const enemyCCs = units.filter(u => u.owner_id !== userId && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
       const tooClose = enemyCCs.some(cc => hexDistance(cc.grid_row, cc.grid_col, row, col) < 20)
       if (tooClose) throw new Error('Too close to enemy Command Center (min 20 tiles)')
     } else if (unitType.name === 'Base' || unitType.name === 'Factory') {
       if (!myCC) throw new Error('Deploy a Command Center first')
       const dist = distToNearest(row, col, myStructures)
-      if (dist > 4) throw new Error(`${unitType.name} must be within 4 tiles of Command Center or another structure`)
+      if (dist > 4) throw new Error(`${unitType.name} must be within 4 tiles of a structure`)
     } else {
       if (!myCC) throw new Error('Deploy a Command Center first')
       const dist = distToNearest(row, col, myStructures)
       if (dist > unitType.movement) throw new Error('Too far from Command Center or Base')
     }
 
-    const tile = tiles.find(t => t.grid_row === row && t.grid_col === col)
-    if (tile && !tile.has_road && (tile.terrain === 'ocean' || tile.terrain === 'mountain' || tile.terrain === 'lake' || tile.terrain === 'river')) {
-      throw new Error(`Cannot deploy on ${tile.terrain}`)
+    const tile = boardTiles.find(t => t.grid_row === row && t.grid_col === col)
+    if (tile) {
+      const impassable = new Set(unitBoard === 'space'
+        ? (isMiningStation ? ['star'] : ['asteroid', 'large_asteroid', 'star'])
+        : ['ocean', 'mountain', 'lake', 'river'])
+      if (!tile.has_road && impassable.has(tile.terrain)) {
+        throw new Error(`Cannot deploy on ${tile.terrain}`)
+      }
     }
 
     const { error: unitError } = await supabase.from('wg_units').insert({
@@ -165,6 +194,7 @@ export function useGameState(gameId) {
       grid_row: row,
       grid_col: col,
       current_hp: unitType.hp,
+      board: unitBoard,
     })
     if (unitError) throw unitError
 
@@ -184,15 +214,31 @@ export function useGameState(gameId) {
     if (!unit || unit.owner_id !== userId) throw new Error('Not your unit')
     if (!isAdmin && unit.has_moved) throw new Error('Unit already moved')
 
+    const unitBoard = unit.board || 'ground'
+    const boardTiles = tiles.filter(t => (t.board || 'ground') === unitBoard)
+    const isMiningStation = unit.wg_unit_types?.name === 'Mining Station'
+
+    const sourceTile = boardTiles.find(t => t.grid_row === unit.grid_row && t.grid_col === unit.grid_col)
+    const destTile = boardTiles.find(t => t.grid_row === newRow && t.grid_col === newCol)
+
+    let maxRange = unit.wg_unit_types.movement
+    if (sourceTile?.has_road && destTile?.has_road) {
+      maxRange += 2
+    }
+
     const dist = hexDistance(unit.grid_row, unit.grid_col, newRow, newCol)
-    if (dist > unit.wg_unit_types.movement) throw new Error('Too far')
+    if (dist > maxRange) throw new Error('Too far')
 
     const occupied = units.find(u => u.grid_row === newRow && u.grid_col === newCol && u.id !== unitId)
     if (occupied) throw new Error('Cell is occupied')
 
-    const tile = tiles.find(t => t.grid_row === newRow && t.grid_col === newCol)
-    if (tile && !tile.has_road && (tile.terrain === 'ocean' || tile.terrain === 'mountain' || tile.terrain === 'lake' || tile.terrain === 'river')) {
-      throw new Error(`Cannot move onto ${tile.terrain}`)
+    if (destTile) {
+      const impassable = new Set(unitBoard === 'space'
+        ? (isMiningStation ? ['star'] : ['asteroid', 'large_asteroid', 'star'])
+        : ['ocean', 'mountain', 'lake', 'river'])
+      if (!destTile.has_road && impassable.has(destTile.terrain)) {
+        throw new Error(`Cannot move onto ${destTile.terrain}`)
+      }
     }
 
     const { error } = await supabase
@@ -241,7 +287,8 @@ export function useGameState(gameId) {
     const dist = hexDistance(unit.grid_row, unit.grid_col, row, col)
     if (dist > 1) throw new Error('Too far to build')
 
-    const tile = tiles.find(t => t.grid_row === row && t.grid_col === col)
+    const unitBoard = unit.board || 'ground'
+    const tile = tiles.find(t => t.grid_row === row && t.grid_col === col && (t.board || 'ground') === unitBoard)
     if (!tile) throw new Error('Invalid tile')
     if (tile.has_road) throw new Error('Road already exists here')
     if (tile.terrain === 'mountain') throw new Error('Cannot build road on mountain')
@@ -252,6 +299,7 @@ export function useGameState(gameId) {
       .eq('game_id', gameId)
       .eq('grid_row', row)
       .eq('grid_col', col)
+      .eq('board', unitBoard)
     if (error) throw error
 
     const { error: unitError } = await supabase
@@ -272,7 +320,8 @@ export function useGameState(gameId) {
     const dist = hexDistance(unit.grid_row, unit.grid_col, row, col)
     if (dist > 1) throw new Error('Too far')
 
-    const tile = tiles.find(t => t.grid_row === row && t.grid_col === col)
+    const unitBoard = unit.board || 'ground'
+    const tile = tiles.find(t => t.grid_row === row && t.grid_col === col && (t.board || 'ground') === unitBoard)
     if (!tile) throw new Error('Invalid tile')
     if (!tile.has_road) throw new Error('No road to destroy')
 
@@ -282,6 +331,7 @@ export function useGameState(gameId) {
       .eq('game_id', gameId)
       .eq('grid_row', row)
       .eq('grid_col', col)
+      .eq('board', unitBoard)
     if (error) throw error
 
     const { error: unitError } = await supabase
@@ -293,37 +343,146 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function excavate(unitId) {
+    const unit = units.find(u => u.id === unitId)
+    if (!unit || unit.owner_id !== userId) throw new Error('Not your unit')
+    const canExcavate = unit.wg_unit_types?.name === 'Mining Station' || unit.wg_unit_types?.name === 'Excavator'
+    if (!canExcavate) throw new Error('This unit cannot excavate')
+
+    const unitBoard = unit.board || 'ground'
+    const tile = tiles.find(t => t.grid_row === unit.grid_row && t.grid_col === unit.grid_col && (t.board || 'ground') === unitBoard)
+    if (!tile || !tile.resource) throw new Error('No resource on this tile')
+    if (!tile.ore_amount || tile.ore_amount <= 0) throw new Error('No ore remaining')
+
+    const resources = { ...(currentPlayer.resources || {}) }
+    resources[tile.resource] = (resources[tile.resource] || 0) + tile.ore_amount
+
+    const { error: resError } = await supabase
+      .from('wg_game_players')
+      .update({ resources })
+      .eq('id', currentPlayer.id)
+    if (resError) throw resError
+
+    const { error: tileError } = await supabase
+      .from('wg_game_tiles')
+      .update({ resource: null, ore_amount: 0 })
+      .eq('id', tile.id)
+    if (tileError) throw tileError
+
+    await fetchAll()
+  }
+
+  async function upgradeShipCompartment(unitId, compartmentId) {
+    const unit = units.find(u => u.id === unitId)
+    if (!unit) throw new Error('Unit not found')
+
+    const upgrades = unit.upgrades || {}
+    const currentLevel = upgrades[compartmentId] || 0
+    if (currentLevel >= 5) throw new Error('Already max level')
+
+    const ironCost = 10
+    const resources = { ...(currentPlayer.resources || {}) }
+    if (!isAdmin && (resources.iron || 0) < ironCost) throw new Error('Not enough iron')
+
+    if (!isAdmin) {
+      resources.iron = (resources.iron || 0) - ironCost
+      const { error: resError } = await supabase
+        .from('wg_game_players')
+        .update({ resources })
+        .eq('id', currentPlayer.id)
+      if (resError) throw resError
+    }
+
+    const newUpgrades = { ...upgrades, [compartmentId]: currentLevel + 1 }
+    const { error } = await supabase
+      .from('wg_units')
+      .update({ upgrades: newUpgrades })
+      .eq('id', unitId)
+    if (error) throw error
+
+    await fetchAll()
+  }
+
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
-    const activePlayers = players.filter(p => !p.is_eliminated)
-    const currentIdx = activePlayers.findIndex(p => p.player_id === userId)
-    const nextIdx = (currentIdx + 1) % activePlayers.length
-    const nextPlayer = activePlayers[nextIdx]
-    const isNewRound = nextIdx <= currentIdx
+    const teamPlayers = players.filter(p => p.color === myColor)
+
+    const { error: endError } = await supabase
+      .from('wg_game_players')
+      .update({ has_ended_turn: true })
+      .eq('id', currentPlayer.id)
+    if (endError) throw endError
+
+    const { data: freshTeam } = await supabase
+      .from('wg_game_players')
+      .select('has_ended_turn')
+      .eq('game_id', gameId)
+      .eq('color', myColor)
+
+    const allEnded = freshTeam?.every(p => p.has_ended_turn)
+
+    if (!allEnded) {
+      await fetchAll()
+      return
+    }
+
+    const teamColors = [...new Set(players.map(p => p.color))]
+    const currentColorIdx = teamColors.indexOf(myColor)
+    const nextColorIdx = (currentColorIdx + 1) % teamColors.length
+    const nextColor = teamColors[nextColorIdx]
+    const isNewRound = nextColorIdx <= currentColorIdx
     const newTurnNumber = isNewRound ? game.turn_number + 1 : game.turn_number
 
-    const nextPlayerUnits = units.filter(u => u.owner_id === nextPlayer.player_id)
-    if (nextPlayerUnits.length > 0) {
+    const nextTeamPlayers = players.filter(p => p.color === nextColor)
+    const nextTeamPlayerIds = nextTeamPlayers.map(p => p.player_id)
+
+    const nextTeamUnits = units.filter(u => nextTeamPlayerIds.includes(u.owner_id))
+    if (nextTeamUnits.length > 0) {
       const { error } = await supabase
         .from('wg_units')
         .update({ has_moved: false, has_attacked: false })
-        .in('id', nextPlayerUnits.map(u => u.id))
+        .in('id', nextTeamUnits.map(u => u.id))
       if (error) throw error
     }
 
-    const { data: freshPlayer, error: fetchError } = await supabase
-      .from('wg_game_players')
-      .select('gold')
-      .eq('id', nextPlayer.id)
-      .single()
-    if (fetchError) throw fetchError
+    for (const np of nextTeamPlayers) {
+      const { data: freshPlayer } = await supabase
+        .from('wg_game_players')
+        .select('gold, resources')
+        .eq('id', np.id)
+        .single()
 
-    const { error: goldError } = await supabase
-      .from('wg_game_players')
-      .update({ gold: freshPlayer.gold + 3 })
-      .eq('id', nextPlayer.id)
-    if (goldError) throw goldError
+      const npUnits = units.filter(u => u.owner_id === np.player_id)
+      const ccCount = npUnits.filter(u =>
+        u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'
+      ).length
+      const factoryCount = npUnits.filter(u => u.wg_unit_types?.name === 'Factory').length
+      const npResources = { ...(freshPlayer.resources || {}) }
+      const coalAvailable = npResources.coal || 0
+      const activeFactories = Math.min(factoryCount, coalAvailable)
+      const production = ccCount + activeFactories
+
+      if (activeFactories > 0) {
+        npResources.coal = coalAvailable - activeFactories
+      }
+
+      await supabase
+        .from('wg_game_players')
+        .update({
+          gold: freshPlayer.gold + production,
+          has_ended_turn: false,
+          resources: npResources,
+        })
+        .eq('id', np.id)
+    }
+
+    for (const tp of teamPlayers) {
+      await supabase
+        .from('wg_game_players')
+        .update({ has_ended_turn: false })
+        .eq('id', tp.id)
+    }
 
     const { error: turnError } = await supabase.from('wg_turns').insert({
       game_id: gameId,
@@ -334,7 +493,11 @@ export function useGameState(gameId) {
 
     const { error: gameError } = await supabase
       .from('wg_games')
-      .update({ current_player_id: nextPlayer.player_id, turn_number: newTurnNumber })
+      .update({
+        current_player_id: nextTeamPlayers[0]?.player_id,
+        current_team_color: nextColor,
+        turn_number: newTurnNumber,
+      })
       .eq('id', gameId)
     if (gameError) throw gameError
 
@@ -345,7 +508,8 @@ export function useGameState(gameId) {
     game, players, units, unitTypes, tiles, discoveredTiles, loading,
     currentPlayer, isMyTurn, isAdmin,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-    persistDiscoveredTiles,
+    excavate, upgradeShipCompartment,
+    persistDiscoveredTiles, productionPerTurn,
     refresh: fetchAll,
   }
 }

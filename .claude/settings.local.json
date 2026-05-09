@@ -8,7 +8,11 @@
       "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__apply_migration",
       "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__execute_sql",
       "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__list_tables",
-      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__get_publishable_keys"
+      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__get_publishable_keys",
+      "Bash(git add *)",
+      "Bash(git stash *)",
+      "Bash(git merge *)",
+      "PowerShell($src = \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\public\\\\assets\"; $dst = \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\.claude\\\\worktrees\\\\peaceful-goodall-397f3a\\\\public\\\\assets\"; foreach \\($f in @\\(\"amethyst.png\",\"ruby.png\",\"sapphire.png\",\"diamond.png\",\"aluminum.png\",\"coal.png\",\"iron.png\",\"tritium.png\",\"uranium.png\",\"quasicrystals.png\",\"miningstation.png\",\"mothership2.png\",\"command center.jpg\"\\)\\) { if \\(!\\(Test-Path \"$dst\\\\$f\"\\)\\) { Copy-Item \"$src\\\\$f\" \"$dst\\\\$f\" -ErrorAction SilentlyContinue } })"
     ]
   }
 }

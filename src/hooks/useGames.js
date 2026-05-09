@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { generateTerrain } from '../lib/terrainGen'
+import { generateTerrain, generateSpaceTerrain } from '../lib/terrainGen'
 
 export function useGames() {
   const { session } = useAuth()
@@ -27,7 +27,7 @@ export function useGames() {
         .select(`
           *,
           host:wg_profiles!wg_games_host_id_fkey(display_name),
-          players:wg_game_players(player_id, color, player_order, wg_profiles(display_name))
+          players:wg_game_players(*, wg_profiles(display_name))
         `)
         .in('id', gameIds)
         .order('created_at', { ascending: false })
@@ -73,28 +73,43 @@ export function useGames() {
       grid_col: t.col,
       terrain: t.terrain,
       resource: t.resource,
+      ore_amount: t.oreAmount || 0,
       has_river: t.hasRiver,
+      board: 'ground',
     }))
 
+    const spaceTiles = generateSpaceTerrain(gridRows, gridCols, terrainSeed)
+    const spaceTileRows = spaceTiles.map(t => ({
+      game_id: data.id,
+      grid_row: t.row,
+      grid_col: t.col,
+      terrain: t.terrain,
+      resource: t.resource,
+      ore_amount: t.oreAmount || 0,
+      has_river: false,
+      board: 'space',
+    }))
+
+    const allTileRows = [...tileRows, ...spaceTileRows]
     const BATCH = 500
-    for (let i = 0; i < tileRows.length; i += BATCH) {
+    for (let i = 0; i < allTileRows.length; i += BATCH) {
       const { error: tileErr } = await supabase
         .from('wg_game_tiles')
-        .insert(tileRows.slice(i, i + BATCH))
+        .insert(allTileRows.slice(i, i + BATCH))
       if (tileErr) throw tileErr
     }
 
-    await supabase
+    const { error: playerErr } = await supabase
       .from('wg_game_players')
       .insert({ game_id: data.id, player_id: userId, player_order: 0, color: '#3b82f6' })
+    if (playerErr) throw playerErr
 
     await fetchGames()
     return data
   }
 
-  async function createAdminGame() {
+  async function createAdminGame(gridRows = 32, gridCols = 48) {
     const terrainSeed = Math.floor(Math.random() * 2147483647)
-    const gridRows = 32, gridCols = 48
 
     const { data, error } = await supabase
       .from('wg_games')
@@ -109,6 +124,7 @@ export function useGames() {
         status: 'active',
         turn_number: 1,
         current_player_id: userId,
+        current_team_color: '#3b82f6',
         started_at: new Date().toISOString(),
       })
       .select()
@@ -123,20 +139,36 @@ export function useGames() {
       grid_col: t.col,
       terrain: t.terrain,
       resource: t.resource,
+      ore_amount: t.oreAmount || 0,
       has_river: t.hasRiver,
+      board: 'ground',
     }))
 
+    const spaceTiles = generateSpaceTerrain(gridRows, gridCols, terrainSeed)
+    const spaceTileRows = spaceTiles.map(t => ({
+      game_id: data.id,
+      grid_row: t.row,
+      grid_col: t.col,
+      terrain: t.terrain,
+      resource: t.resource,
+      ore_amount: t.oreAmount || 0,
+      has_river: false,
+      board: 'space',
+    }))
+
+    const allTileRows = [...tileRows, ...spaceTileRows]
     const BATCH = 500
-    for (let i = 0; i < tileRows.length; i += BATCH) {
+    for (let i = 0; i < allTileRows.length; i += BATCH) {
       const { error: tileErr } = await supabase
         .from('wg_game_tiles')
-        .insert(tileRows.slice(i, i + BATCH))
+        .insert(allTileRows.slice(i, i + BATCH))
       if (tileErr) throw tileErr
     }
 
-    await supabase
+    const { error: playerErr } = await supabase
       .from('wg_game_players')
       .insert({ game_id: data.id, player_id: userId, player_order: 0, color: '#3b82f6', gold: 99999 })
+    if (playerErr) throw playerErr
 
     await fetchGames()
     return data
@@ -193,11 +225,13 @@ export function useGames() {
   async function startGame(gameId) {
     const { data: players } = await supabase
       .from('wg_game_players')
-      .select('player_id')
+      .select('player_id, color')
       .eq('game_id', gameId)
       .order('player_order')
 
     if (!players || players.length < 2) throw new Error('Need at least 2 players')
+
+    const firstTeamColor = players[0].color
 
     const { error } = await supabase
       .from('wg_games')
@@ -205,6 +239,7 @@ export function useGames() {
         status: 'active',
         turn_number: 1,
         current_player_id: players[0].player_id,
+        current_team_color: firstTeamColor,
         started_at: new Date().toISOString(),
       })
       .eq('id', gameId)
@@ -225,5 +260,23 @@ export function useGames() {
     await fetchGames()
   }
 
-  return { games, invites, loading, createGame, createAdminGame, inviteToGame, acceptInvite, declineInvite, startGame, deleteGame, refresh: fetchGames }
+  async function updatePlayerColor(playerId, color) {
+    const { error } = await supabase
+      .from('wg_game_players')
+      .update({ color })
+      .eq('id', playerId)
+    if (error) throw error
+    await fetchGames()
+  }
+
+  async function updatePlayerSpace(playerId, isSpaceGeneral) {
+    const { error } = await supabase
+      .from('wg_game_players')
+      .update({ is_space_general: isSpaceGeneral })
+      .eq('id', playerId)
+    if (error) throw error
+    await fetchGames()
+  }
+
+  return { games, invites, loading, createGame, createAdminGame, inviteToGame, acceptInvite, declineInvite, startGame, deleteGame, updatePlayerColor, updatePlayerSpace, refresh: fetchGames }
 }

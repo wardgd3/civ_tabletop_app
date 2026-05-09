@@ -1,35 +1,46 @@
 import { createNoise } from './simplex'
 
 export const TERRAIN = {
-  OCEAN:      { id: 'ocean',      name: 'Ocean',      color: '#1e4470', darkColor: '#122a45' },
-  COAST:      { id: 'coast',      name: 'Coast',      color: '#285a85', darkColor: '#183a55' },
-  DESERT:     { id: 'desert',     name: 'Desert',     color: '#6b5c30', darkColor: '#3a3220' },
-  PLAINS:     { id: 'plains',     name: 'Plains',     color: '#425a32', darkColor: '#283520' },
-  GRASSLAND:  { id: 'grassland',  name: 'Grassland',  color: '#335530', darkColor: '#203520' },
-  TUNDRA:     { id: 'tundra',     name: 'Tundra',     color: '#4a5060', darkColor: '#303540' },
-  SNOW:       { id: 'snow',       name: 'Snow',       color: '#606870', darkColor: '#404548' },
-  HILLS:      { id: 'hills',      name: 'Hills',      color: '#554e38', darkColor: '#353020' },
-  MOUNTAIN:   { id: 'mountain',   name: 'Mountain',   color: '#4a3d2e', darkColor: '#2e2518' },
-  FOREST:     { id: 'forest',     name: 'Forest',     color: '#264826', darkColor: '#1a301a' },
-  JUNGLE:     { id: 'jungle',     name: 'Jungle',     color: '#1e4a1e', darkColor: '#163016' },
-  LAKE:       { id: 'lake',       name: 'Lake',       color: '#1e4470', darkColor: '#122a45' },
-  RIVER:      { id: 'river',      name: 'River',      color: '#1e4470', darkColor: '#122a45' },
-  SAND:       { id: 'sand',       name: 'Sand',       color: '#807550', darkColor: '#554d34' },
+  OCEAN:           { id: 'ocean',           name: 'Ocean',           color: '#1e4470', darkColor: '#122a45' },
+  COAST:           { id: 'coast',           name: 'Coast',           color: '#285a85', darkColor: '#183a55' },
+  DESERT:          { id: 'desert',          name: 'Desert',          color: '#6b5c30', darkColor: '#3a3220' },
+  PLAINS:          { id: 'plains',          name: 'Plains',          color: '#425a32', darkColor: '#283520' },
+  GRASSLAND:       { id: 'grassland',       name: 'Grassland',       color: '#335530', darkColor: '#203520' },
+  TUNDRA:          { id: 'tundra',          name: 'Tundra',          color: '#4a5060', darkColor: '#303540' },
+  SNOW:            { id: 'snow',            name: 'Snow',            color: '#606870', darkColor: '#404548' },
+  HILLS:           { id: 'hills',           name: 'Hills',           color: '#554e38', darkColor: '#353020' },
+  MOUNTAIN:        { id: 'mountain',        name: 'Mountain',        color: '#4a3d2e', darkColor: '#2e2518' },
+  FOREST:          { id: 'forest',          name: 'Forest',          color: '#264826', darkColor: '#1a301a' },
+  JUNGLE:          { id: 'jungle',          name: 'Jungle',          color: '#1e4a1e', darkColor: '#163016' },
+  LAKE:            { id: 'lake',            name: 'Lake',            color: '#1e4470', darkColor: '#122a45' },
+  RIVER:           { id: 'river',           name: 'River',           color: '#1e4470', darkColor: '#122a45' },
+  SAND:            { id: 'sand',            name: 'Sand',            color: '#807550', darkColor: '#554d34' },
+  SPACE:           { id: 'space',           name: 'Space',           color: '#0a0e14', darkColor: '#060810' },
+  ASTEROID:        { id: 'asteroid',        name: 'Asteroid',        color: '#3a3530', darkColor: '#252018' },
+  LARGE_ASTEROID:  { id: 'large_asteroid',  name: 'Large Asteroid',  color: '#4a4238', darkColor: '#302a20' },
+  STAR:            { id: 'star',            name: 'Star',            color: '#d4b840', darkColor: '#8a7828' },
+  NEBULA:          { id: 'nebula',          name: 'Nebula',          color: '#2a1a3a', darkColor: '#1a1028' },
 }
 
 export const RESOURCES = {
-  IRON:       { id: 'iron',       name: 'Iron',       biomes: ['hills', 'mountain', 'tundra'] },
-  HORSES:     { id: 'horses',     name: 'Horses',     biomes: ['plains', 'grassland'] },
-  COAL:       { id: 'coal',       name: 'Coal',       biomes: ['hills', 'plains'] },
-  OIL:        { id: 'oil',        name: 'Oil',        biomes: ['desert', 'tundra'] },
-  URANIUM:    { id: 'uranium',    name: 'Uranium',    biomes: ['desert', 'jungle', 'forest'] },
-  WHEAT:      { id: 'wheat',      name: 'Wheat',      biomes: ['plains', 'grassland'] },
-  CATTLE:     { id: 'cattle',     name: 'Cattle',     biomes: ['grassland', 'plains'] },
-  FISH:       { id: 'fish',       name: 'Fish',       biomes: ['lake'] },
-  GEMS:       { id: 'gems',       name: 'Gems',       biomes: ['jungle', 'hills'] },
-  GOLD_ORE:   { id: 'gold_ore',   name: 'Gold',       biomes: ['hills', 'desert'] },
-  STONE:      { id: 'stone',      name: 'Stone',      biomes: ['grassland', 'hills', 'tundra'] },
-  WOOD:       { id: 'wood',       name: 'Wood',       biomes: ['forest', 'jungle'] },
+  COAL:       { id: 'coal',       name: 'Coal',       icon: 'coal.png',       chance: 0.04 },
+  IRON:       { id: 'iron',       name: 'Iron',       icon: 'iron.png',       chance: 0.02 },
+  URANIUM:    { id: 'uranium',    name: 'Uranium',    icon: 'uranium.png',    chance: 0.002 },
+  TRITIUM:    { id: 'tritium',    name: 'Tritium',    icon: 'tritium.png',    chance: 0.001 },
+  ALUMINUM:   { id: 'aluminum',   name: 'Aluminum',   icon: 'aluminum.png',   chance: 0.01 },
+}
+
+export const LUXURY_RESOURCES = {
+  AMETHYST:   { id: 'amethyst',   name: 'Amethyst',   icon: 'amethyst.png',   chance: 0.0075 },
+  RUBY:       { id: 'ruby',       name: 'Ruby',       icon: 'ruby.png',       chance: 0.0075 },
+  SAPPHIRE:   { id: 'sapphire',   name: 'Sapphire',   icon: 'sapphire.png',   chance: 0.0075 },
+  DIAMOND:    { id: 'diamond',    name: 'Diamond',    icon: 'diamond.png',    chance: 0.0025 },
+}
+
+export const SPACE_RESOURCES = {
+  TRITIUM:       { id: 'tritium',       name: 'Tritium',       icon: 'tritium.png',       chance: 0.09, largeChance: 0.45 },
+  ALUMINUM:      { id: 'aluminum',      name: 'Aluminum',      icon: 'aluminum.png',      chance: 0.18, largeChance: 0.27 },
+  QUASICRYSTAL:  { id: 'quasicrystal',  name: 'Quasicrystal',  icon: 'quasicrystals.png', chance: 0.015, largeChance: 0.10 },
 }
 
 function seededRandom(seed) {
@@ -615,42 +626,107 @@ function placeSandBanks(tiles, rows, cols, rand) {
 
 function placeResources(tiles, rows, cols, rand) {
   const resourceList = Object.values(RESOURCES)
-  const totalTiles = rows * cols
-  const targetCount = Math.floor(totalTiles * 0.08)
-
-  const regionSize = 8
-  const regionCounts = {}
-
-  function regionKey(r, c) {
-    return `${Math.floor(r / regionSize)}-${Math.floor(c / regionSize)}`
-  }
-
-  let placed = 0
-  const indices = Array.from({ length: totalTiles }, (_, i) => i)
-  for (let i = indices.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [indices[i], indices[j]] = [indices[j], indices[i]]
-  }
-
-  for (const idx of indices) {
-    if (placed >= targetCount) break
-    const tile = tiles[idx]
+  for (const tile of tiles) {
     if (tile.resource) continue
-    if (tile.terrain === 'mountain' || tile.terrain === 'river') continue
-
-    const eligible = resourceList.filter(res => res.biomes.includes(tile.terrain))
-    if (eligible.length === 0) continue
-
-    const rk = regionKey(tile.row, tile.col)
-    const count = regionCounts[rk] || 0
-    if (count >= 3) continue
-
-    const neighbors = hexNeighbors(tile.row, tile.col, rows, cols)
-    const adjacentResource = neighbors.some(([nr, nc]) => tiles[nr * cols + nc].resource)
-    if (adjacentResource && rand() < 0.7) continue
-
-    tile.resource = eligible[Math.floor(rand() * eligible.length)].id
-    regionCounts[rk] = count + 1
-    placed++
+    if (tile.terrain === 'mountain' || tile.terrain === 'river' || tile.terrain === 'lake' || tile.terrain === 'ocean') continue
+    for (const res of resourceList) {
+      if (rand() < res.chance) {
+        tile.resource = res.id
+        tile.oreAmount = 2 + Math.floor(rand() * 4)
+        break
+      }
+    }
   }
+
+  const luxuryList = Object.values(LUXURY_RESOURCES)
+  const totalWeight = luxuryList.reduce((s, r) => s + r.chance, 0)
+  const targetCount = Math.floor(rows * cols * 0.05)
+  const eligible = tiles.filter(t => !t.resource && t.terrain !== 'mountain' && t.terrain !== 'river' && t.terrain !== 'lake' && t.terrain !== 'ocean')
+  for (let i = eligible.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [eligible[i], eligible[j]] = [eligible[j], eligible[i]]
+  }
+  const toPlace = Math.min(targetCount, eligible.length)
+  for (let i = 0; i < toPlace; i++) {
+    let roll = rand() * totalWeight
+    let picked = luxuryList[luxuryList.length - 1]
+    for (const res of luxuryList) {
+      roll -= res.chance
+      if (roll <= 0) { picked = res; break }
+    }
+    eligible[i].resource = picked.id
+    eligible[i].oreAmount = 1 + Math.floor(rand() * 3)
+  }
+}
+
+function placeSpaceResources(tiles, rows, cols, rand) {
+  const resourceList = Object.values(SPACE_RESOURCES)
+  for (const tile of tiles) {
+    if (tile.resource) continue
+    if (tile.terrain !== 'asteroid' && tile.terrain !== 'large_asteroid') continue
+    const isLarge = tile.terrain === 'large_asteroid'
+    for (const res of resourceList) {
+      const chance = isLarge ? res.largeChance : res.chance
+      if (rand() < chance) {
+        tile.resource = res.id
+        tile.oreAmount = 2 + Math.floor(rand() * 4)
+        break
+      }
+    }
+  }
+}
+
+export function generateSpaceTerrain(rows, cols, seed) {
+  const noise = createNoise(seed + 999)
+  const rand = seededRandom(seed + 999)
+  const tiles = []
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const nx = c / cols
+      const ny = r / rows
+      const n = noise.octaves(nx * 8, ny * 8, 3, 2.0, 0.5)
+
+      let terrain
+      if (n > 0.55) {
+        terrain = TERRAIN.ASTEROID
+      } else if (n > 0.45) {
+        terrain = rand() < 0.08 ? TERRAIN.NEBULA : TERRAIN.SPACE
+      } else if (n < -0.5) {
+        terrain = rand() < 0.005 ? TERRAIN.STAR : TERRAIN.SPACE
+      } else {
+        terrain = TERRAIN.SPACE
+      }
+
+      tiles.push({
+        row: r,
+        col: c,
+        terrain: terrain.id,
+        resource: null,
+        hasRiver: false,
+        oreAmount: 0,
+      })
+    }
+  }
+
+  const asteroidTiles = tiles.filter(t => t.terrain === 'asteroid')
+  const clusterCount = 3 + Math.floor(rand() * 3)
+  for (let i = 0; i < clusterCount; i++) {
+    if (asteroidTiles.length === 0) break
+    const center = asteroidTiles[Math.floor(rand() * asteroidTiles.length)]
+    const clusterSize = 4 + Math.floor(rand() * 5)
+    let converted = 0
+    for (const t of tiles) {
+      if (converted >= clusterSize) break
+      const dist = Math.abs(t.row - center.row) + Math.abs(t.col - center.col)
+      if (dist <= 2 && t.terrain === 'asteroid') {
+        t.terrain = 'large_asteroid'
+        converted++
+      }
+    }
+  }
+
+  placeSpaceResources(tiles, rows, cols, rand)
+
+  return tiles
 }

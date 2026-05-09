@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { TERRAIN, RESOURCES } from '../lib/terrainGen'
+import CommandShipPanel from './CommandShipPanel'
+import { TERRAIN, RESOURCES, SPACE_RESOURCES, LUXURY_RESOURCES } from '../lib/terrainGen'
 
 const HEX_SIZE = 16
 const HEX_W = Math.round(Math.sqrt(3) * HEX_SIZE)
@@ -18,14 +19,36 @@ function hexDistance(r1, c1, r2, c2) {
 }
 
 const TERRAIN_BY_ID = Object.fromEntries(Object.values(TERRAIN).map(t => [t.id, t]))
-const RESOURCE_BY_ID = Object.fromEntries(Object.values(RESOURCES).map(r => [r.id, r]))
-const IMPASSABLE = new Set(['ocean', 'mountain', 'lake', 'river'])
+const RESOURCE_BY_ID = Object.fromEntries([
+  ...Object.values(RESOURCES).map(r => [r.id, r]),
+  ...Object.values(SPACE_RESOURCES).map(r => [r.id, r]),
+  ...Object.values(LUXURY_RESOURCES).map(r => [r.id, r]),
+])
+const GROUND_IMPASSABLE = new Set(['ocean', 'mountain', 'lake', 'river'])
+const SPACE_IMPASSABLE = new Set(['asteroid', 'large_asteroid', 'star'])
+const MINING_PASSABLE = new Set(['asteroid', 'large_asteroid'])
+
+function hexNeighborsBoard(r, c, rows, cols) {
+  const odd = r & 1
+  const dirs = odd
+    ? [[-1,0],[-1,1],[0,1],[1,1],[1,0],[0,-1]]
+    : [[-1,-1],[-1,0],[0,1],[1,0],[1,-1],[0,-1]]
+  const result = []
+  for (const [dr, dc] of dirs) {
+    const nr = r + dr, nc = c + dc
+    if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) result.push([nr, nc])
+  }
+  return result
+}
 
 export default function GameBoard({
   game, players, units, unitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
+  excavate, upgradeShipCompartment,
   isFullscreen, onExitFullscreen,
+  activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
+  productionPerTurn,
 }) {
   const [selectedUnitId, setSelectedUnitId] = useState(null)
   const [selectedUnitType, setSelectedUnitType] = useState(null)
@@ -38,6 +61,7 @@ export default function GameBoard({
   const [spaceHeld, setSpaceHeld] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
   const [touchPanning, setTouchPanning] = useState(false)
+  const [commandShipUnitId, setCommandShipUnitId] = useState(null)
   const boardRef = useRef(null)
   const panStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
   const touchPanRef = useRef(null)
@@ -50,14 +74,15 @@ export default function GameBoard({
   const selectedUnit = selectedUnitId ? units.find(u => u.id === selectedUnitId) || null : null
   const inspectedUnit = inspectedUnitId ? units.find(u => u.id === inspectedUnitId) || null : null
 
-  const myCommandCenter = units.find(u => u.owner_id === currentPlayer?.player_id && u.wg_unit_types?.name === 'Command Center')
+  const myColor = currentPlayer?.color
+  const myCommandCenter = units.find(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
   const hasCommandCenter = !!myCommandCenter
   const myBuildings = units.filter(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Base' || u.wg_unit_types?.name === 'Factory'))
   const myStructures = myCommandCenter ? [myCommandCenter, ...myBuildings] : []
 
   const sortedUnitTypes = [...unitTypes].sort((a, b) => {
-    if (a.name === 'Command Center') return -1
-    if (b.name === 'Command Center') return 1
+    if (a.name === 'Command Center' || a.name === 'Command Ship') return -1
+    if (b.name === 'Command Center' || b.name === 'Command Ship') return 1
     if (a.name === 'Base') return -1
     if (b.name === 'Base') return 1
     return 0
@@ -73,7 +98,10 @@ export default function GameBoard({
     if (inspectedUnitId && !units.find(u => u.id === inspectedUnitId)) {
       setInspectedUnitId(null)
     }
-  }, [units, selectedUnitId, inspectedUnitId])
+    if (commandShipUnitId && !units.find(u => u.id === commandShipUnitId)) {
+      setCommandShipUnitId(null)
+    }
+  }, [units, selectedUnitId, inspectedUnitId, commandShipUnitId])
 
   const rows = game.grid_rows
   const cols = game.grid_cols
@@ -97,8 +125,9 @@ export default function GameBoard({
       }
       return set
     }
-    const myUnits = units.filter(u => u.owner_id === currentPlayer?.player_id)
-    for (const u of myUnits) {
+    const teamPlayerIds = (allPlayers || players).filter(p => p.color === myColor).map(p => p.player_id)
+    const teamUnits = units.filter(u => teamPlayerIds.includes(u.owner_id))
+    for (const u of teamUnits) {
       const vis = u.wg_unit_types?.visibility ?? 2
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -113,15 +142,17 @@ export default function GameBoard({
 
   const prevVisibleRef = useRef(new Set())
   useEffect(() => {
+    const board = activeBoard || 'ground'
     const newKeys = []
     for (const key of visibleTiles) {
-      if (!discoveredTiles.has(key) && !prevVisibleRef.current.has(key)) {
-        newKeys.push(key)
+      const fullKey = `${board}-${key}`
+      if (!discoveredTiles.has(fullKey) && !prevVisibleRef.current.has(key)) {
+        newKeys.push(fullKey)
       }
     }
     prevVisibleRef.current = visibleTiles
     if (newKeys.length > 0) persistDiscoveredTiles(newKeys)
-  }, [visibleTiles, discoveredTiles, persistDiscoveredTiles])
+  }, [visibleTiles, discoveredTiles, persistDiscoveredTiles, activeBoard])
 
   function getTileColor(row, col, isVisible, isDiscovered) {
     const tile = tileMap.get(`${row}-${col}`)
@@ -143,14 +174,18 @@ export default function GameBoard({
     if (!tile) return null
     const terrain = TERRAIN_BY_ID[tile.terrain]
     const resource = tile.resource ? RESOURCE_BY_ID[tile.resource] : null
-    return { terrain, resource, hasRiver: tile.has_river }
+    return { terrain, resource, hasRiver: tile.has_river, oreAmount: tile.ore_amount }
   }
 
-  function isImpassable(row, col) {
+  function isImpassable(row, col, unitTypeName = null) {
     const tile = tileMap.get(`${row}-${col}`)
     if (!tile) return false
     if (tile.has_road) return false
-    return IMPASSABLE.has(tile.terrain)
+    if (activeBoard === 'space') {
+      if (unitTypeName === 'Mining Station' && MINING_PASSABLE.has(tile.terrain)) return false
+      return SPACE_IMPASSABLE.has(tile.terrain)
+    }
+    return GROUND_IMPASSABLE.has(tile.terrain)
   }
 
   function getUnitAt(row, col) {
@@ -158,22 +193,42 @@ export default function GameBoard({
   }
 
   function getPlayerColor(playerId) {
-    return players.find(p => p.player_id === playerId)?.color || '#888'
+    return (allPlayers || players).find(p => p.player_id === playerId)?.color || '#888'
   }
 
   function getMoveRange(unit) {
     if (!unit?.wg_unit_types) return []
+    const unitName = unit.wg_unit_types.name
+    const baseRange = unit.wg_unit_types.movement
+    const sourceTile = tileMap.get(`${unit.grid_row}-${unit.grid_col}`)
+    const sourceHasRoad = sourceTile?.has_road
+
+    const visited = new Map()
+    visited.set(`${unit.grid_row}-${unit.grid_col}`, 0)
+    const queue = [[unit.grid_row, unit.grid_col, 0]]
     const cells = []
-    const range = unit.wg_unit_types.movement
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const dist = hexDistance(unit.grid_row, unit.grid_col, r, c)
-        if (dist > 0 && dist <= range && !getUnitAt(r, c) && !isImpassable(r, c)) {
-          cells.push(`${r}-${c}`)
-        }
+
+    while (queue.length > 0) {
+      const [cr, cc, dist] = queue.shift()
+      const neighbors = hexNeighborsBoard(cr, cc, rows, cols)
+      for (const [nr, nc] of neighbors) {
+        const nk = `${nr}-${nc}`
+        if (isImpassable(nr, nc, unitName)) continue
+        if (getUnitAt(nr, nc)) continue
+        const nTile = tileMap.get(nk)
+        const nHasRoad = nTile?.has_road
+        let cost = 1
+        const maxRange = (sourceHasRoad && nHasRoad) ? baseRange + 2 : baseRange
+        const newDist = dist + cost
+        if (newDist > maxRange) continue
+        const prev = visited.get(nk)
+        if (prev !== undefined && prev <= newDist) continue
+        visited.set(nk, newDist)
+        cells.push(nk)
+        queue.push([nr, nc, newDist])
       }
     }
-    return cells
+    return [...new Set(cells)]
   }
 
   function getAttackRange(unit) {
@@ -232,7 +287,7 @@ export default function GameBoard({
   }
 
   function isFarFromEnemyCCs(r, c) {
-    const enemyCCs = units.filter(u => u.owner_id !== currentPlayer?.player_id && u.wg_unit_types?.name === 'Command Center')
+    const enemyCCs = units.filter(u => u.owner_id !== currentPlayer?.player_id && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
     return enemyCCs.every(cc => hexDistance(cc.grid_row, cc.grid_col, r, c) >= 20)
   }
 
@@ -248,7 +303,8 @@ export default function GameBoard({
   function getDeployRange(unitTypeData) {
     if (!unitTypeData) return []
     const cells = []
-    if (unitTypeData.name === 'Command Center') {
+    const isMiningStation = unitTypeData.name === 'Mining Station'
+    if (unitTypeData.name === 'Command Center' || unitTypeData.name === 'Command Ship') {
       if (hasCommandCenter) return []
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -272,7 +328,7 @@ export default function GameBoard({
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const d = distToNearestStructure(r, c)
-          if (!getUnitAt(r, c) && !isImpassable(r, c) && d > 0 && d <= range) {
+          if (!getUnitAt(r, c) && !isImpassable(r, c, isMiningStation ? 'Mining Station' : null) && d > 0 && d <= range) {
             cells.push(`${r}-${c}`)
           }
         }
@@ -339,7 +395,6 @@ export default function GameBoard({
     setTimeout(() => setIsPanning(false), 50)
   }
 
-  // Space key tracking for pan mode
   useEffect(() => {
     function onKeyDown(e) {
       if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
@@ -380,7 +435,6 @@ export default function GameBoard({
   const wheelAnimRef = useRef(null)
   const wheelCursorRef = useRef({ clientX: 0, clientY: 0 })
 
-  // Smooth animated zoom toward target
   function tickWheelZoom() {
     const el = boardRef.current
     if (!el) return
@@ -406,7 +460,6 @@ export default function GameBoard({
     wheelAnimRef.current = requestAnimationFrame(tickWheelZoom)
   }
 
-  // Zoom with mouse wheel — accumulates target, animates smoothly
   const handleWheel = useCallback((e) => {
     e.preventDefault()
     wheelCursorRef.current = { clientX: e.clientX, clientY: e.clientY }
@@ -417,7 +470,6 @@ export default function GameBoard({
     }
   }, [])
 
-  // Pinch-to-zoom for touch
   const pinchRef = useRef(null)
 
   const handleTouchStart = useCallback((e) => {
@@ -548,6 +600,11 @@ export default function GameBoard({
     const showUnit = unit && (unit.owner_id === currentPlayer?.player_id || isVisible)
 
     if (showUnit) {
+      if (unit.wg_unit_types?.name === 'Command Ship' && unit.owner_id === currentPlayer?.player_id) {
+        setCommandShipUnitId(prev => prev === unit.id ? null : unit.id)
+        setPanelOpen(true)
+        return
+      }
       setInspectedUnitId(prev => prev === unit.id ? null : unit.id)
     } else {
       setInspectedUnitId(null)
@@ -567,6 +624,7 @@ export default function GameBoard({
       } else if (mode === 'move' && selectedUnit) {
         await moveUnit(selectedUnit.id, row, col)
         setSelectedUnitId(null)
+        setCommandShipUnitId(null)
         setMode('select')
       } else if (mode === 'attack' && selectedUnit) {
         if (unit && unit.owner_id !== currentPlayer?.player_id) {
@@ -618,20 +676,29 @@ export default function GameBoard({
 
   const hexClip = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'
 
+  const canExcavate = selectedUnit && (selectedUnit.wg_unit_types?.name === 'Mining Station' || selectedUnit.wg_unit_types?.name === 'Excavator')
+  const selectedUnitTile = selectedUnit ? tileMap.get(`${selectedUnit.grid_row}-${selectedUnit.grid_col}`) : null
+  const hasOreToExcavate = canExcavate && selectedUnitTile?.resource && selectedUnitTile?.ore_amount > 0
+
+  const resources = currentPlayer?.resources || {}
+
   const sidebarContent = (
     <div className="space-y-3">
       <div className="p-3 rounded flex items-center justify-between lg:block" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
         <div>
           <div className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>Turn {game.turn_number}</div>
           <div className="font-semibold text-sm mt-0.5" style={{ color: '#c9d1d9' }}>
-            {isMyTurn ? 'YOUR TURN' : `Waiting — ${players.find(p => p.player_id === game.current_player_id)?.wg_profiles?.display_name}`}
+            {isMyTurn ? 'YOUR TURN' : 'Waiting...'}
+          </div>
+          <div className="text-[10px] font-mono mt-0.5" style={{ color: '#8b949e' }}>
+            ⚒ {currentPlayer?.gold || 0} (+{productionPerTurn}/turn)
           </div>
         </div>
         <div className="flex gap-3 lg:hidden">
           {players.map(p => (
             <div key={p.player_id} className="flex items-center gap-1">
               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color, border: '1px solid #2a3140' }} />
-              <span className="text-xs font-mono" style={{ color: '#8b949e' }}>{p.gold}g</span>
+              <span className="text-xs font-mono" style={{ color: '#8b949e' }}>⚒{p.gold}</span>
             </div>
           ))}
         </div>
@@ -643,16 +710,34 @@ export default function GameBoard({
           <div
             key={p.player_id}
             className="flex items-center justify-between py-1.5"
-            style={{ color: p.player_id === game.current_player_id ? '#c9d1d9' : '#4a5568' }}
+            style={{ color: p.color === game.current_team_color ? '#c9d1d9' : '#4a5568' }}
           >
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color, border: '1px solid #2a3140' }} />
               <span className="text-sm font-medium">{p.wg_profiles?.display_name}</span>
             </div>
-            <span className="text-sm font-mono" style={{ color: '#8b949e' }}>{p.gold}g</span>
+            <span className="text-sm font-mono" style={{ color: '#8b949e' }}>⚒{p.gold}</span>
           </div>
         ))}
       </div>
+
+      {Object.keys(resources).length > 0 && (
+        <div className="hidden lg:block p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+          <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>Resources</div>
+          {Object.entries(resources).filter(([, v]) => v > 0).map(([resId, amount]) => {
+            const res = RESOURCE_BY_ID[resId]
+            return (
+              <div key={resId} className="flex items-center justify-between py-0.5">
+                <div className="flex items-center gap-1.5">
+                  {res?.icon && <img src={`/assets/${res.icon}`} alt={resId} className="w-3.5 h-3.5 object-contain" />}
+                  <span className="text-xs" style={{ color: '#8b949e' }}>{res?.name || resId}</span>
+                </div>
+                <span className="text-xs font-mono" style={{ color: '#cca43b' }}>{amount}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {isMyTurn && (
         <div className="p-3 rounded space-y-2" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
@@ -719,6 +804,17 @@ export default function GameBoard({
                   )}
                 </div>
               </div>
+              {hasOreToExcavate && (
+                <button
+                  onClick={async () => {
+                    try { await excavate(selectedUnit.id) } catch (err) { setError(err.message) }
+                  }}
+                  className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                  style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
+                >
+                  Excavate ({selectedUnitTile.ore_amount} {RESOURCE_BY_ID[selectedUnitTile.resource]?.name || selectedUnitTile.resource})
+                </button>
+              )}
             </div>
           )}
 
@@ -746,10 +842,29 @@ export default function GameBoard({
         </div>
       )}
 
+      {commandShipUnitId && (() => {
+        const csUnit = units.find(u => u.id === commandShipUnitId)
+        if (!csUnit) return null
+        return (
+          <CommandShipPanel
+            unit={csUnit}
+            isAdmin={isAdmin}
+            onClose={() => setCommandShipUnitId(null)}
+            onMove={() => {
+              setSelectedUnitId(csUnit.id)
+              setMode('move')
+            }}
+            onUpgrade={async (unitId, compartment) => {
+              try { await upgradeShipCompartment(unitId, compartment) } catch (err) { setError(err.message) }
+            }}
+          />
+        )
+      })()}
+
       {mode === 'deploy' && isMyTurn && (
         <div className="p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
           <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>
-            Requisition — <span className="font-mono" style={{ color: '#8b949e' }}>{currentPlayer?.gold}g</span>
+            Requisition — <span className="font-mono" style={{ color: '#8b949e' }}>⚒ {currentPlayer?.gold}</span>
           </div>
           {!hasCommandCenter && (
             <div className="text-xs mb-2 px-2 py-1 rounded" style={{ backgroundColor: '#1a1a0d', border: '1px solid #3d3d1a', color: '#cca43b' }}>
@@ -759,8 +874,9 @@ export default function GameBoard({
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-1.5">
             {sortedUnitTypes.map(ut => {
               const isBuilding = ut.name === 'Base' || ut.name === 'Factory'
-              const needsCC = ut.name !== 'Command Center' && !isBuilding && !hasCommandCenter
-              const alreadyHasCC = ut.name === 'Command Center' && hasCommandCenter
+              const isCC = ut.name === 'Command Center' || ut.name === 'Command Ship'
+              const needsCC = !isCC && !isBuilding && !hasCommandCenter
+              const alreadyHasCC = isCC && hasCommandCenter
               const buildingNeedsCC = isBuilding && !hasCommandCenter
               const cantAfford = !isAdmin && currentPlayer?.gold < ut.cost
               return (
@@ -775,7 +891,7 @@ export default function GameBoard({
               >
                 <img src={`/assets/${encodeURIComponent(ut.icon)}`} alt={ut.name} className="w-10 h-10 lg:w-16 lg:h-16 object-contain shrink-0" />
                 <span className="font-medium text-xs lg:text-sm truncate max-w-full">{ut.name}</span>
-                <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>{ut.cost}g</span>
+                <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>⚒{ut.cost}</span>
               </button>
               )
             })}
@@ -832,7 +948,9 @@ export default function GameBoard({
               const isInDestroyRange = destroyRange.includes(cellKey)
               const isSelected = selectedUnit && selectedUnit.grid_row === row && selectedUnit.grid_col === col
 
-              const isDiscovered = discoveredTiles.has(cellKey)
+              const board = activeBoard || 'ground'
+              const fullKey = `${board}-${row}-${col}`
+              const isDiscovered = discoveredTiles.has(fullKey)
               const showUnit = unit && (unit.owner_id === currentPlayer?.player_id || isVisible)
 
               let bg
@@ -844,7 +962,7 @@ export default function GameBoard({
               else if (isInDestroyRange) bg = '#2a181d'
               else bg = getTileColor(row, col, isVisible, isDiscovered)
 
-              const isCC = showUnit && unit?.wg_unit_types?.name === 'Command Center'
+              const isCC = showUnit && (unit?.wg_unit_types?.name === 'Command Center' || unit?.wg_unit_types?.name === 'Command Ship')
               const ccColor = isCC ? getPlayerColor(unit.owner_id) : null
 
               const x = col * HEX_W + (row & 1 ? HEX_W / 2 : 0) + GAP / 2
@@ -877,6 +995,24 @@ export default function GameBoard({
                       }}
                     />
                   )}
+                  {!showUnit && (isVisible || isDiscovered) && (() => {
+                    const tile = tileMap.get(cellKey)
+                    if (!tile?.resource) return null
+                    const res = RESOURCE_BY_ID[tile.resource]
+                    if (!res?.icon) return null
+                    return (
+                      <img
+                        src={`/assets/${res.icon}`}
+                        alt={res.name}
+                        className="absolute object-contain pointer-events-none z-[5]"
+                        style={{
+                          width: RENDER_W * 0.55,
+                          height: RENDER_H * 0.55,
+                          opacity: isVisible ? 0.85 : 0.45,
+                        }}
+                      />
+                    )
+                  })()}
                   {showUnit && (
                     <div className="relative flex items-center justify-center z-10">
                       <img
@@ -913,7 +1049,8 @@ export default function GameBoard({
               const { row: hr, col: hc } = hoveredTile
               const hKey = `${hr}-${hc}`
               const hVisible = visibleTiles.has(hKey)
-              const hDiscovered = discoveredTiles.has(hKey)
+              const board = activeBoard || 'ground'
+              const hDiscovered = discoveredTiles.has(`${board}-${hr}-${hc}`)
               const hu = getUnitAt(hr, hc)
               const hShowUnit = hu && (hu.owner_id === currentPlayer?.player_id || hVisible)
               const info = (hVisible || hDiscovered) ? getTerrainInfo(hr, hc) : null
@@ -952,7 +1089,9 @@ export default function GameBoard({
                           {info.terrain?.name}{info.hasRiver ? ' (River)' : ''}
                         </div>
                         {info.resource && (
-                          <div className="text-[10px] font-mono" style={{ color: '#cca43b' }}>{info.resource.name}</div>
+                          <div className="text-[10px] font-mono" style={{ color: '#cca43b' }}>
+                            {info.resource.name}{info.oreAmount ? ` (${info.oreAmount})` : ''}
+                          </div>
                         )}
                       </div>
                     )}
@@ -990,7 +1129,7 @@ export default function GameBoard({
               <span>MOV {inspectedUnit.wg_unit_types?.movement}</span>
             </div>
             <div className="flex gap-2 text-xs mt-0.5" style={{ color: '#4a5568' }}>
-              <span>{players.find(p => p.player_id === inspectedUnit.owner_id)?.wg_profiles?.display_name}</span>
+              <span>{(allPlayers || players).find(p => p.player_id === inspectedUnit.owner_id)?.wg_profiles?.display_name}</span>
               <span className="font-mono">X{inspectedUnit.grid_row}/Y{inspectedUnit.grid_col}</span>
             </div>
           </div>
@@ -1004,7 +1143,6 @@ export default function GameBoard({
         </div>
       )}
 
-      {/* Mobile panel: bottom-up normally, right-side in fullscreen */}
       {!isFullscreen && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20">
           <button
