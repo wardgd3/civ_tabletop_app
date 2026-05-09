@@ -52,7 +52,7 @@ export default function GameBoard({
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
   excavate, upgradeShipCompartment, levelUpUnit,
-  buildConvoy, loadUnitToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay,
+  buildConvoy, loadUnitToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -977,6 +977,9 @@ export default function GameBoard({
             onDeployFromBay={async (shipId, bayIdx) => {
               try { await deployFromBay(shipId, bayIdx) } catch (err) { setError(err.message) }
             }}
+            onProduceUnit={async (shipId, unitTypeId, unitTypeName) => {
+              try { await produceUnitToBay(shipId, unitTypeId, unitTypeName) } catch (err) { setError(err.message) }
+            }}
             groundUnits={allUnits.filter(u =>
               (u.board || 'ground') === 'ground' &&
               u.owner_id === csUnit.owner_id &&
@@ -986,6 +989,8 @@ export default function GameBoard({
               u.wg_unit_types?.name !== 'Factory' &&
               u.wg_unit_types?.name !== 'Mining Station'
             )}
+            unitTypes={unitTypes}
+            teamGold={economy?.teamGold ?? currentPlayer?.gold ?? 0}
           />
         )
       })()}
@@ -1157,7 +1162,7 @@ export default function GameBoard({
                       />
                     )
                   })()}
-                  {showUnit && (
+                  {showUnit && !isCC && (
                     <div className="relative flex items-center justify-center z-10">
                       <img
                         src={getUnitIcon(unit.wg_unit_types)}
@@ -1199,6 +1204,77 @@ export default function GameBoard({
                       )}
                     </div>
                   )}
+                </div>
+              )
+            })}
+            {units.filter(u =>
+              u.is_alive &&
+              (u.wg_unit_types?.name === 'Command Ship' || u.wg_unit_types?.name === 'Command Center') &&
+              (u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`))
+            ).map(csUnit => {
+              const cr = csUnit.grid_row, cc = csUnit.grid_col
+              const cx = cc * HEX_W + (cr & 1 ? HEX_W / 2 : 0) + GAP / 2
+              const cy = cr * ROW_H + GAP / 2
+
+              const neighborOffsets = hexNeighborsBoard(cr, cc, rows, cols)
+              let minX = cx, minY = cy, maxX = cx + RENDER_W, maxY = cy + RENDER_H
+              for (const [nr, nc] of neighborOffsets) {
+                const nx = nc * HEX_W + (nr & 1 ? HEX_W / 2 : 0) + GAP / 2
+                const ny = nr * ROW_H + GAP / 2
+                minX = Math.min(minX, nx)
+                minY = Math.min(minY, ny)
+                maxX = Math.max(maxX, nx + RENDER_W)
+                maxY = Math.max(maxY, ny + RENDER_H)
+              }
+
+              const overW = maxX - minX
+              const overH = maxY - minY
+              const imgSize = Math.min(overW, overH) * 0.75
+              const playerColor = getPlayerColor(csUnit.owner_id)
+
+              return (
+                <div
+                  key={`cs-overlay-${csUnit.id}`}
+                  className="absolute flex items-center justify-center pointer-events-none"
+                  style={{
+                    left: minX,
+                    top: minY,
+                    width: overW,
+                    height: overH,
+                    zIndex: 15,
+                  }}
+                >
+                  <img
+                    src={getUnitIcon(csUnit.wg_unit_types)}
+                    alt={csUnit.wg_unit_types?.name}
+                    className="object-contain pointer-events-none"
+                    style={{
+                      width: imgSize,
+                      height: imgSize,
+                      filter: `drop-shadow(0 0 6px ${playerColor}) drop-shadow(0 0 12px ${playerColor}40)`,
+                    }}
+                  />
+                  <div
+                    className="absolute rounded-full"
+                    style={{
+                      bottom: (overH - imgSize) / 2 - 2,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      height: 3,
+                      width: `${(csUnit.current_hp / csUnit.wg_unit_types?.hp) * 60}%`,
+                      backgroundColor: csUnit.current_hp / csUnit.wg_unit_types?.hp > 0.5 ? '#4a8060' : '#804a4a',
+                      minWidth: 8,
+                    }}
+                  />
+                  <div
+                    className="absolute w-2.5 h-2.5 rounded-full"
+                    style={{
+                      top: (overH - imgSize) / 2 - 2,
+                      right: (overW - imgSize) / 2 - 2,
+                      backgroundColor: playerColor,
+                      border: '1.5px solid #12161d',
+                    }}
+                  />
                 </div>
               )
             })}

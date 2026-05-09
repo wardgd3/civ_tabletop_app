@@ -609,6 +609,40 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function produceUnitToBay(shipId, unitTypeId, unitTypeName) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+
+    const ut = unitTypes.find(t => t.id === unitTypeId)
+    if (!ut) throw new Error('Unit type not found')
+
+    const upgrades = ship.upgrades || {}
+    const holdingBay = [...(upgrades.holdingBay || [])]
+    if (holdingBay.length >= 12) throw new Error('Unit bay full')
+
+    if (!isAdmin && teamGold < ut.cost) throw new Error('Not enough gold')
+
+    if (!isAdmin) {
+      const perPlayer = Math.ceil(ut.cost / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase
+          .from('wg_game_players')
+          .update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) })
+          .eq('id', tp.id)
+      }
+    }
+
+    holdingBay.push({
+      typeId: unitTypeId,
+      typeName: unitTypeName,
+      hp: ut.hp,
+    })
+
+    const newUpgrades = { ...upgrades, holdingBay }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
@@ -770,7 +804,7 @@ export function useGameState(gameId) {
     currentPlayer, isMyTurn, isAdmin,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
     excavate, upgradeShipCompartment, levelUpUnit,
-    buildConvoy, loadUnitToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay,
+    buildConvoy, loadUnitToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay,
     persistDiscoveredTiles, productionPerTurn, economy,
     refresh: fetchAll,
   }

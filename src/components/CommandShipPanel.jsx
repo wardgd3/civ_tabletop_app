@@ -1,5 +1,66 @@
 import { useState } from 'react'
 
+const ICON_STYLE = { width: 14, height: 14, fill: 'none', stroke: '#8b949e', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }
+
+const ICONS = {
+  reactor: (
+    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
+      <circle cx="8" cy="8" r="3" />
+      <circle cx="8" cy="8" r="6" strokeDasharray="2 2" />
+      <line x1="8" y1="1" x2="8" y2="3" />
+      <line x1="8" y1="13" x2="8" y2="15" />
+      <line x1="1" y1="8" x2="3" y2="8" />
+      <line x1="13" y1="8" x2="15" y2="8" />
+    </svg>
+  ),
+  shields: (
+    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
+      <path d="M8 1.5 L14 4 L14 8 C14 12 8 14.5 8 14.5 C8 14.5 2 12 2 8 L2 4 Z" />
+    </svg>
+  ),
+  factory: (
+    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
+      <path d="M1 14 L1 8 L5 10 L5 7 L9 9 L9 6 L13 8 L13 3 L15 3 L15 14 Z" />
+    </svg>
+  ),
+  cannon: (
+    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
+      <path d="M2 12 L6 8 L14 3" />
+      <circle cx="14" cy="3" r="1.5" />
+      <path d="M2 12 L4 14 L6 12" />
+    </svg>
+  ),
+  missiles: (
+    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
+      <path d="M8 1 L10 5 L9 6 L9 12 L10 14 L8 15 L6 14 L7 12 L7 6 L6 5 Z" />
+      <line x1="6" y1="14" x2="5" y2="15" />
+      <line x1="10" y1="14" x2="11" y2="15" />
+    </svg>
+  ),
+  transport: (
+    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
+      <path d="M2 10 L2 6 L12 6 L14 8 L14 10" />
+      <line x1="1" y1="10" x2="15" y2="10" />
+      <path d="M4 6 L4 4 L8 4 L8 6" />
+    </svg>
+  ),
+  holding_bay: (
+    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
+      <path d="M2 5 L8 2 L14 5 L14 13 L2 13 Z" />
+      <line x1="2" y1="5" x2="14" y2="5" />
+      <line x1="8" y1="2" x2="8" y2="5" />
+      <line x1="5" y1="9" x2="11" y2="9" />
+    </svg>
+  ),
+  iron_dome: (
+    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
+      <path d="M2 12 C2 6 8 2 8 2 C8 2 14 6 14 12" />
+      <line x1="1" y1="12" x2="15" y2="12" />
+      <circle cx="8" cy="8" r="1" />
+    </svg>
+  ),
+}
+
 const TIERS = [
   { level: 1, name: 'Standard', color: '#8b949e', cost: 0 },
   { level: 2, name: 'Advanced', color: '#3fb950', cost: 10 },
@@ -11,7 +72,7 @@ const COMMAND_SHIP_COMPARTMENTS = [
     id: 'reactor',
     name: 'Reactor Core',
     description: 'Powers all ship systems.',
-    icon: '⚛',
+    icon: 'reactor',
     color: '#e6a020',
     slots: 1,
     tiers: [
@@ -24,7 +85,7 @@ const COMMAND_SHIP_COMPARTMENTS = [
     id: 'shields',
     name: 'Shields',
     description: 'Protects the ship from damage.',
-    icon: '⛨',
+    icon: 'shields',
     color: '#40a0e0',
     slots: 1,
     tiers: [
@@ -37,7 +98,7 @@ const COMMAND_SHIP_COMPARTMENTS = [
     id: 'factory',
     name: 'Factory',
     description: 'Manufactures units. Each slot is a production line.',
-    icon: '⚒',
+    icon: 'factory',
     color: '#60b060',
     slots: 3,
     tiers: [
@@ -50,7 +111,7 @@ const COMMAND_SHIP_COMPARTMENTS = [
     id: 'cannon',
     name: 'Cannon',
     description: 'Weapon systems. Each slot mounts a weapon.',
-    icon: '☄',
+    icon: 'cannon',
     color: '#e05050',
     slots: 3,
     tiers: [
@@ -63,7 +124,7 @@ const COMMAND_SHIP_COMPARTMENTS = [
     id: 'missiles',
     name: 'Missile Systems',
     description: 'Guided missile platforms. Each slot is a launcher.',
-    icon: '🚀',
+    icon: 'missiles',
     color: '#c060e0',
     slots: 3,
     tiers: [
@@ -76,16 +137,16 @@ const COMMAND_SHIP_COMPARTMENTS = [
     id: 'transport',
     name: 'Transport',
     description: 'Build convoy ships to transport ground units. 5 turns to reach ground.',
-    icon: '🚢',
+    icon: 'transport',
     color: '#50b0b0',
     special: 'transport',
     slots: 2,
   },
   {
     id: 'holding_bay',
-    name: 'Holding Bay',
-    description: 'Store up to 12 units. Deploy them to the ground board.',
-    icon: '📦',
+    name: 'Unit Bay',
+    description: 'Produce and store up to 12 units. Deploy them to the ground board.',
+    icon: 'holding_bay',
     color: '#a08040',
     special: 'holding_bay',
     slots: 12,
@@ -97,7 +158,7 @@ const COMMAND_CENTER_COMPARTMENTS = [
     id: 'shields',
     name: 'Shields',
     description: 'Defensive barrier around the base.',
-    icon: '⛨',
+    icon: 'shields',
     color: '#40a0e0',
     slots: 1,
     tiers: [
@@ -110,7 +171,7 @@ const COMMAND_CENTER_COMPARTMENTS = [
     id: 'cannon',
     name: 'Cannons',
     description: 'Base defense turrets.',
-    icon: '☄',
+    icon: 'cannon',
     color: '#e05050',
     slots: 3,
     tiers: [
@@ -123,7 +184,7 @@ const COMMAND_CENTER_COMPARTMENTS = [
     id: 'iron_dome',
     name: 'Iron Dome',
     description: 'Anti-projectile defense system.',
-    icon: '⊛',
+    icon: 'iron_dome',
     color: '#60b060',
     slots: 1,
     tiers: [
@@ -136,7 +197,7 @@ const COMMAND_CENTER_COMPARTMENTS = [
     id: 'reactor',
     name: 'Reactor Core',
     description: 'Powers all base systems.',
-    icon: '⚛',
+    icon: 'reactor',
     color: '#e6a020',
     slots: 1,
     tiers: [
@@ -312,49 +373,131 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onUnloadToH
   )
 }
 
-function HoldingBayPanel({ unit, upgrades, onDeployFromBay, comp }) {
+const STRUCTURE_NAMES = new Set(['Command Center', 'Command Ship', 'Base', 'Factory', 'Mining Station'])
+
+function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp, unitTypes, teamGold }) {
+  const [selectedSlot, setSelectedSlot] = useState(null)
   const holdingBay = upgrades.holdingBay || []
+
+  const producibleTypes = (unitTypes || []).filter(ut =>
+    (ut.board || 'ground') === 'ground' && !STRUCTURE_NAMES.has(ut.name)
+  )
+
+  const allSlots = Array.from({ length: HOLDING_BAY_CAPACITY }, (_, i) => holdingBay[i] || null)
+  const row1 = allSlots.slice(0, 6)
+  const row2 = allSlots.slice(6, 12)
 
   return (
     <div>
       <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-        Stored Units ({holdingBay.length}/{HOLDING_BAY_CAPACITY})
+        Unit Bay ({holdingBay.length}/{HOLDING_BAY_CAPACITY})
       </div>
-      {holdingBay.length === 0 ? (
-        <div className="text-[9px] p-2 text-center" style={{ color: '#4a5568' }}>
-          No units stored. Load units via Transport convoys.
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 gap-1">
-          {holdingBay.map((storedUnit, idx) => (
-            <div
-              key={idx}
-              className="p-1.5 rounded text-center"
-              style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
-            >
-              <div className="text-[9px] font-semibold mb-1" style={{ color: '#c9d1d9' }}>
-                {storedUnit.typeName}
+      <div className="flex flex-col gap-1 mb-2">
+        {[row1, row2].map((row, rowIdx) => (
+          <div key={rowIdx} className="grid grid-cols-6 gap-1">
+            {row.map((storedUnit, colIdx) => {
+              const slotIdx = rowIdx * 6 + colIdx
+              const isSelected = selectedSlot === slotIdx
+              const isEmpty = !storedUnit
+              return (
+                <button
+                  key={slotIdx}
+                  onClick={() => setSelectedSlot(isSelected ? null : slotIdx)}
+                  className="rounded p-1 text-center transition-all cursor-pointer aspect-square flex flex-col items-center justify-center"
+                  style={{
+                    backgroundColor: isSelected
+                      ? comp.color + '20'
+                      : isEmpty ? '#161b22' : comp.color + '15',
+                    border: `1px solid ${isSelected
+                      ? comp.color
+                      : isEmpty ? '#30363d' : comp.color + '50'}`,
+                  }}
+                >
+                  {isEmpty ? (
+                    <span className="text-[10px]" style={{ color: '#4a5568' }}>+</span>
+                  ) : (
+                    <div className="text-[7px] font-semibold leading-tight" style={{ color: '#c9d1d9' }}>
+                      {storedUnit.typeName}
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+
+      {selectedSlot !== null && (
+        <div className="p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+          {allSlots[selectedSlot] ? (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
+                  {allSlots[selectedSlot].typeName}
+                </span>
               </div>
               <button
-                onClick={() => onDeployFromBay(unit.id, idx)}
-                className="w-full text-[8px] px-1 py-0.5 rounded cursor-pointer"
+                onClick={() => { onDeployFromBay(unit.id, selectedSlot); setSelectedSlot(null) }}
+                className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
                 style={{
                   backgroundColor: comp.color + '20',
                   color: comp.color,
                   border: `1px solid ${comp.color}40`,
                 }}
               >
-                Deploy
+                Deploy to Ground
               </button>
             </div>
-          ))}
-        </div>
-      )}
-      {holdingBay.length < HOLDING_BAY_CAPACITY && (
-        <div className="mt-1.5 flex gap-0.5">
-          {Array.from({ length: HOLDING_BAY_CAPACITY - holdingBay.length }, (_, i) => (
-            <div key={i} className="flex-1 h-2 rounded" style={{ backgroundColor: '#21262d', border: '1px solid #30363d' }} />
-          ))}
+          ) : (
+            <div>
+              <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+                Produce Unit
+              </div>
+              {producibleTypes.length === 0 ? (
+                <div className="text-[9px]" style={{ color: '#4a5568' }}>No unit types available</div>
+              ) : (
+                <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
+                  {producibleTypes.map(ut => {
+                    const canAfford = teamGold >= ut.cost
+                    return (
+                      <button
+                        key={ut.id}
+                        onClick={() => {
+                          if (canAfford) {
+                            onProduceUnit(unit.id, ut.id, ut.name)
+                            setSelectedSlot(null)
+                          }
+                        }}
+                        disabled={!canAfford}
+                        className="flex items-center justify-between p-1.5 rounded text-left transition-all"
+                        style={{
+                          backgroundColor: '#161b22',
+                          border: '1px solid #2a3140',
+                          opacity: canAfford ? 1 : 0.4,
+                          cursor: canAfford ? 'pointer' : 'default',
+                        }}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {ut.icon && (
+                            <img src={`/assets/${ut.icon}`} alt={ut.name} className="w-4 h-4 object-contain" />
+                          )}
+                          <div>
+                            <div className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{ut.name}</div>
+                            <div className="text-[8px]" style={{ color: '#6e7681' }}>
+                              ATK {ut.attack} DEF {ut.defense} HP {ut.hp}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-mono" style={{ color: canAfford ? '#cca43b' : '#e05050' }}>
+                          {ut.cost}g
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -363,8 +506,8 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, comp }) {
 
 export default function CommandShipPanel({
   unit, onClose, onUpgrade, onMove, isAdmin,
-  onBuildConvoy, onLoadUnit, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay,
-  groundUnits,
+  onBuildConvoy, onLoadUnit, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay, onProduceUnit,
+  groundUnits, unitTypes, teamGold,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
@@ -447,7 +590,7 @@ export default function CommandShipPanel({
               }}
             >
               <div className="flex items-center gap-1.5 mb-1">
-                <span className="text-sm">{c.icon}</span>
+                {ICONS[c.icon] || <span className="text-sm">{c.icon}</span>}
                 <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{c.name}</span>
               </div>
               <div className="flex gap-1">
@@ -479,7 +622,7 @@ export default function CommandShipPanel({
       {comp && (
         <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
           <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-sm">{comp.icon}</span>
+            {ICONS[comp.icon] || <span className="text-sm">{comp.icon}</span>}
             <span className="text-xs font-semibold" style={{ color: comp.color }}>{comp.name}</span>
           </div>
           <div className="text-[10px] mb-2" style={{ color: '#8b949e' }}>{comp.description}</div>
@@ -501,7 +644,10 @@ export default function CommandShipPanel({
               unit={unit}
               upgrades={upgrades}
               onDeployFromBay={onDeployFromBay}
+              onProduceUnit={onProduceUnit}
               comp={comp}
+              unitTypes={unitTypes}
+              teamGold={teamGold}
             />
           ) : (
             <>
