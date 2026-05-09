@@ -571,12 +571,24 @@ export function useGameState(gameId) {
     if (!convoy || convoy.inTransit) throw new Error('Already in transit')
     if (!convoy.units || convoy.units.length === 0) throw new Error('No units loaded')
 
-    convoy.inTransit = true
-    convoy.turnsLeft = 5
-    convoys[convoyIndex] = convoy
+    const isCommandShip = ship.wg_unit_types?.name === 'Command Ship'
+    const destType = isCommandShip ? 'Command Center' : 'Command Ship'
+    const dest = units.find(u => u.owner_id === ship.owner_id && u.wg_unit_types?.name === destType)
+    if (!dest) throw new Error(`No ${destType} found to receive convoy`)
 
+    const inTransitConvoy = { units: [...convoy.units], inTransit: true, turnsLeft: 5, sourceId: shipId }
+
+    convoy.units = []
+    convoys[convoyIndex] = convoy
     const newUpgrades = { ...upgrades, convoys }
     await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+
+    const destUpgrades = dest.upgrades || {}
+    const destConvoys = [...(destUpgrades.convoys || [])]
+    destConvoys.push(inTransitConvoy)
+    const newDestUpgrades = { ...destUpgrades, convoys: destConvoys }
+    await supabase.from('wg_units').update({ upgrades: newDestUpgrades }).eq('id', dest.id)
+
     await fetchAll()
   }
 
@@ -709,35 +721,39 @@ export function useGameState(gameId) {
       if (error) throw error
     }
 
-    // Advance convoy transit timers for the next team's command ships
-    const commandShips = nextTeamUnits.filter(u =>
-      u.wg_unit_types?.name === 'Command Ship'
+    // Advance convoy transit timers for the next team's command structures
+    const commandStructures = nextTeamUnits.filter(u =>
+      u.wg_unit_types?.name === 'Command Ship' || u.wg_unit_types?.name === 'Command Center'
     )
-    for (const ship of commandShips) {
-      const shipUpgrades = ship.upgrades || {}
-      const convoys = shipUpgrades.convoys
+    for (const struct of commandStructures) {
+      const structUpgrades = struct.upgrades || {}
+      const convoys = structUpgrades.convoys
       if (!convoys || !Array.isArray(convoys)) continue
 
       let changed = false
-      const holdingBay = [...(shipUpgrades.holdingBay || [])]
-      const updatedConvoys = convoys.map(convoy => {
-        if (!convoy.inTransit) return convoy
+      const holdingBay = [...(structUpgrades.holdingBay || [])]
+      const updatedConvoys = []
+      for (const convoy of convoys) {
+        if (!convoy.inTransit) {
+          updatedConvoys.push(convoy)
+          continue
+        }
         const newTurns = convoy.turnsLeft - 1
         if (newTurns <= 0) {
           changed = true
           for (const u of (convoy.units || [])) {
             if (holdingBay.length < 12) holdingBay.push(u)
           }
-          return { units: [], inTransit: false, turnsLeft: 0 }
+        } else {
+          changed = true
+          updatedConvoys.push({ ...convoy, turnsLeft: newTurns })
         }
-        changed = true
-        return { ...convoy, turnsLeft: newTurns }
-      })
+      }
 
       if (changed) {
         await supabase.from('wg_units').update({
-          upgrades: { ...shipUpgrades, convoys: updatedConvoys, holdingBay }
-        }).eq('id', ship.id)
+          upgrades: { ...structUpgrades, convoys: updatedConvoys, holdingBay }
+        }).eq('id', struct.id)
       }
     }
 

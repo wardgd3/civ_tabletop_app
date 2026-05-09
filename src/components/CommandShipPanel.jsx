@@ -256,6 +256,65 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
   const [selectedConvoy, setSelectedConvoy] = useState(null)
   const convoys = upgrades.convoys || []
   const maxConvoys = comp.slots
+  const isCC = unit.wg_unit_types?.name === 'Command Center'
+  const inTransitConvoys = convoys.filter(c => c.inTransit)
+
+  if (isCC) {
+    return (
+      <div>
+        <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+          Incoming Convoys ({inTransitConvoys.length})
+        </div>
+        {inTransitConvoys.length === 0 ? (
+          <div className="text-[9px] p-2 rounded text-center" style={{ backgroundColor: '#161b22', border: '1px solid #30363d', color: '#4a5568' }}>
+            No convoys in transit
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            {inTransitConvoys.map((convoy, i) => (
+              <div
+                key={i}
+                className="p-2 rounded"
+                style={{ backgroundColor: '#161b22', border: '1px solid #d29922' + '60' }}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
+                    Convoy {i + 1}
+                  </span>
+                  <span className="text-[9px] font-mono" style={{ color: '#d29922' }}>
+                    ARRIVING — {convoy.turnsLeft} turns
+                  </span>
+                </div>
+                <div className="flex gap-0.5 mb-1">
+                  {Array.from({ length: CONVOY_CAPACITY }, (_, j) => {
+                    const loadedUnit = convoy.units?.[j]
+                    return (
+                      <div
+                        key={j}
+                        className="flex-1 h-3 rounded"
+                        style={{
+                          backgroundColor: loadedUnit ? comp.color + '40' : '#21262d',
+                          border: `1px solid ${loadedUnit ? comp.color + '80' : '#30363d'}`,
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {(convoy.units || []).map((u, idx) => (
+                    <div key={idx} className="flex items-center p-1 rounded"
+                      style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
+                      <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{u.typeName}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -285,22 +344,16 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
               className="p-2 rounded text-left transition-all cursor-pointer"
               style={{
                 backgroundColor: isSelected ? comp.color + '20' : '#161b22',
-                border: `1px solid ${isSelected ? comp.color : convoy.inTransit ? '#d29922' + '60' : '#30363d'}`,
+                border: `1px solid ${isSelected ? comp.color : '#30363d'}`,
               }}
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
                   Convoy {i + 1}
                 </span>
-                {convoy.inTransit ? (
-                  <span className="text-[9px] font-mono" style={{ color: '#d29922' }}>
-                    IN TRANSIT — {convoy.turnsLeft} turns
-                  </span>
-                ) : (
-                  <span className="text-[9px] font-mono" style={{ color: '#8b949e' }}>
-                    {convoy.units?.length || 0}/{CONVOY_CAPACITY} loaded
-                  </span>
-                )}
+                <span className="text-[9px] font-mono" style={{ color: '#8b949e' }}>
+                  {convoy.units?.length || 0}/{CONVOY_CAPACITY} loaded
+                </span>
               </div>
               <div className="flex gap-0.5">
                 {Array.from({ length: CONVOY_CAPACITY }, (_, j) => {
@@ -322,7 +375,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
         })}
       </div>
 
-      {selectedConvoy !== null && convoys[selectedConvoy] && !convoys[selectedConvoy].inTransit && (
+      {selectedConvoy !== null && convoys[selectedConvoy] && (
         <div className="p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
           <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
             Convoy {selectedConvoy + 1} — Load Units
