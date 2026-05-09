@@ -337,6 +337,33 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
               </button>
             )
           }
+          if (convoy.inTransit) {
+            return (
+              <div
+                key={i}
+                className="p-2 rounded opacity-60"
+                style={{ backgroundColor: '#161b22', border: '1px solid #d29922' + '60' }}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
+                    Convoy {i + 1}
+                  </span>
+                  <span className="text-[9px] font-mono" style={{ color: '#d29922' }}>
+                    IN TRANSIT — {convoy.turnsLeft} turns
+                  </span>
+                </div>
+                <div className="flex gap-0.5">
+                  {Array.from({ length: CONVOY_CAPACITY }, (_, j) => (
+                    <div
+                      key={j}
+                      className="flex-1 h-3 rounded"
+                      style={{ backgroundColor: '#21262d', border: '1px solid #30363d' }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          }
           return (
             <button
               key={i}

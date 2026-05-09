@@ -576,9 +576,10 @@ export function useGameState(gameId) {
     const dest = units.find(u => u.owner_id === ship.owner_id && u.wg_unit_types?.name === destType)
     if (!dest) throw new Error(`No ${destType} found to receive convoy`)
 
-    const inTransitConvoy = { units: [...convoy.units], inTransit: true, turnsLeft: 5, sourceId: shipId }
+    const inTransitConvoy = { units: [...convoy.units], inTransit: true, turnsLeft: 5, sourceId: shipId, sourceConvoyIndex: convoyIndex }
 
-    convoy.units = []
+    convoy.inTransit = true
+    convoy.turnsLeft = 5
     convoys[convoyIndex] = convoy
     const newUpgrades = { ...upgrades, convoys }
     await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
@@ -725,6 +726,7 @@ export function useGameState(gameId) {
     const commandStructures = nextTeamUnits.filter(u =>
       u.wg_unit_types?.name === 'Command Ship' || u.wg_unit_types?.name === 'Command Center'
     )
+    const sourceConvoysToReset = []
     for (const struct of commandStructures) {
       const structUpgrades = struct.upgrades || {}
       const convoys = structUpgrades.convoys
@@ -744,6 +746,9 @@ export function useGameState(gameId) {
           for (const u of (convoy.units || [])) {
             if (holdingBay.length < 12) holdingBay.push(u)
           }
+          if (convoy.sourceId && convoy.sourceConvoyIndex !== undefined) {
+            sourceConvoysToReset.push({ sourceId: convoy.sourceId, idx: convoy.sourceConvoyIndex })
+          }
         } else {
           changed = true
           updatedConvoys.push({ ...convoy, turnsLeft: newTurns })
@@ -754,6 +759,21 @@ export function useGameState(gameId) {
         await supabase.from('wg_units').update({
           upgrades: { ...structUpgrades, convoys: updatedConvoys, holdingBay }
         }).eq('id', struct.id)
+      }
+    }
+
+    for (const { sourceId, idx } of sourceConvoysToReset) {
+      const sourceUnit = nextTeamUnits.find(u => u.id === sourceId) || units.find(u => u.id === sourceId)
+      if (!sourceUnit) continue
+      const { data: freshSource } = await supabase.from('wg_units').select('upgrades').eq('id', sourceId).single()
+      if (!freshSource) continue
+      const srcUpgrades = freshSource.upgrades || {}
+      const srcConvoys = [...(srcUpgrades.convoys || [])]
+      if (srcConvoys[idx]) {
+        srcConvoys[idx] = { units: [], inTransit: false, turnsLeft: 0 }
+        await supabase.from('wg_units').update({
+          upgrades: { ...srcUpgrades, convoys: srcConvoys }
+        }).eq('id', sourceId)
       }
     }
 
