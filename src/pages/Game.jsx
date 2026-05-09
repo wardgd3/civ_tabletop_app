@@ -111,6 +111,7 @@ export default function Game() {
           game={gameState.game}
           players={gameState.players}
           units={boardUnits}
+          allUnits={gameState.units}
           unitTypes={boardUnitTypes}
           tiles={boardTiles}
           discoveredTiles={gameState.discoveredTiles}
