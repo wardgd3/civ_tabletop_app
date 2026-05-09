@@ -156,23 +156,21 @@ function generateMountainRanges(tiles, rows, cols, rand, mainRiver) {
 function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, riverFlowsHorizontal) {
   const tileAt = (r, c) => tiles[r * cols + c]
 
-  // Pick start and end on opposite edges, perpendicular to river
-  let sr, sc, er, ec
+  // Pick a start tile on one edge, perpendicular to river
+  let sr, sc
   if (riverFlowsHorizontal) {
     sc = Math.floor(cols * (0.15 + rand() * 0.7))
-    ec = sc + Math.floor((rand() - 0.5) * cols * 0.3)
-    ec = Math.max(0, Math.min(cols - 1, ec))
     sr = 0
-    er = rows - 1
   } else {
     sr = Math.floor(rows * (0.15 + rand() * 0.7))
-    er = sr + Math.floor((rand() - 0.5) * rows * 0.3)
-    er = Math.max(0, Math.min(rows - 1, er))
     sc = 0
-    ec = cols - 1
   }
 
-  // Walk from start to end edge, similar to river generation
+  // Pathfind to ANY tile on the opposite edge
+  const isGoal = riverFlowsHorizontal
+    ? (r, _c) => r === rows - 1
+    : (_r, c) => c === cols - 1
+
   const noiseScale = 0.15
   const wanderStrength = 4
 
@@ -182,18 +180,19 @@ function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, riv
   const prev = new Int32Array(rows * cols).fill(-1)
   dist[key(sr, sc)] = 0
 
+  let goalKey = -1
   const heap = [[0, sr, sc]]
   while (heap.length > 0) {
     heap.sort((a, b) => a[0] - b[0])
     const [d, cr, cc] = heap.shift()
-    if (cr === er && cc === ec) break
+    if (isGoal(cr, cc)) { goalKey = key(cr, cc); break }
     if (d > dist[key(cr, cc)]) continue
 
     for (const [nr, nc] of hexNeighbors(cr, cc, rows, cols)) {
-      if (riverSet.has(`${nr}-${nc}`)) continue
       const t = tileAt(nr, nc).terrain
       let cost = 1
-      if (t === 'river' || t === 'lake') cost = 100
+      // Allow crossing river/lake at high cost (won't place mountains there)
+      if (t === 'river' || t === 'lake') cost = 20
 
       const seed1 = Math.sin(nr * 5.7 + nc * 9.3) * 43758.5453
       const wander = (Math.sin(seed1 + nr * noiseScale + nc * noiseScale * 2.3) + 1) * wanderStrength
@@ -208,10 +207,10 @@ function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, riv
     }
   }
 
-  if (dist[key(er, ec)] >= INF) return
+  if (goalKey === -1) return
 
   const path = []
-  let cur = key(er, ec)
+  let cur = goalKey
   while (cur !== -1) {
     const r = Math.floor(cur / cols)
     const c = cur % cols
@@ -232,23 +231,24 @@ function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, riv
     }
   }
 
-  // Place mountains along the path, skipping gaps
+  // Place mountains along the path, skipping gaps and water tiles
   for (let i = 0; i < path.length; i++) {
     if (gapIndices.has(i)) continue
     const [r, c] = path[i]
-    if (riverSet.has(`${r}-${c}`)) continue
+    const t = tileAt(r, c).terrain
+    if (t === 'river' || t === 'lake') continue
     tileAt(r, c).terrain = 'mountain'
     allMountains.add(`${r}-${c}`)
   }
 
-  // Occasionally widen to 2 tiles for visual weight
+  // Widen to 2 tiles at intervals for visual weight
   for (let j = 3; j < path.length - 3; j += 3) {
     if (gapIndices.has(j)) continue
     if (rand() < 0.4) continue
     const [mr, mc] = path[j]
     const neighbors = hexNeighbors(mr, mc, rows, cols)
     const picks = neighbors.filter(([nr, nc]) =>
-      !allMountains.has(`${nr}-${nc}`) && !riverSet.has(`${nr}-${nc}`) &&
+      !allMountains.has(`${nr}-${nc}`) &&
       nr >= 0 && nr < rows && nc >= 0 && nc < cols &&
       tileAt(nr, nc).terrain !== 'river' && tileAt(nr, nc).terrain !== 'lake'
     )
