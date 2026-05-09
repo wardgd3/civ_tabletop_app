@@ -17,6 +17,8 @@ export const TERRAIN = {
   SAND:            { id: 'sand',            name: 'Sand',            color: '#807550', darkColor: '#554d34' },
   VOID:            { id: 'void',            name: 'Void',            color: '#0d1117', darkColor: '#0d1117' },
   NEBULA:          { id: 'nebula',          name: 'Nebula',          color: '#1a1035', darkColor: '#0e0820' },
+  NEBULA_CORE:     { id: 'nebula_core',     name: 'Nebula Core',     color: '#3a1848', darkColor: '#200e30' },
+  NEBULA_BRIGHT:   { id: 'nebula_bright',   name: 'Nebula Core',     color: '#5a2868', darkColor: '#351545' },
   ASTEROID:        { id: 'asteroid',        name: 'Asteroid',        color: '#3a3228', darkColor: '#252018' },
   LARGE_ASTEROID:  { id: 'large_asteroid',  name: 'Large Asteroid',  color: '#4a4238', darkColor: '#302a20' },
   STAR:            { id: 'star',            name: 'Star',            color: '#d4b840', darkColor: '#8a7828' },
@@ -697,6 +699,10 @@ export function generateSpaceTerrain(rows, cols, seed) {
         terrain = TERRAIN.ASTEROID
       } else if (density > 0.45) {
         terrain = TERRAIN.DUST
+      } else if (nebula > 0.5) {
+        terrain = TERRAIN.NEBULA_BRIGHT
+      } else if (nebula > 0.4) {
+        terrain = TERRAIN.NEBULA_CORE
       } else if (nebula > 0.3) {
         terrain = TERRAIN.NEBULA
       } else {
