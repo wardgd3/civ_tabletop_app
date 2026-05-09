@@ -21,7 +21,7 @@ export const TERRAIN = {
   NEBULA_BRIGHT:   { id: 'nebula_bright',   name: 'Nebula Core',     color: '#5a2868', darkColor: '#351545' },
   ASTEROID:        { id: 'asteroid',        name: 'Asteroid',        color: '#3a3228', darkColor: '#252018' },
   LARGE_ASTEROID:  { id: 'large_asteroid',  name: 'Large Asteroid',  color: '#4a4238', darkColor: '#302a20' },
-  STAR:            { id: 'star',            name: 'Star',            color: '#d4b840', darkColor: '#8a7828' },
+  STAR:            { id: 'star',            name: 'Star',            color: '#f0f0ff', darkColor: '#c0c0d8' },
   DUST:            { id: 'dust',            name: 'Dust Cloud',      color: '#121620', darkColor: '#0d1117' },
   SPACE:           { id: 'space',           name: 'Space',           color: '#0d1117', darkColor: '#0d1117' },
 }
@@ -766,6 +766,19 @@ export function generateSpaceTerrain(rows, cols, seed) {
       } else {
         t.terrain = 'asteroid'
       }
+    }
+  }
+
+  const starCount = 2 + (rand() < 0.5 ? 1 : 0)
+  for (let i = 0; i < starCount; i++) {
+    let sr, sc, attempts = 0
+    do {
+      sr = 3 + Math.floor(rand() * (rows - 6))
+      sc = 3 + Math.floor(rand() * (cols - 6))
+      attempts++
+    } while (attempts < 100 && tileAt(sr, sc).terrain !== 'void')
+    if (attempts < 100) {
+      tileAt(sr, sc).terrain = 'star'
     }
   }
 
