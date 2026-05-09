@@ -48,7 +48,7 @@ function hexNeighborsBoard(r, c, rows, cols) {
 }
 
 export default function GameBoard({
-  game, players, units, unitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
+  game, players, units, allUnits, unitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
   excavate, upgradeShipCompartment, levelUpUnit,
@@ -82,7 +82,7 @@ export default function GameBoard({
   const inspectedUnit = inspectedUnitId ? units.find(u => u.id === inspectedUnitId) || null : null
 
   const myColor = currentPlayer?.color
-  const myCommandCenter = units.find(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
+  const myCommandCenter = (allUnits || units).find(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
   const hasCommandCenter = !!myCommandCenter
   const myBuildings = units.filter(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Base' || u.wg_unit_types?.name === 'Factory'))
   const myStructures = myCommandCenter ? [myCommandCenter, ...myBuildings] : []
@@ -297,7 +297,7 @@ export default function GameBoard({
   }
 
   function isFarFromEnemyCCs(r, c) {
-    const enemyCCs = units.filter(u => u.owner_id !== currentPlayer?.player_id && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
+    const enemyCCs = (allUnits || units).filter(u => u.owner_id !== currentPlayer?.player_id && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
     return enemyCCs.every(cc => hexDistance(cc.grid_row, cc.grid_col, r, c) >= 20)
   }
 
