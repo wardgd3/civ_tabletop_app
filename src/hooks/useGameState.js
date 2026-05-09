@@ -47,15 +47,20 @@ export function useGameState(gameId) {
     const factoryCount = teamUnits.filter(u => u.wg_unit_types?.name === 'Factory').length
     let totalCoal = 0
     let totalExcavations = 0
+    let luxuryIncome = 0
     for (const tp of teamPlayers) {
       const res = tp.resources || {}
       totalCoal += res.coal || 0
       totalExcavations += res.excavations || 0
+      for (const [resId] of Object.entries(res)) {
+        const lux = LUXURY_BY_ID[resId]
+        if (lux) luxuryIncome += lux.yield
+      }
     }
     const activeFactories = Math.min(factoryCount, totalCoal)
     const production = (ccCount * 4) + (baseCount * 2) + activeFactories
     const upkeep = teamUnits.length
-    const excavationIncome = totalExcavations
+    const excavationIncome = totalExcavations + luxuryIncome
     return { production, upkeep, excavationIncome, net: production + excavationIncome - upkeep, teamGold }
   })()
   const productionPerTurn = economy.production
@@ -494,15 +499,20 @@ export function useGameState(gameId) {
     const factoryCount = nextTeamUnits.filter(u => u.wg_unit_types?.name === 'Factory').length
     let totalCoal = 0
     let totalExcavations = 0
+    let luxuryIncome = 0
     for (const np of freshNextTeam) {
       const res = np.resources || {}
       totalCoal += res.coal || 0
       totalExcavations += res.excavations || 0
+      for (const [resId] of Object.entries(res)) {
+        const lux = LUXURY_BY_ID[resId]
+        if (lux) luxuryIncome += lux.yield
+      }
     }
     const activeFactories = Math.min(factoryCount, totalCoal)
     const production = (ccCount * 4) + (baseCount * 2) + activeFactories
     const unitUpkeep = nextTeamUnits.length
-    const excavationIncome = totalExcavations
+    const excavationIncome = totalExcavations + luxuryIncome
 
     const currentTeamGold = freshNextTeam.reduce((s, p) => s + (p.gold || 0), 0)
     const newTeamGold = Math.max(0, currentTeamGold + production + excavationIncome - unitUpkeep)

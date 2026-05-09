@@ -850,7 +850,7 @@ export default function GameBoard({
                   style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
                 >
                   Excavate {RESOURCE_BY_ID[selectedUnitTile.resource]?.name || selectedUnitTile.resource}
-                  {` (+1g/turn)`}{!isSelectedTileLuxury && selectedUnitTile.ore_amount ? ` +${selectedUnitTile.ore_amount} ore` : ''}
+                  {isSelectedTileLuxury ? ` (+${selectedTileLux.yield}g/turn)` : ` (+1g/turn)`}{!isSelectedTileLuxury && selectedUnitTile.ore_amount ? ` +${selectedUnitTile.ore_amount} ore` : ''}
                 </button>
               )}
               {isNearSpaceGuild && (
@@ -1145,19 +1145,21 @@ export default function GameBoard({
                         <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>HP {hu.current_hp}/{hu.wg_unit_types.hp}</div>
                       </div>
                     )}
+                    {info?.resourceId === 'space_guild' && (
+                      <div className="flex flex-col items-center gap-1 mb-1">
+                        <img src="/assets/spaceguild.png" alt="Space Guild" className="object-contain" style={{ maxHeight: 80, maxWidth: 80 }} />
+                        <div className="text-xs font-semibold text-center" style={{ color: '#6cb4e6' }}>Space Guild</div>
+                        <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>Trade Station</div>
+                      </div>
+                    )}
                     {info && (
                       <div className="text-center">
                         <div className="text-[10px] font-semibold" style={{ color: '#8b949e' }}>
                           {info.terrain?.name}{info.hasRiver ? ' (River)' : ''}
                         </div>
-                        {info.resource && info.resource.id !== 'space_guild' && (
+                        {info.resource && info.resourceId !== 'space_guild' && (
                           <div className="text-[10px] font-mono" style={{ color: '#cca43b' }}>
-                            {info.resource.name}{info.oreAmount ? ` (${info.oreAmount})` : ''} (+1g/turn)
-                          </div>
-                        )}
-                        {info.resourceId === 'space_guild' && (
-                          <div className="text-[10px] font-semibold" style={{ color: '#6cb4e6' }}>
-                            Space Guild — Trade Station
+                            {info.resource.name}{info.oreAmount ? ` (${info.oreAmount})` : ''}{info.resource.yield != null ? ` (+${info.resource.yield}g/turn)` : ' (+1g/turn)'}
                           </div>
                         )}
                       </div>
