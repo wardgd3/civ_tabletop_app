@@ -15,11 +15,12 @@ export const TERRAIN = {
   LAKE:            { id: 'lake',            name: 'Lake',            color: '#1e4470', darkColor: '#122a45' },
   RIVER:           { id: 'river',           name: 'River',           color: '#1e4470', darkColor: '#122a45' },
   SAND:            { id: 'sand',            name: 'Sand',            color: '#807550', darkColor: '#554d34' },
-  SPACE:           { id: 'space',           name: 'Space',           color: '#0a0e14', darkColor: '#060810' },
-  ASTEROID:        { id: 'asteroid',        name: 'Asteroid',        color: '#3a3530', darkColor: '#252018' },
+  VOID:            { id: 'void',            name: 'Void',            color: '#0c0c1a', darkColor: '#060610' },
+  NEBULA:          { id: 'nebula',          name: 'Nebula',          color: '#1a1035', darkColor: '#0e0820' },
+  ASTEROID:        { id: 'asteroid',        name: 'Asteroid',        color: '#3a3228', darkColor: '#252018' },
   LARGE_ASTEROID:  { id: 'large_asteroid',  name: 'Large Asteroid',  color: '#4a4238', darkColor: '#302a20' },
   STAR:            { id: 'star',            name: 'Star',            color: '#d4b840', darkColor: '#8a7828' },
-  NEBULA:          { id: 'nebula',          name: 'Nebula',          color: '#2a1a3a', darkColor: '#1a1028' },
+  DUST:            { id: 'dust',            name: 'Dust Cloud',      color: '#151520', darkColor: '#0a0a12' },
 }
 
 export const RESOURCES = {
@@ -658,16 +659,18 @@ function placeResources(tiles, rows, cols, rand) {
   }
 }
 
-function placeSpaceResources(tiles, rows, cols, rand) {
-  const resourceList = Object.values(SPACE_RESOURCES)
+function placeSpaceResources(tiles, rand) {
+  const ores = Object.values(SPACE_RESOURCES)
   for (const tile of tiles) {
-    if (tile.resource) continue
     if (tile.terrain !== 'asteroid' && tile.terrain !== 'large_asteroid') continue
     const isLarge = tile.terrain === 'large_asteroid'
-    for (const res of resourceList) {
-      const chance = isLarge ? res.largeChance : res.chance
-      if (rand() < chance) {
-        tile.resource = res.id
+    const roll = rand()
+    let cumulative = 0
+    for (const ore of ores) {
+      const chance = isLarge ? ore.largeChance : ore.chance
+      cumulative += chance
+      if (roll < cumulative) {
+        tile.resource = ore.id
         tile.oreAmount = 2 + Math.floor(rand() * 4)
         break
       }
@@ -676,25 +679,27 @@ function placeSpaceResources(tiles, rows, cols, rand) {
 }
 
 export function generateSpaceTerrain(rows, cols, seed) {
-  const noise = createNoise(seed + 999)
-  const rand = seededRandom(seed + 999)
+  const noise = createNoise(seed + 9999)
+  const rand = seededRandom(seed + 9999)
   const tiles = []
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const nx = c / cols
       const ny = r / rows
-      const n = noise.octaves(nx * 8, ny * 8, 3, 2.0, 0.5)
+
+      const density = noise.octaves(nx * 5, ny * 5, 3, 2.0, 0.5)
+      const nebula = noise.octaves(nx * 3 + 50, ny * 3 + 50, 2, 2.0, 0.5)
 
       let terrain
-      if (n > 0.55) {
+      if (density > 0.55) {
         terrain = TERRAIN.ASTEROID
-      } else if (n > 0.45) {
-        terrain = rand() < 0.08 ? TERRAIN.NEBULA : TERRAIN.SPACE
-      } else if (n < -0.5) {
-        terrain = rand() < 0.005 ? TERRAIN.STAR : TERRAIN.SPACE
+      } else if (density > 0.45) {
+        terrain = TERRAIN.DUST
+      } else if (nebula > 0.3) {
+        terrain = TERRAIN.NEBULA
       } else {
-        terrain = TERRAIN.SPACE
+        terrain = TERRAIN.VOID
       }
 
       tiles.push({
@@ -703,29 +708,11 @@ export function generateSpaceTerrain(rows, cols, seed) {
         terrain: terrain.id,
         resource: null,
         hasRiver: false,
-        oreAmount: 0,
       })
     }
   }
 
-  const asteroidTiles = tiles.filter(t => t.terrain === 'asteroid')
-  const clusterCount = 3 + Math.floor(rand() * 3)
-  for (let i = 0; i < clusterCount; i++) {
-    if (asteroidTiles.length === 0) break
-    const center = asteroidTiles[Math.floor(rand() * asteroidTiles.length)]
-    const clusterSize = 4 + Math.floor(rand() * 5)
-    let converted = 0
-    for (const t of tiles) {
-      if (converted >= clusterSize) break
-      const dist = Math.abs(t.row - center.row) + Math.abs(t.col - center.col)
-      if (dist <= 2 && t.terrain === 'asteroid') {
-        t.terrain = 'large_asteroid'
-        converted++
-      }
-    }
-  }
-
-  placeSpaceResources(tiles, rows, cols, rand)
+  placeSpaceResources(tiles, rand)
 
   return tiles
 }
