@@ -1243,11 +1243,31 @@ export default function GameBoard({
             <div className="w-54 h-full overflow-y-auto p-3" style={{ backgroundColor: '#0d1117', borderLeft: '1px solid #2a3140' }}>
               <button
                 onClick={onExitFullscreen}
-                className="w-full mb-3 px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-                style={{ backgroundColor: '#2a1a1a', color: '#f47067', border: '1px solid #3d2525' }}
+                className="mb-2 px-2 py-1 text-lg font-bold rounded transition-colors cursor-pointer"
+                style={{ backgroundColor: '#2a1a1a', color: '#f47067', border: '1px solid #3d2525', lineHeight: 1 }}
               >
-                Exit Fullscreen
+                ✕
               </button>
+              <div className="flex rounded overflow-hidden mb-3" style={{ border: '1px solid #30363d' }}>
+                <button
+                  onClick={() => setActiveBoard('ground')}
+                  className="flex-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                  style={activeBoard === 'ground'
+                    ? { backgroundColor: '#1c3043', color: '#6cb4e6' }
+                    : { backgroundColor: '#21262d', color: '#4a5568' }}
+                >
+                  Ground
+                </button>
+                <button
+                  onClick={() => setActiveBoard('space')}
+                  className="flex-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                  style={activeBoard === 'space'
+                    ? { backgroundColor: '#2a1a3a', color: '#c080e0' }
+                    : { backgroundColor: '#21262d', color: '#4a5568' }}
+                >
+                  Space
+                </button>
+              </div>
               {sidebarContent}
             </div>
           )}
