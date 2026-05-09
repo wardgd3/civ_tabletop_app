@@ -78,7 +78,7 @@ export default function CommandShipPanel({ unit, onClose, onUpgrade, onMove, isA
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <img
-            src={`/assets/${encodeURIComponent(unit.wg_unit_types?.icon)}`}
+            src="/assets/mother ship.png"
             alt="Command Ship"
             className="w-6 h-6 object-contain"
           />
