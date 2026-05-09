@@ -24,6 +24,12 @@ const RESOURCE_BY_ID = Object.fromEntries([
   ...Object.values(SPACE_RESOURCES).map(r => [r.id, r]),
   ...Object.values(LUXURY_RESOURCES).map(r => [r.id, r]),
 ])
+function getUnitIcon(unitType) {
+  if (!unitType?.icon) return '/assets/infantry.png'
+  if (unitType.name === 'Command Ship') return '/assets/mother ship.png'
+  return `/assets/${encodeURIComponent(unitType.icon)}`
+}
+
 const GROUND_IMPASSABLE = new Set(['ocean', 'mountain', 'lake', 'river'])
 const SPACE_IMPASSABLE = new Set(['asteroid', 'large_asteroid', 'star'])
 const MINING_PASSABLE = new Set(['asteroid', 'large_asteroid'])
@@ -782,7 +788,7 @@ export default function GameBoard({
             <div className="text-xs p-3 rounded mb-2" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140', color: '#8b949e' }}>
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 font-semibold" style={{ color: '#c9d1d9' }}>
-                  <img src={`/assets/${encodeURIComponent(selectedUnit.wg_unit_types?.icon)}`} alt={selectedUnit.wg_unit_types?.name} className="w-20 h-20 object-contain" />
+                  <img src={getUnitIcon(selectedUnit.wg_unit_types)} alt={selectedUnit.wg_unit_types?.name} className="w-20 h-20 object-contain" />
                   {selectedUnit.wg_unit_types?.name}
                   {(selectedUnit.upgrades?.level || 0) > 0 && (
                     <span className="text-xs font-mono" style={{ color: '#cca43b' }}>Lv{selectedUnit.upgrades.level}</span>
@@ -981,7 +987,7 @@ export default function GameBoard({
                   ? { backgroundColor: '#1a2a3a', color: '#c9d1d9', border: '1px solid #3a4a5a' }
                   : { backgroundColor: '#0d1117', color: '#c9d1d9', border: '1px solid #2a3140' }}
               >
-                <img src={`/assets/${encodeURIComponent(ut.icon)}`} alt={ut.name} className="w-10 h-10 lg:w-16 lg:h-16 object-contain shrink-0" />
+                <img src={getUnitIcon(ut)} alt={ut.name} className="w-10 h-10 lg:w-16 lg:h-16 object-contain shrink-0" />
                 <span className="font-medium text-xs lg:text-sm truncate max-w-full">{ut.name}</span>
                 <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>⚒{ut.cost}</span>
               </button>
@@ -1123,7 +1129,7 @@ export default function GameBoard({
                   {showUnit && (
                     <div className="relative flex items-center justify-center z-10">
                       <img
-                        src={`/assets/${encodeURIComponent(unit.wg_unit_types?.icon)}`}
+                        src={getUnitIcon(unit.wg_unit_types)}
                         alt={unit.wg_unit_types?.name}
                         className="object-contain pointer-events-none"
                         style={{
@@ -1195,7 +1201,7 @@ export default function GameBoard({
                     {hShowUnit && (
                       <div className="flex flex-col items-center gap-1 mb-1">
                         <img
-                          src={`/assets/${encodeURIComponent(hu.wg_unit_types.icon)}`}
+                          src={getUnitIcon(hu.wg_unit_types)}
                           alt={hu.wg_unit_types.name}
                           className="object-contain"
                           style={{ maxHeight: 80, maxWidth: 80 }}
@@ -1243,7 +1249,7 @@ export default function GameBoard({
           style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
         >
           <img
-            src={`/assets/${encodeURIComponent(inspectedUnit.wg_unit_types?.icon)}`}
+            src={getUnitIcon(inspectedUnit.wg_unit_types)}
             alt={inspectedUnit.wg_unit_types?.name}
             className="w-12 h-12 object-contain shrink-0"
             style={{ filter: `drop-shadow(0 0 3px ${getPlayerColor(inspectedUnit.owner_id)})` }}
