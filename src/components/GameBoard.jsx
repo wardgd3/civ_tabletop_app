@@ -176,12 +176,13 @@ export default function GameBoard({
     if (!tile) return null
     const terrain = TERRAIN_BY_ID[tile.terrain]
     const resource = tile.resource ? RESOURCE_BY_ID[tile.resource] : null
-    return { terrain, resource, hasRiver: tile.has_river, oreAmount: tile.ore_amount }
+    return { terrain, resource, resourceId: tile.resource, hasRiver: tile.has_river, oreAmount: tile.ore_amount }
   }
 
   function isImpassable(row, col, unitTypeName = null) {
     const tile = tileMap.get(`${row}-${col}`)
     if (!tile) return false
+    if (tile.resource === 'space_guild') return true
     if (tile.has_road) return false
     if (activeBoard === 'space') {
       if (unitTypeName === 'Mining Station' && MINING_PASSABLE.has(tile.terrain)) return false
@@ -682,7 +683,18 @@ export default function GameBoard({
   const selectedUnitTile = selectedUnit ? tileMap.get(`${selectedUnit.grid_row}-${selectedUnit.grid_col}`) : null
   const selectedTileLux = selectedUnitTile?.resource ? RESOURCE_BY_ID[selectedUnitTile.resource] : null
   const isSelectedTileLuxury = selectedTileLux && selectedTileLux.yield != null
-  const hasOreToExcavate = canExcavate && selectedUnitTile?.resource && (isSelectedTileLuxury || selectedUnitTile?.ore_amount > 0)
+  const hasOreToExcavate = canExcavate && selectedUnitTile?.resource && selectedUnitTile.resource !== 'space_guild' && (isSelectedTileLuxury || selectedUnitTile?.ore_amount > 0)
+
+  const spaceGuildTile = useMemo(() => {
+    if (activeBoard !== 'space') return null
+    for (const t of tiles) {
+      if (t.resource === 'space_guild') return t
+    }
+    return null
+  }, [tiles, activeBoard])
+
+  const isNearSpaceGuild = selectedUnit && spaceGuildTile && selectedUnit.owner_id === currentPlayer?.player_id &&
+    hexDistance(selectedUnit.grid_row, selectedUnit.grid_col, spaceGuildTile.grid_row, spaceGuildTile.grid_col) <= 3
 
   const resources = currentPlayer?.resources || {}
 
@@ -695,7 +707,7 @@ export default function GameBoard({
             {isMyTurn ? 'YOUR TURN' : 'Waiting...'}
           </div>
           <div className="text-[10px] font-mono mt-0.5" style={{ color: '#8b949e' }}>
-            ⚒ {currentPlayer?.gold || 0}
+            ⚒ {economy?.teamGold ?? (currentPlayer?.gold || 0)}
             {economy && (
               <span style={{ color: economy.net >= 0 ? '#6a9a72' : '#e05050' }}>
                 {' '}({economy.net >= 0 ? '+' : ''}{economy.net}/turn)
@@ -705,42 +717,51 @@ export default function GameBoard({
           {economy && (
             <div className="text-[9px] font-mono mt-0.5 hidden lg:block" style={{ color: '#6e7681' }}>
               <span style={{ color: '#6a9a72' }}>+{economy.production} prod</span>
-              {economy.luxuryIncome > 0 && <span style={{ color: '#c080e0' }}> +{economy.luxuryIncome} gems</span>}
+              {economy.excavationIncome > 0 && <span style={{ color: '#c080e0' }}> +{economy.excavationIncome} excav</span>}
               <span style={{ color: '#e07050' }}> -{economy.upkeep} upkeep</span>
             </div>
           )}
         </div>
         <div className="flex gap-3 lg:hidden">
-          {players.map(p => (
-            <div key={p.player_id} className="flex items-center gap-1">
-              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color, border: '1px solid #2a3140' }} />
-              <span className="text-xs font-mono" style={{ color: '#8b949e' }}>⚒{p.gold}</span>
-            </div>
-          ))}
+          {[...new Set(players.map(p => p.color))].map(color => {
+            const tGold = players.filter(p => p.color === color).reduce((s, p) => s + (p.gold || 0), 0)
+            return (
+              <div key={color} className="flex items-center gap-1">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color, border: '1px solid #2a3140' }} />
+                <span className="text-xs font-mono" style={{ color: '#8b949e' }}>⚒{tGold}</span>
+              </div>
+            )
+          })}
         </div>
       </div>
 
       <div className="hidden lg:block p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
         <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>Operatives</div>
-        {players.map(p => (
-          <div
-            key={p.player_id}
-            className="flex items-center justify-between py-1.5"
-            style={{ color: p.color === game.current_team_color ? '#c9d1d9' : '#4a5568' }}
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color, border: '1px solid #2a3140' }} />
-              <span className="text-sm font-medium">{p.wg_profiles?.display_name}</span>
-            </div>
-            <span className="text-sm font-mono" style={{ color: '#8b949e' }}>⚒{p.gold}</span>
-          </div>
-        ))}
+        {(() => {
+          const teamColors = [...new Set(players.map(p => p.color))]
+          return teamColors.map(color => {
+            const teamMembers = players.filter(p => p.color === color)
+            const tGold = teamMembers.reduce((s, p) => s + (p.gold || 0), 0)
+            return (
+              <div key={color}>
+                <div className="flex items-center justify-between py-1.5"
+                  style={{ color: color === game.current_team_color ? '#c9d1d9' : '#4a5568' }}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color, border: '1px solid #2a3140' }} />
+                    <span className="text-sm font-medium">{teamMembers.map(p => p.wg_profiles?.display_name).join(', ')}</span>
+                  </div>
+                  <span className="text-sm font-mono" style={{ color: '#8b949e' }}>⚒{tGold}</span>
+                </div>
+              </div>
+            )
+          })
+        })()}
       </div>
 
       {Object.keys(resources).length > 0 && (
         <div className="hidden lg:block p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
           <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>Resources</div>
-          {Object.entries(resources).filter(([, v]) => v > 0).map(([resId, amount]) => {
+          {Object.entries(resources).filter(([k, v]) => v > 0 && k !== 'excavations').map(([resId, amount]) => {
             const res = RESOURCE_BY_ID[resId]
             return (
               <div key={resId} className="flex items-center justify-between py-0.5">
@@ -829,7 +850,16 @@ export default function GameBoard({
                   style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
                 >
                   Excavate {RESOURCE_BY_ID[selectedUnitTile.resource]?.name || selectedUnitTile.resource}
-                  {isSelectedTileLuxury ? ` (+${selectedTileLux.yield}g/turn)` : ` (${selectedUnitTile.ore_amount})`}
+                  {` (+1g/turn)`}{!isSelectedTileLuxury && selectedUnitTile.ore_amount ? ` +${selectedUnitTile.ore_amount} ore` : ''}
+                </button>
+              )}
+              {isNearSpaceGuild && (
+                <button
+                  onClick={() => setError('Trade functionality coming soon!')}
+                  className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                  style={{ backgroundColor: '#1a2a3a', color: '#6cb4e6', border: '1px solid #264a6a' }}
+                >
+                  Trade with Space Guild
                 </button>
               )}
             </div>
@@ -881,7 +911,7 @@ export default function GameBoard({
       {mode === 'deploy' && isMyTurn && (
         <div className="p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
           <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>
-            Requisition — <span className="font-mono" style={{ color: '#8b949e' }}>⚒ {currentPlayer?.gold}</span>
+            Requisition — <span className="font-mono" style={{ color: '#8b949e' }}>⚒ {economy?.teamGold ?? currentPlayer?.gold}</span>
           </div>
           {!hasCommandCenter && (
             <div className="text-xs mb-2 px-2 py-1 rounded" style={{ backgroundColor: '#1a1a0d', border: '1px solid #3d3d1a', color: '#cca43b' }}>
@@ -895,7 +925,7 @@ export default function GameBoard({
               const needsCC = !isCC && !isBuilding && !hasCommandCenter
               const alreadyHasCC = isCC && hasCommandCenter
               const buildingNeedsCC = isBuilding && !hasCommandCenter
-              const cantAfford = !isAdmin && currentPlayer?.gold < ut.cost
+              const cantAfford = !isAdmin && (economy?.teamGold ?? currentPlayer?.gold ?? 0) < ut.cost
               return (
               <button
                 key={ut.id}
@@ -1015,6 +1045,21 @@ export default function GameBoard({
                   {!showUnit && (isVisible || isDiscovered) && (() => {
                     const tile = tileMap.get(cellKey)
                     if (!tile?.resource) return null
+                    if (tile.resource === 'space_guild') {
+                      return (
+                        <img
+                          src="/assets/spaceguild.png"
+                          alt="Space Guild"
+                          className="absolute object-contain pointer-events-none z-[5]"
+                          style={{
+                            width: RENDER_W - 4,
+                            height: RENDER_H - 6,
+                            opacity: isVisible ? 1 : 0.5,
+                            filter: 'drop-shadow(0 0 4px #6cb4e6)',
+                          }}
+                        />
+                      )
+                    }
                     const res = RESOURCE_BY_ID[tile.resource]
                     if (!res?.icon) return null
                     return (
@@ -1105,9 +1150,14 @@ export default function GameBoard({
                         <div className="text-[10px] font-semibold" style={{ color: '#8b949e' }}>
                           {info.terrain?.name}{info.hasRiver ? ' (River)' : ''}
                         </div>
-                        {info.resource && (
+                        {info.resource && info.resource.id !== 'space_guild' && (
                           <div className="text-[10px] font-mono" style={{ color: '#cca43b' }}>
-                            {info.resource.name}{info.resource.yield != null ? ` (+${info.resource.yield}g/turn)` : info.oreAmount ? ` (${info.oreAmount})` : ''}
+                            {info.resource.name}{info.oreAmount ? ` (${info.oreAmount})` : ''} (+1g/turn)
+                          </div>
+                        )}
+                        {info.resourceId === 'space_guild' && (
+                          <div className="text-[10px] font-semibold" style={{ color: '#6cb4e6' }}>
+                            Space Guild — Trade Station
                           </div>
                         )}
                       </div>

@@ -771,5 +771,16 @@ export function generateSpaceTerrain(rows, cols, seed) {
 
   placeSpaceResources(tiles, rand)
 
+  const centerR = Math.floor(rows / 2)
+  const centerC = Math.floor(cols / 2)
+  const guildR = centerR - 5 + Math.floor(rand() * 10)
+  const guildC = centerC - 5 + Math.floor(rand() * 10)
+  const guildTile = tileAt(
+    Math.max(0, Math.min(rows - 1, guildR)),
+    Math.max(0, Math.min(cols - 1, guildC))
+  )
+  guildTile.resource = 'space_guild'
+  guildTile.terrain = 'void'
+
   return tiles
 }
