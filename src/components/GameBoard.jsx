@@ -26,7 +26,7 @@ const RESOURCE_BY_ID = Object.fromEntries([
 ])
 function getUnitIcon(unitType) {
   if (!unitType?.icon) return '/assets/infantry.png'
-  if (unitType.name === 'Command Ship') return '/assets/mother ship.png'
+  if (unitType.name === 'Command Ship') return '/assets/mothership.png'
   return `/assets/${encodeURIComponent(unitType.icon)}`
 }
 
