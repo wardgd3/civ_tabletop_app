@@ -609,7 +609,7 @@ export default function GameBoard({
     const showUnit = unit && (unit.owner_id === currentPlayer?.player_id || isVisible)
 
     if (showUnit) {
-      if (unit.wg_unit_types?.name === 'Command Ship' && unit.owner_id === currentPlayer?.player_id) {
+      if ((unit.wg_unit_types?.name === 'Command Ship' || unit.wg_unit_types?.name === 'Command Center') && unit.owner_id === currentPlayer?.player_id) {
         setCommandShipUnitId(prev => prev === unit.id ? null : unit.id)
         setPanelOpen(true)
         return
