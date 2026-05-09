@@ -70,6 +70,7 @@ export default function GameBoard({
   const [isPanning, setIsPanning] = useState(false)
   const [touchPanning, setTouchPanning] = useState(false)
   const [commandShipUnitId, setCommandShipUnitId] = useState(null)
+  const [bayDeployInfo, setBayDeployInfo] = useState(null)
   const boardRef = useRef(null)
   const panStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
   const touchPanRef = useRef(null)
@@ -352,6 +353,19 @@ export default function GameBoard({
 
   const deployRange = mode === 'deploy' && selectedUnitTypeData ? getDeployRange(selectedUnitTypeData) : []
 
+  const bayDeployRange = bayDeployInfo ? (() => {
+    const cc = units.find(u => u.id === bayDeployInfo.shipId)
+    if (!cc) return []
+    const neighbors = hexNeighborsBoard(cc.grid_row, cc.grid_col, rows, cols)
+    const cells = []
+    for (const [nr, nc] of neighbors) {
+      if (getUnitAt(nr, nc)) continue
+      if (isImpassable(nr, nc)) continue
+      cells.push(`${nr}-${nc}`)
+    }
+    return cells
+  })() : []
+
   function stopInertia() {
     if (inertiaRef.current) {
       cancelAnimationFrame(inertiaRef.current)
@@ -611,6 +625,21 @@ export default function GameBoard({
     setTappedTile(prev => (prev?.row === row && prev?.col === col) ? null : { row, col })
 
     const cellKey = `${row}-${col}`
+
+    if (bayDeployInfo) {
+      if (!bayDeployRange.includes(cellKey)) {
+        setError('Select an adjacent unoccupied tile')
+        return
+      }
+      try {
+        await deployFromBay(bayDeployInfo.shipId, bayDeployInfo.bayIndex, row, col)
+        setBayDeployInfo(null)
+      } catch (err) {
+        setError(err.message)
+      }
+      return
+    }
+
     const unit = getUnitAt(row, col)
     const isVisible = visibleTiles.has(cellKey)
     const showUnit = unit && (unit.owner_id === currentPlayer?.player_id || isVisible)
@@ -977,8 +1006,8 @@ export default function GameBoard({
             onSendConvoy={async (shipId, convoyIdx) => {
               try { await sendConvoy(shipId, convoyIdx) } catch (err) { setError(err.message) }
             }}
-            onDeployFromBay={async (shipId, bayIdx) => {
-              try { await deployFromBay(shipId, bayIdx) } catch (err) { setError(err.message) }
+            onDeployFromBay={(shipId, bayIdx) => {
+              setBayDeployInfo({ shipId, bayIndex: bayIdx })
             }}
             onProduceUnit={async (shipId, unitTypeId, unitTypeName) => {
               try { await produceUnitToBay(shipId, unitTypeId, unitTypeName) } catch (err) { setError(err.message) }
@@ -1083,6 +1112,7 @@ export default function GameBoard({
               const isInDeployRange = deployRange.includes(cellKey)
               const isInBuildRange = buildRange.includes(cellKey)
               const isInDestroyRange = destroyRange.includes(cellKey)
+              const isInBayDeployRange = bayDeployRange.includes(cellKey)
               const isSelected = selectedUnit && selectedUnit.grid_row === row && selectedUnit.grid_col === col
 
               const board = activeBoard || 'ground'
@@ -1092,6 +1122,7 @@ export default function GameBoard({
 
               let bg
               if (isSelected) bg = '#203348'
+              else if (isInBayDeployRange) bg = '#203320'
               else if (isInDeployRange) bg = '#203320'
               else if (isInMoveRange) bg = '#182533'
               else if (isInAttackRange) bg = '#2a181d'
@@ -1395,14 +1426,36 @@ export default function GameBoard({
 
       {!isFullscreen && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20">
-          <button
-            onClick={() => setPanelOpen(!panelOpen)}
-            className="w-full flex items-center justify-center gap-2 py-2 text-sm font-semibold uppercase tracking-wide cursor-pointer"
-            style={{ backgroundColor: '#161b22', borderTop: '1px solid #2a3140', color: '#4a5568' }}
-          >
-            <span>{panelOpen ? 'Hide' : 'Show'} Controls</span>
-            <span className={`transition-transform ${panelOpen ? 'rotate-180' : ''}`}>&#9650;</span>
-          </button>
+          <div className="flex items-center justify-between px-3 py-1.5" style={{ backgroundColor: '#161b22', borderTop: '1px solid #2a3140' }}>
+            <div className="flex rounded overflow-hidden" style={{ border: '1px solid #30363d' }}>
+              <button
+                onClick={() => setActiveBoard('ground')}
+                className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                style={activeBoard === 'ground'
+                  ? { backgroundColor: '#1c3043', color: '#6cb4e6' }
+                  : { backgroundColor: '#21262d', color: '#4a5568' }}
+              >
+                Ground
+              </button>
+              <button
+                onClick={() => setActiveBoard('space')}
+                className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                style={activeBoard === 'space'
+                  ? { backgroundColor: '#2a1a3a', color: '#c080e0' }
+                  : { backgroundColor: '#21262d', color: '#4a5568' }}
+              >
+                Space
+              </button>
+            </div>
+            <button
+              onClick={() => setPanelOpen(!panelOpen)}
+              className="flex items-center gap-1.5 py-1 text-xs font-semibold uppercase tracking-wide cursor-pointer"
+              style={{ color: '#4a5568' }}
+            >
+              <span>{panelOpen ? 'Hide' : 'Controls'}</span>
+              <span className={`transition-transform ${panelOpen ? 'rotate-180' : ''}`}>&#9650;</span>
+            </button>
+          </div>
           {panelOpen && (
             <div className="p-3 max-h-[50vh] overflow-y-auto" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #2a3140' }}>
               {sidebarContent}
@@ -1422,13 +1475,35 @@ export default function GameBoard({
           </button>
           {panelOpen && (
             <div className="w-54 h-full overflow-y-auto p-3" style={{ backgroundColor: '#0d1117', borderLeft: '1px solid #2a3140' }}>
-              <button
-                onClick={onExitFullscreen}
-                className="w-full mb-3 px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-                style={{ backgroundColor: '#2a1a1a', color: '#f47067', border: '1px solid #3d2525' }}
-              >
-                Exit Fullscreen
-              </button>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex rounded overflow-hidden" style={{ border: '1px solid #30363d' }}>
+                  <button
+                    onClick={() => setActiveBoard('ground')}
+                    className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                    style={activeBoard === 'ground'
+                      ? { backgroundColor: '#1c3043', color: '#6cb4e6' }
+                      : { backgroundColor: '#21262d', color: '#4a5568' }}
+                  >
+                    Ground
+                  </button>
+                  <button
+                    onClick={() => setActiveBoard('space')}
+                    className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                    style={activeBoard === 'space'
+                      ? { backgroundColor: '#2a1a3a', color: '#c080e0' }
+                      : { backgroundColor: '#21262d', color: '#4a5568' }}
+                  >
+                    Space
+                  </button>
+                </div>
+                <button
+                  onClick={onExitFullscreen}
+                  className="w-6 h-6 flex items-center justify-center rounded cursor-pointer text-xs"
+                  style={{ backgroundColor: '#21262d', color: '#f47067', border: '1px solid #3d2525' }}
+                >
+                  &times;
+                </button>
+              </div>
               {sidebarContent}
             </div>
           )}

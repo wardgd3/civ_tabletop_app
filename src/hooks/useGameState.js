@@ -593,9 +593,13 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
-  async function deployFromBay(shipId, bayIndex) {
+  async function deployFromBay(shipId, bayIndex, row, col) {
     const ship = units.find(u => u.id === shipId)
     if (!ship) throw new Error('Ship not found')
+
+    if (row === ship.grid_row && col === ship.grid_col) throw new Error('Cannot deploy on the command structure tile')
+    const occupied = units.find(u => u.grid_row === row && u.grid_col === col && (u.board || 'ground') === 'ground')
+    if (occupied) throw new Error('Tile is occupied')
 
     const upgrades = ship.upgrades || {}
     const holdingBay = [...(upgrades.holdingBay || [])]
@@ -607,8 +611,8 @@ export function useGameState(gameId) {
       game_id: gameId,
       owner_id: userId,
       unit_type_id: storedUnit.typeId,
-      grid_row: ship.grid_row,
-      grid_col: ship.grid_col,
+      grid_row: row,
+      grid_col: col,
       current_hp: storedUnit.hp,
       board: 'ground',
       has_moved: true,
