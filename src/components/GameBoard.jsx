@@ -48,7 +48,7 @@ function hexNeighborsBoard(r, c, rows, cols) {
 }
 
 export default function GameBoard({
-  game, players, units, allUnits, unitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
+  game, players, units, allUnits, unitTypes, allUnitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
   excavate, upgradeShipCompartment, levelUpUnit,
@@ -989,7 +989,7 @@ export default function GameBoard({
               u.wg_unit_types?.name !== 'Factory' &&
               u.wg_unit_types?.name !== 'Mining Station'
             )}
-            unitTypes={unitTypes}
+            unitTypes={allUnitTypes || unitTypes}
             teamGold={economy?.teamGold ?? currentPlayer?.gold ?? 0}
           />
         )

@@ -113,6 +113,7 @@ export default function Game() {
           units={boardUnits}
           allUnits={gameState.units}
           unitTypes={boardUnitTypes}
+          allUnitTypes={gameState.unitTypes}
           tiles={boardTiles}
           discoveredTiles={gameState.discoveredTiles}
           persistDiscoveredTiles={gameState.persistDiscoveredTiles}
