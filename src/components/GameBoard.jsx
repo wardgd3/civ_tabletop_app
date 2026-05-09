@@ -45,7 +45,7 @@ export default function GameBoard({
   game, players, units, unitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-  excavate, upgradeShipCompartment,
+  excavate, upgradeShipCompartment, levelUpUnit,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -784,6 +784,9 @@ export default function GameBoard({
                 <span className="flex items-center gap-2 font-semibold" style={{ color: '#c9d1d9' }}>
                   <img src={`/assets/${encodeURIComponent(selectedUnit.wg_unit_types?.icon)}`} alt={selectedUnit.wg_unit_types?.name} className="w-20 h-20 object-contain" />
                   {selectedUnit.wg_unit_types?.name}
+                  {(selectedUnit.upgrades?.level || 0) > 0 && (
+                    <span className="text-xs font-mono" style={{ color: '#cca43b' }}>Lv{selectedUnit.upgrades.level}</span>
+                  )}
                 </span>
                 <span className="font-mono" style={{ color: '#6e7681' }}>HP {selectedUnit.current_hp}/{selectedUnit.wg_unit_types?.hp}</span>
               </div>
@@ -862,6 +865,48 @@ export default function GameBoard({
                   Trade with Space Guild
                 </button>
               )}
+              {selectedUnit.owner_id === currentPlayer?.player_id && (() => {
+                const unitLevel = selectedUnit.upgrades?.level || 0
+                const maxLevel = 5
+                const upgradeCost = (unitLevel + 1) * 5
+                const canAfford = isAdmin || (economy?.teamGold ?? 0) >= upgradeCost
+                return (
+                  <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>Unit Level</span>
+                      <span className="text-[10px] font-mono" style={{ color: '#8b949e' }}>Lv {unitLevel}/{maxLevel}</span>
+                    </div>
+                    <div className="flex gap-0.5 mb-2">
+                      {Array.from({ length: maxLevel }, (_, i) => (
+                        <div
+                          key={i}
+                          className="flex-1 h-1.5 rounded-full"
+                          style={{
+                            backgroundColor: i < unitLevel ? '#cca43b' : '#21262d',
+                            border: `1px solid ${i < unitLevel ? '#cca43b' : '#30363d'}`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                    {unitLevel < maxLevel ? (
+                      <button
+                        onClick={async () => {
+                          try { await levelUpUnit(selectedUnit.id) } catch (err) { setError(err.message) }
+                        }}
+                        disabled={!canAfford}
+                        className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
+                        style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
+                      >
+                        Level Up (⚒{upgradeCost})
+                      </button>
+                    ) : (
+                      <div className="text-[10px] font-semibold text-center py-1" style={{ color: '#cca43b' }}>
+                        MAX LEVEL
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )}
 
@@ -1101,6 +1146,20 @@ export default function GameBoard({
                         className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full"
                         style={{ backgroundColor: getPlayerColor(unit.owner_id), border: '1px solid #12161d' }}
                       />
+                      {(unit.upgrades?.level || 0) > 0 && (
+                        <div
+                          className="absolute -top-0.5 -left-0.5 flex items-center justify-center rounded-full"
+                          style={{
+                            width: 7, height: 7,
+                            backgroundColor: '#1a1a0d',
+                            border: '1px solid #cca43b',
+                            fontSize: 5, fontWeight: 'bold',
+                            color: '#cca43b', lineHeight: 1,
+                          }}
+                        >
+                          {unit.upgrades.level}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1141,7 +1200,12 @@ export default function GameBoard({
                           className="object-contain"
                           style={{ maxHeight: 80, maxWidth: 80 }}
                         />
-                        <div className="text-xs font-semibold text-center" style={{ color: '#c9d1d9' }}>{hu.wg_unit_types.name}</div>
+                        <div className="text-xs font-semibold text-center" style={{ color: '#c9d1d9' }}>
+                          {hu.wg_unit_types.name}
+                          {(hu.upgrades?.level || 0) > 0 && (
+                            <span className="ml-1 font-mono" style={{ color: '#cca43b' }}>Lv{hu.upgrades.level}</span>
+                          )}
+                        </div>
                         <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>HP {hu.current_hp}/{hu.wg_unit_types.hp}</div>
                       </div>
                     )}

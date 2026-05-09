@@ -408,6 +408,40 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function levelUpUnit(unitId) {
+    const unit = units.find(u => u.id === unitId)
+    if (!unit) throw new Error('Unit not found')
+    if (unit.owner_id !== userId) throw new Error('Not your unit')
+
+    const upgrades = unit.upgrades || {}
+    const currentLevel = upgrades.level || 0
+    if (currentLevel >= 5) throw new Error('Already max level')
+
+    const cost = (currentLevel + 1) * 5
+    if (!isAdmin && teamGold < cost) throw new Error(`Not enough gold (need ${cost})`)
+
+    if (!isAdmin) {
+      let remaining = cost
+      for (const tp of teamPlayers) {
+        if (remaining <= 0) break
+        const deduct = Math.min(tp.gold || 0, remaining)
+        if (deduct > 0) {
+          await supabase.from('wg_game_players').update({ gold: tp.gold - deduct }).eq('id', tp.id)
+          remaining -= deduct
+        }
+      }
+    }
+
+    const newUpgrades = { ...upgrades, level: currentLevel + 1 }
+    const { error } = await supabase
+      .from('wg_units')
+      .update({ upgrades: newUpgrades })
+      .eq('id', unitId)
+    if (error) throw error
+
+    await fetchAll()
+  }
+
   async function upgradeShipCompartment(unitId, compartmentId) {
     const unit = units.find(u => u.id === unitId)
     if (!unit) throw new Error('Unit not found')
@@ -567,7 +601,7 @@ export function useGameState(gameId) {
     game, players, units, unitTypes, tiles, discoveredTiles, loading,
     currentPlayer, isMyTurn, isAdmin,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-    excavate, upgradeShipCompartment,
+    excavate, upgradeShipCompartment, levelUpUnit,
     persistDiscoveredTiles, productionPerTurn, economy,
     refresh: fetchAll,
   }
