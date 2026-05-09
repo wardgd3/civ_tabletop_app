@@ -685,6 +685,7 @@ export function generateSpaceTerrain(rows, cols, seed) {
   const noise = createNoise(seed + 9999)
   const rand = seededRandom(seed + 9999)
   const tiles = []
+  const tileAt = (r, c) => tiles[r * cols + c]
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -692,18 +693,16 @@ export function generateSpaceTerrain(rows, cols, seed) {
       const ny = r / rows
 
       const density = noise.octaves(nx * 5, ny * 5, 3, 2.0, 0.5)
-      const nebula = noise.octaves(nx * 3 + 50, ny * 3 + 50, 2, 2.0, 0.5)
+      const nebula = noise.octaves(nx * 1.8 + 50, ny * 1.8 + 50, 3, 2.0, 0.5)
 
       let terrain
-      if (density > 0.55) {
+      if (density > 0.55 && rand() < 0.25) {
         terrain = TERRAIN.ASTEROID
-      } else if (density > 0.45) {
-        terrain = TERRAIN.DUST
-      } else if (nebula > 0.5) {
+      } else if (nebula > 0.45) {
         terrain = TERRAIN.NEBULA_BRIGHT
-      } else if (nebula > 0.4) {
+      } else if (nebula > 0.35) {
         terrain = TERRAIN.NEBULA_CORE
-      } else if (nebula > 0.3) {
+      } else if (nebula > 0.2) {
         terrain = TERRAIN.NEBULA
       } else {
         terrain = TERRAIN.VOID
@@ -716,6 +715,57 @@ export function generateSpaceTerrain(rows, cols, seed) {
         resource: null,
         hasRiver: false,
       })
+    }
+  }
+
+  // Ensure bright cores have at least 2 tiles of darker nebula around them
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const t = tileAt(r, c)
+      if (t.terrain !== 'nebula_bright' && t.terrain !== 'nebula_core') continue
+      const ring1 = hexNeighbors(r, c, rows, cols)
+      for (const [nr, nc] of ring1) {
+        const nt = tileAt(nr, nc)
+        if (nt.terrain === 'void' || nt.terrain === 'dust') {
+          nt.terrain = 'nebula_core'
+        }
+        const ring2 = hexNeighbors(nr, nc, rows, cols)
+        for (const [nr2, nc2] of ring2) {
+          const nt2 = tileAt(nr2, nc2)
+          if (nt2.terrain === 'void' || nt2.terrain === 'dust') {
+            nt2.terrain = 'nebula'
+          }
+        }
+      }
+    }
+  }
+
+  // Place 3-4 large asteroid clusters
+  const clusterCount = 3 + (rand() < 0.5 ? 1 : 0)
+  for (let i = 0; i < clusterCount; i++) {
+    const cr = 4 + Math.floor(rand() * (rows - 8))
+    const cc = 4 + Math.floor(rand() * (cols - 8))
+    const clusterSize = 12 + Math.floor(rand() * 10)
+    const cluster = [[cr, cc]]
+    const used = new Set([`${cr}-${cc}`])
+
+    for (let step = 0; step < clusterSize && cluster.length < clusterSize; step++) {
+      const [sr, sc] = cluster[Math.floor(rand() * cluster.length)]
+      const neighbors = hexNeighbors(sr, sc, rows, cols)
+      const candidates = neighbors.filter(([nr, nc]) => !used.has(`${nr}-${nc}`))
+      if (candidates.length === 0) continue
+      const [nr, nc] = candidates[Math.floor(rand() * candidates.length)]
+      used.add(`${nr}-${nc}`)
+      cluster.push([nr, nc])
+    }
+
+    for (const [ar, ac] of cluster) {
+      const t = tileAt(ar, ac)
+      if (rand() < 0.35) {
+        t.terrain = 'large_asteroid'
+      } else {
+        t.terrain = 'asteroid'
+      }
     }
   }
 
