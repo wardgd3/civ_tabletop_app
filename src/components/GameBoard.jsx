@@ -1232,7 +1232,7 @@ export default function GameBoard({
 
               const overW = maxX - minX
               const overH = maxY - minY
-              const imgSize = Math.min(overW, overH) * 0.75
+              const imgSize = Math.min(overW, overH) * 0.5625
               const playerColor = getPlayerColor(csUnit.owner_id)
 
               return (

@@ -206,6 +206,24 @@ const COMMAND_CENTER_COMPARTMENTS = [
       { name: 'Quantum Plant', desc: 'Maximum power' },
     ],
   },
+  {
+    id: 'transport',
+    name: 'Transport',
+    description: 'Receive convoy shipments from the Command Ship.',
+    icon: 'transport',
+    color: '#50b0b0',
+    special: 'transport',
+    slots: 2,
+  },
+  {
+    id: 'holding_bay',
+    name: 'Unit Bay',
+    description: 'Produce and store up to 12 units. Deploy them to the ground board.',
+    icon: 'holding_bay',
+    color: '#a08040',
+    special: 'holding_bay',
+    slots: 12,
+  },
 ]
 
 const CONVOY_COST = 15
