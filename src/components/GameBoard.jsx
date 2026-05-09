@@ -60,6 +60,7 @@ export default function GameBoard({
   const [selectedUnitType, setSelectedUnitType] = useState(null)
   const [inspectedUnitId, setInspectedUnitId] = useState(null)
   const [hoveredTile, setHoveredTile] = useState(null)
+  const [tappedTile, setTappedTile] = useState(null)
   const [mode, setMode] = useState('select')
   const [error, setError] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -377,6 +378,7 @@ export default function GameBoard({
     stopInertia()
     panningRef.current = true
     setIsPanning(true)
+    setTappedTile(null)
     const el = boardRef.current
     panStart.current = { x: clientX, y: clientY, scrollLeft: el.scrollLeft, scrollTop: el.scrollTop }
     lastMoveRef.current = { x: clientX, y: clientY, t: performance.now() }
@@ -602,6 +604,8 @@ export default function GameBoard({
     if (spaceHeld || isPanning || touchPanning) return
     if (touchPanRef.current?.moved) return
     setError(null)
+
+    setTappedTile(prev => (prev?.row === row && prev?.col === col) ? null : { row, col })
 
     const cellKey = `${row}-${col}`
     const unit = getUnitAt(row, col)
@@ -1172,8 +1176,9 @@ export default function GameBoard({
               )
             })}
             {(() => {
-              if (!hoveredTile) return null
-              const { row: hr, col: hc } = hoveredTile
+              const activeTile = hoveredTile || tappedTile
+              if (!activeTile) return null
+              const { row: hr, col: hc } = activeTile
               const hKey = `${hr}-${hc}`
               const hVisible = visibleTiles.has(hKey)
               const board = activeBoard || 'ground'
@@ -1195,7 +1200,7 @@ export default function GameBoard({
                   }}
                 >
                   <div
-                    className="hidden lg:block rounded px-2 py-1.5 shadow-lg whitespace-nowrap"
+                    className="rounded px-2 py-1.5 shadow-lg whitespace-nowrap"
                     style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
                   >
                     {hShowUnit && (
