@@ -52,6 +52,7 @@ export default function GameBoard({
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
   excavate, upgradeShipCompartment, levelUpUnit,
+  buildConvoy, loadUnitToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -961,6 +962,30 @@ export default function GameBoard({
             onUpgrade={async (unitId, compartment, slotIndex, tierLevel) => {
               try { await upgradeShipCompartment(unitId, compartment, slotIndex, tierLevel) } catch (err) { setError(err.message) }
             }}
+            onBuildConvoy={async (unitId) => {
+              try { await buildConvoy(unitId) } catch (err) { setError(err.message) }
+            }}
+            onLoadUnit={async (shipId, convoyIdx, groundUnitId) => {
+              try { await loadUnitToConvoy(shipId, convoyIdx, groundUnitId) } catch (err) { setError(err.message) }
+            }}
+            onUnloadToHoldingBay={async (shipId, convoyIdx, unitIdx) => {
+              try { await unloadToHoldingBay(shipId, convoyIdx, unitIdx) } catch (err) { setError(err.message) }
+            }}
+            onSendConvoy={async (shipId, convoyIdx) => {
+              try { await sendConvoy(shipId, convoyIdx) } catch (err) { setError(err.message) }
+            }}
+            onDeployFromBay={async (shipId, bayIdx) => {
+              try { await deployFromBay(shipId, bayIdx) } catch (err) { setError(err.message) }
+            }}
+            groundUnits={allUnits.filter(u =>
+              (u.board || 'ground') === 'ground' &&
+              u.owner_id === csUnit.owner_id &&
+              u.is_alive &&
+              u.wg_unit_types?.name !== 'Command Center' &&
+              u.wg_unit_types?.name !== 'Base' &&
+              u.wg_unit_types?.name !== 'Factory' &&
+              u.wg_unit_types?.name !== 'Mining Station'
+            )}
           />
         )
       })()}

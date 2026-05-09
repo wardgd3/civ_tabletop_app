@@ -484,6 +484,131 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function buildConvoy(unitId) {
+    const unit = units.find(u => u.id === unitId)
+    if (!unit) throw new Error('Unit not found')
+
+    const upgrades = unit.upgrades || {}
+    const convoys = upgrades.convoys || []
+    if (convoys.length >= 2) throw new Error('Max 2 convoys')
+
+    const convoyCost = 15
+    if (!isAdmin && teamGold < convoyCost) throw new Error('Not enough gold')
+
+    if (!isAdmin) {
+      const perPlayer = Math.ceil(convoyCost / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase
+          .from('wg_game_players')
+          .update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) })
+          .eq('id', tp.id)
+      }
+    }
+
+    const newConvoys = [...convoys, { units: [], inTransit: false, turnsLeft: 0 }]
+    const newUpgrades = { ...upgrades, convoys: newConvoys }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', unitId)
+    await fetchAll()
+  }
+
+  async function loadUnitToConvoy(shipId, convoyIndex, groundUnitId) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+
+    const groundUnit = units.find(u => u.id === groundUnitId)
+    if (!groundUnit) throw new Error('Unit not found')
+
+    const upgrades = ship.upgrades || {}
+    const convoys = [...(upgrades.convoys || [])]
+    const convoy = convoys[convoyIndex]
+    if (!convoy) throw new Error('Convoy not found')
+    if (convoy.inTransit) throw new Error('Convoy in transit')
+    if ((convoy.units || []).length >= 4) throw new Error('Convoy full')
+
+    convoy.units = [...(convoy.units || []), {
+      unitId: groundUnitId,
+      typeName: groundUnit.wg_unit_types?.name || 'Unknown',
+      typeId: groundUnit.unit_type_id,
+      hp: groundUnit.current_hp,
+    }]
+    convoys[convoyIndex] = convoy
+
+    await supabase.from('wg_units').update({ is_alive: false }).eq('id', groundUnitId)
+
+    const newUpgrades = { ...upgrades, convoys }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
+  async function unloadToHoldingBay(shipId, convoyIndex, unitIndex) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+
+    const upgrades = ship.upgrades || {}
+    const convoys = [...(upgrades.convoys || [])]
+    const convoy = convoys[convoyIndex]
+    if (!convoy || convoy.inTransit) throw new Error('Cannot unload')
+
+    const holdingBay = [...(upgrades.holdingBay || [])]
+    if (holdingBay.length >= 12) throw new Error('Holding bay full')
+
+    const removed = convoy.units.splice(unitIndex, 1)[0]
+    holdingBay.push(removed)
+    convoys[convoyIndex] = convoy
+
+    const newUpgrades = { ...upgrades, convoys, holdingBay }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
+  async function sendConvoy(shipId, convoyIndex) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+
+    const upgrades = ship.upgrades || {}
+    const convoys = [...(upgrades.convoys || [])]
+    const convoy = convoys[convoyIndex]
+    if (!convoy || convoy.inTransit) throw new Error('Already in transit')
+    if (!convoy.units || convoy.units.length === 0) throw new Error('No units loaded')
+
+    convoy.inTransit = true
+    convoy.turnsLeft = 5
+    convoys[convoyIndex] = convoy
+
+    const newUpgrades = { ...upgrades, convoys }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
+  async function deployFromBay(shipId, bayIndex) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+
+    const upgrades = ship.upgrades || {}
+    const holdingBay = [...(upgrades.holdingBay || [])]
+    if (bayIndex < 0 || bayIndex >= holdingBay.length) throw new Error('Invalid bay index')
+
+    const storedUnit = holdingBay.splice(bayIndex, 1)[0]
+
+    const { error } = await supabase.from('wg_units').insert({
+      game_id: gameId,
+      owner_id: userId,
+      unit_type_id: storedUnit.typeId,
+      grid_row: ship.grid_row,
+      grid_col: ship.grid_col,
+      current_hp: storedUnit.hp,
+      board: 'ground',
+      has_moved: true,
+      has_attacked: true,
+      is_alive: true,
+    })
+    if (error) throw error
+
+    const newUpgrades = { ...upgrades, holdingBay }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
@@ -525,6 +650,38 @@ export function useGameState(gameId) {
         .update({ has_moved: false, has_attacked: false })
         .in('id', nextTeamUnits.map(u => u.id))
       if (error) throw error
+    }
+
+    // Advance convoy transit timers for the next team's command ships
+    const commandShips = nextTeamUnits.filter(u =>
+      u.wg_unit_types?.name === 'Command Ship'
+    )
+    for (const ship of commandShips) {
+      const shipUpgrades = ship.upgrades || {}
+      const convoys = shipUpgrades.convoys
+      if (!convoys || !Array.isArray(convoys)) continue
+
+      let changed = false
+      const holdingBay = [...(shipUpgrades.holdingBay || [])]
+      const updatedConvoys = convoys.map(convoy => {
+        if (!convoy.inTransit) return convoy
+        const newTurns = convoy.turnsLeft - 1
+        if (newTurns <= 0) {
+          changed = true
+          for (const u of (convoy.units || [])) {
+            if (holdingBay.length < 12) holdingBay.push(u)
+          }
+          return { units: [], inTransit: false, turnsLeft: 0 }
+        }
+        changed = true
+        return { ...convoy, turnsLeft: newTurns }
+      })
+
+      if (changed) {
+        await supabase.from('wg_units').update({
+          upgrades: { ...shipUpgrades, convoys: updatedConvoys, holdingBay }
+        }).eq('id', ship.id)
+      }
     }
 
     const freshNextTeam = []
@@ -613,6 +770,7 @@ export function useGameState(gameId) {
     currentPlayer, isMyTurn, isAdmin,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
     excavate, upgradeShipCompartment, levelUpUnit,
+    buildConvoy, loadUnitToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay,
     persistDiscoveredTiles, productionPerTurn, economy,
     refresh: fetchAll,
   }
