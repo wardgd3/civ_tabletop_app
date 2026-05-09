@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const COMPARTMENTS = [
+const COMMAND_SHIP_COMPARTMENTS = [
   {
     id: 'reactor',
     name: 'Reactor Core',
@@ -63,14 +63,86 @@ const COMPARTMENTS = [
   },
 ]
 
+const COMMAND_CENTER_COMPARTMENTS = [
+  {
+    id: 'shields',
+    name: 'Shields',
+    description: 'Defensive barrier around the base. Higher levels absorb more damage.',
+    icon: '⛨',
+    color: '#40a0e0',
+    upgrades: [
+      'Basic perimeter barrier',
+      'Reinforced energy shield',
+      'Layered defense grid',
+      'Adaptive shield network',
+      'Quantum barrier array',
+      'Maximum shielding achieved',
+    ],
+  },
+  {
+    id: 'cannon',
+    name: 'Cannons',
+    description: 'Base defense turrets. Higher levels increase range and firepower.',
+    icon: '☄',
+    color: '#e05050',
+    upgrades: [
+      'Basic turret emplacement',
+      'Twin-linked autocannon',
+      'Gatling defense battery',
+      'Heavy plasma turrets',
+      'Orbital strike cannon',
+      'Maximum firepower achieved',
+    ],
+  },
+  {
+    id: 'iron_dome',
+    name: 'Iron Dome',
+    description: 'Anti-projectile defense system. Higher levels intercept more threats.',
+    icon: '⊛',
+    color: '#60b060',
+    upgrades: [
+      'Basic interceptor array',
+      'Enhanced tracking system',
+      'Multi-target interception',
+      'Advanced countermeasures',
+      'Total coverage dome',
+      'Maximum interception achieved',
+    ],
+  },
+  {
+    id: 'reactor',
+    name: 'Reactor Core',
+    description: 'Powers all base systems. Higher levels increase energy output.',
+    icon: '⚛',
+    color: '#e6a020',
+    upgrades: [
+      'Basic generator',
+      'Enhanced power grid',
+      'Fusion reactor online',
+      'Advanced fusion core',
+      'Quantum power plant',
+      'Maximum output achieved',
+    ],
+  },
+]
+
 const UPGRADE_COST = { resource: 'iron', amount: 10 }
 const MAX_LEVEL = 5
+
+export function getCompartments(unitName) {
+  if (unitName === 'Command Ship') return COMMAND_SHIP_COMPARTMENTS
+  if (unitName === 'Command Center') return COMMAND_CENTER_COMPARTMENTS
+  return []
+}
 
 export default function CommandShipPanel({ unit, onClose, onUpgrade, onMove, isAdmin }) {
   const [selectedComp, setSelectedComp] = useState(null)
   const upgrades = unit.upgrades || {}
+  const unitName = unit.wg_unit_types?.name || 'Command Ship'
+  const compartments = getCompartments(unitName)
+  const isCommandShip = unitName === 'Command Ship'
 
-  const comp = selectedComp ? COMPARTMENTS.find(c => c.id === selectedComp) : null
+  const comp = selectedComp ? compartments.find(c => c.id === selectedComp) : null
   const compLevel = comp ? (upgrades[comp.id] || 0) : 0
 
   return (
@@ -78,12 +150,12 @@ export default function CommandShipPanel({ unit, onClose, onUpgrade, onMove, isA
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <img
-            src="/assets/mothership.png"
-            alt="Command Ship"
+            src={isCommandShip ? '/assets/mothership.png' : '/assets/command center.png'}
+            alt={unitName}
             className="w-6 h-6 object-contain"
           />
           <div>
-            <div className="text-xs font-semibold" style={{ color: '#c9d1d9' }}>Command Ship</div>
+            <div className="text-xs font-semibold" style={{ color: '#c9d1d9' }}>{unitName}</div>
             <div className="text-[10px] font-mono" style={{ color: '#6e7681' }}>HP {unit.current_hp}/{unit.wg_unit_types?.hp}</div>
           </div>
         </div>
@@ -112,7 +184,7 @@ export default function CommandShipPanel({ unit, onClose, onUpgrade, onMove, isA
         Compartments
       </div>
       <div className="grid grid-cols-2 gap-1.5">
-        {COMPARTMENTS.map(c => {
+        {compartments.map(c => {
           const level = upgrades[c.id] || 0
           const isSelected = selectedComp === c.id
           return (
