@@ -42,9 +42,9 @@ export const LUXURY_RESOURCES = {
 }
 
 export const SPACE_RESOURCES = {
-  TRITIUM:       { id: 'tritium',       name: 'Tritium',       icon: 'tritium.png',       chance: 0.09, largeChance: 0.45 },
-  ALUMINUM:      { id: 'aluminum',      name: 'Aluminum',      icon: 'aluminum.png',      chance: 0.18, largeChance: 0.27 },
-  QUASICRYSTAL:  { id: 'quasicrystal',  name: 'Quasicrystal',  icon: 'quasicrystals.png', chance: 0.015, largeChance: 0.10 },
+  TRITIUM:       { id: 'tritium',       name: 'Tritium',       icon: 'tritium.png',       chance: 0.063, largeChance: 0.315 },
+  ALUMINUM:      { id: 'aluminum',      name: 'Aluminum',      icon: 'aluminum.png',      chance: 0.126, largeChance: 0.189 },
+  QUASICRYSTAL:  { id: 'quasicrystal',  name: 'Quasicrystal',  icon: 'quasicrystals.png', chance: 0.0105, largeChance: 0.07 },
 }
 
 function seededRandom(seed) {
