@@ -130,6 +130,7 @@ export default function Game() {
           levelUpUnit={gameState.levelUpUnit}
           buildConvoy={gameState.buildConvoy}
           loadUnitToConvoy={gameState.loadUnitToConvoy}
+          loadFromBayToConvoy={gameState.loadFromBayToConvoy}
           unloadToHoldingBay={gameState.unloadToHoldingBay}
           sendConvoy={gameState.sendConvoy}
           deployFromBay={gameState.deployFromBay}

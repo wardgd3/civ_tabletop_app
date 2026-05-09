@@ -643,6 +643,29 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function loadFromBayToConvoy(shipId, convoyIndex, bayIndex) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+
+    const upgrades = ship.upgrades || {}
+    const convoys = [...(upgrades.convoys || [])]
+    const convoy = convoys[convoyIndex]
+    if (!convoy) throw new Error('Convoy not found')
+    if (convoy.inTransit) throw new Error('Convoy in transit')
+    if ((convoy.units || []).length >= 4) throw new Error('Convoy full')
+
+    const holdingBay = [...(upgrades.holdingBay || [])]
+    if (bayIndex < 0 || bayIndex >= holdingBay.length) throw new Error('Invalid bay index')
+
+    const removed = holdingBay.splice(bayIndex, 1)[0]
+    convoy.units = [...(convoy.units || []), removed]
+    convoys[convoyIndex] = convoy
+
+    const newUpgrades = { ...upgrades, convoys, holdingBay }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
@@ -804,7 +827,7 @@ export function useGameState(gameId) {
     currentPlayer, isMyTurn, isAdmin,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
     excavate, upgradeShipCompartment, levelUpUnit,
-    buildConvoy, loadUnitToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay,
+    buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay,
     persistDiscoveredTiles, productionPerTurn, economy,
     refresh: fetchAll,
   }

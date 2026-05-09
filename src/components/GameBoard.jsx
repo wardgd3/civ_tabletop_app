@@ -52,7 +52,7 @@ export default function GameBoard({
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
   excavate, upgradeShipCompartment, levelUpUnit,
-  buildConvoy, loadUnitToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay,
+  buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -967,6 +967,9 @@ export default function GameBoard({
             }}
             onLoadUnit={async (shipId, convoyIdx, groundUnitId) => {
               try { await loadUnitToConvoy(shipId, convoyIdx, groundUnitId) } catch (err) { setError(err.message) }
+            }}
+            onLoadFromBay={async (shipId, convoyIdx, bayIdx) => {
+              try { await loadFromBayToConvoy(shipId, convoyIdx, bayIdx) } catch (err) { setError(err.message) }
             }}
             onUnloadToHoldingBay={async (shipId, convoyIdx, unitIdx) => {
               try { await unloadToHoldingBay(shipId, convoyIdx, unitIdx) } catch (err) { setError(err.message) }

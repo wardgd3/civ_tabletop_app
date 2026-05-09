@@ -234,7 +234,7 @@ function getSlots(upgrades, compartmentId, slotCount) {
   return slots
 }
 
-function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onUnloadToHoldingBay, onSendConvoy, groundUnits, comp, isAdmin }) {
+function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, groundUnits, comp, isAdmin }) {
   const [selectedConvoy, setSelectedConvoy] = useState(null)
   const convoys = upgrades.convoys || []
   const maxConvoys = comp.slots
@@ -331,28 +331,46 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onUnloadToH
             </div>
           )}
 
-          {(convoys[selectedConvoy].units || []).length < CONVOY_CAPACITY && (
-            <div>
-              <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Available ground units:</div>
-              {groundUnits.length === 0 ? (
-                <div className="text-[9px]" style={{ color: '#4a5568' }}>No units available to load</div>
-              ) : (
-                <div className="flex flex-col gap-0.5 max-h-32 overflow-y-auto">
-                  {groundUnits.map(gu => (
-                    <button
-                      key={gu.id}
-                      onClick={() => onLoadUnit(unit.id, selectedConvoy, gu.id)}
-                      className="flex items-center justify-between p-1 rounded text-left cursor-pointer"
-                      style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
-                    >
-                      <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{gu.wg_unit_types?.name}</span>
-                      <span className="text-[8px]" style={{ color: comp.color }}>Load</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {(convoys[selectedConvoy].units || []).length < CONVOY_CAPACITY && (() => {
+            const bayUnits = upgrades.holdingBay || []
+            const hasAny = groundUnits.length > 0 || bayUnits.length > 0
+            return (
+              <div>
+                <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Available units:</div>
+                {!hasAny ? (
+                  <div className="text-[9px]" style={{ color: '#4a5568' }}>No units available to load</div>
+                ) : (
+                  <div className="flex flex-col gap-0.5 max-h-32 overflow-y-auto">
+                    {bayUnits.map((bu, idx) => (
+                      <button
+                        key={`bay-${idx}`}
+                        onClick={() => onLoadFromBay(unit.id, selectedConvoy, idx)}
+                        className="flex items-center justify-between p-1 rounded text-left cursor-pointer"
+                        style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{bu.typeName}</span>
+                          <span className="text-[7px] px-1 rounded" style={{ backgroundColor: '#a08040' + '30', color: '#a08040', border: '1px solid #a08040' + '50' }}>BAY</span>
+                        </div>
+                        <span className="text-[8px]" style={{ color: comp.color }}>Load</span>
+                      </button>
+                    ))}
+                    {groundUnits.map(gu => (
+                      <button
+                        key={gu.id}
+                        onClick={() => onLoadUnit(unit.id, selectedConvoy, gu.id)}
+                        className="flex items-center justify-between p-1 rounded text-left cursor-pointer"
+                        style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+                      >
+                        <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{gu.wg_unit_types?.name}</span>
+                        <span className="text-[8px]" style={{ color: comp.color }}>Load</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {(convoys[selectedConvoy].units || []).length > 0 && (
             <button
@@ -506,7 +524,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
 
 export default function CommandShipPanel({
   unit, onClose, onUpgrade, onMove, isAdmin,
-  onBuildConvoy, onLoadUnit, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay, onProduceUnit,
+  onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay, onProduceUnit,
   groundUnits, unitTypes, teamGold,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
@@ -633,6 +651,7 @@ export default function CommandShipPanel({
               upgrades={upgrades}
               onBuildConvoy={onBuildConvoy}
               onLoadUnit={onLoadUnit}
+              onLoadFromBay={onLoadFromBay}
               onUnloadToHoldingBay={onUnloadToHoldingBay}
               onSendConvoy={onSendConvoy}
               groundUnits={groundUnits || []}
