@@ -82,8 +82,10 @@ export default function GameBoard({
   const inspectedUnit = inspectedUnitId ? units.find(u => u.id === inspectedUnitId) || null : null
 
   const myColor = currentPlayer?.color
-  const myCommandCenter = (allUnits || units).find(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
-  const hasCommandCenter = !!myCommandCenter
+  const allMyUnits = allUnits || units
+  const hasCommandCenter = !!allMyUnits.find(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
+  const hasCommandStructureOnThisBoard = !!units.find(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
+  const myCommandCenter = units.find(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
   const myBuildings = units.filter(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Base' || u.wg_unit_types?.name === 'Factory'))
   const myStructures = myCommandCenter ? [myCommandCenter, ...myBuildings] : []
 
@@ -315,7 +317,7 @@ export default function GameBoard({
     const cells = []
     const isMiningStation = unitTypeData.name === 'Mining Station'
     if (unitTypeData.name === 'Command Center' || unitTypeData.name === 'Command Ship') {
-      if (hasCommandCenter) return []
+      if (hasCommandStructureOnThisBoard) return []
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (!getUnitAt(r, c) && !isImpassable(r, c) && isNearEdge(r, c) && isFarFromEnemyCCs(r, c)) {
@@ -978,7 +980,7 @@ export default function GameBoard({
               const isBuilding = ut.name === 'Base' || ut.name === 'Factory'
               const isCC = ut.name === 'Command Center' || ut.name === 'Command Ship'
               const needsCC = !isCC && !isBuilding && !hasCommandCenter
-              const alreadyHasCC = isCC && hasCommandCenter
+              const alreadyHasCC = isCC && hasCommandStructureOnThisBoard
               const buildingNeedsCC = isBuilding && !hasCommandCenter
               const cantAfford = !isAdmin && (economy?.teamGold ?? currentPlayer?.gold ?? 0) < ut.cost
               return (
