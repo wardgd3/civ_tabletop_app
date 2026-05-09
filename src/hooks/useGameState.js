@@ -45,17 +45,20 @@ export function useGameState(gameId) {
     ).length
     const baseCount = teamUnits.filter(u => u.wg_unit_types?.name === 'Base').length
     const factoryCount = teamUnits.filter(u => u.wg_unit_types?.name === 'Factory').length
+    let totalCoal = 0
     let totalExcavations = 0
     let luxuryIncome = 0
     for (const tp of teamPlayers) {
       const res = tp.resources || {}
+      totalCoal += res.coal || 0
       totalExcavations += res.excavations || 0
       for (const [resId] of Object.entries(res)) {
         const lux = LUXURY_BY_ID[resId]
         if (lux) luxuryIncome += lux.yield
       }
     }
-    const production = (ccCount * 4) + (baseCount * 2) + factoryCount
+    const activeFactories = Math.min(factoryCount, totalCoal)
+    const production = (ccCount * 4) + (baseCount * 2) + activeFactories
     const upkeep = teamUnits.length
     const excavationIncome = totalExcavations + luxuryIncome
     return { production, upkeep, excavationIncome, net: production + excavationIncome - upkeep, teamGold }
@@ -157,11 +160,6 @@ export function useGameState(gameId) {
     if (!unitType || !currentPlayer) throw new Error('Invalid deployment')
     if (!isAdmin && teamGold < unitType.cost) throw new Error('Not enough production')
 
-    if (!isAdmin && unitType.name === 'Factory') {
-      const teamCoal = teamPlayers.reduce((s, p) => s + ((p.resources || {}).coal || 0), 0)
-      if (teamCoal < 2) throw new Error('Not enough coal (need 2)')
-    }
-
     const occupied = units.find(u => u.grid_row === row && u.grid_col === col)
     if (occupied) throw new Error('Cell is occupied')
 
@@ -229,21 +227,6 @@ export function useGameState(gameId) {
         if (deduct > 0) {
           await supabase.from('wg_game_players').update({ gold: tp.gold - deduct }).eq('id', tp.id)
           remaining -= deduct
-        }
-      }
-
-      if (unitType.name === 'Factory') {
-        let coalRemaining = 2
-        for (const tp of teamPlayers) {
-          if (coalRemaining <= 0) break
-          const res = { ...(tp.resources || {}) }
-          const playerCoal = res.coal || 0
-          if (playerCoal > 0) {
-            const deduct = Math.min(playerCoal, coalRemaining)
-            res.coal = playerCoal - deduct
-            coalRemaining -= deduct
-            await supabase.from('wg_game_players').update({ resources: res }).eq('id', tp.id)
-          }
         }
       }
     }
@@ -425,6 +408,40 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function levelUpUnit(unitId) {
+    const unit = units.find(u => u.id === unitId)
+    if (!unit) throw new Error('Unit not found')
+    if (unit.owner_id !== userId) throw new Error('Not your unit')
+
+    const upgrades = unit.upgrades || {}
+    const currentLevel = upgrades.level || 0
+    if (currentLevel >= 5) throw new Error('Already max level')
+
+    const cost = (currentLevel + 1) * 5
+    if (!isAdmin && teamGold < cost) throw new Error(`Not enough gold (need ${cost})`)
+
+    if (!isAdmin) {
+      let remaining = cost
+      for (const tp of teamPlayers) {
+        if (remaining <= 0) break
+        const deduct = Math.min(tp.gold || 0, remaining)
+        if (deduct > 0) {
+          await supabase.from('wg_game_players').update({ gold: tp.gold - deduct }).eq('id', tp.id)
+          remaining -= deduct
+        }
+      }
+    }
+
+    const newUpgrades = { ...upgrades, level: currentLevel + 1 }
+    const { error } = await supabase
+      .from('wg_units')
+      .update({ upgrades: newUpgrades })
+      .eq('id', unitId)
+    if (error) throw error
+
+    await fetchAll()
+  }
+
   async function upgradeShipCompartment(unitId, compartmentId) {
     const unit = units.find(u => u.id === unitId)
     if (!unit) throw new Error('Unit not found')
@@ -447,37 +464,6 @@ export function useGameState(gameId) {
     }
 
     const newUpgrades = { ...upgrades, [compartmentId]: currentLevel + 1 }
-    const { error } = await supabase
-      .from('wg_units')
-      .update({ upgrades: newUpgrades })
-      .eq('id', unitId)
-    if (error) throw error
-
-    await fetchAll()
-  }
-
-  async function upgradeUnit(unitId, attribute) {
-    const unit = units.find(u => u.id === unitId)
-    if (!unit) throw new Error('Unit not found')
-
-    const upgrades = unit.upgrades || {}
-    const currentLevel = upgrades[attribute] || 0
-    if (currentLevel >= 5) throw new Error('Already max level')
-
-    const ironCost = 10
-    const resources = { ...(currentPlayer.resources || {}) }
-    if (!isAdmin && (resources.iron || 0) < ironCost) throw new Error('Not enough iron')
-
-    if (!isAdmin) {
-      resources.iron = (resources.iron || 0) - ironCost
-      const { error: resError } = await supabase
-        .from('wg_game_players')
-        .update({ resources })
-        .eq('id', currentPlayer.id)
-      if (resError) throw resError
-    }
-
-    const newUpgrades = { ...upgrades, [attribute]: currentLevel + 1 }
     const { error } = await supabase
       .from('wg_units')
       .update({ upgrades: newUpgrades })
@@ -545,29 +531,41 @@ export function useGameState(gameId) {
     ).length
     const baseCount = nextTeamUnits.filter(u => u.wg_unit_types?.name === 'Base').length
     const factoryCount = nextTeamUnits.filter(u => u.wg_unit_types?.name === 'Factory').length
+    let totalCoal = 0
     let totalExcavations = 0
     let luxuryIncome = 0
     for (const np of freshNextTeam) {
       const res = np.resources || {}
+      totalCoal += res.coal || 0
       totalExcavations += res.excavations || 0
       for (const [resId] of Object.entries(res)) {
         const lux = LUXURY_BY_ID[resId]
         if (lux) luxuryIncome += lux.yield
       }
     }
-    const production = (ccCount * 4) + (baseCount * 2) + factoryCount
+    const activeFactories = Math.min(factoryCount, totalCoal)
+    const production = (ccCount * 4) + (baseCount * 2) + activeFactories
     const unitUpkeep = nextTeamUnits.length
     const excavationIncome = totalExcavations + luxuryIncome
 
     const currentTeamGold = freshNextTeam.reduce((s, p) => s + (p.gold || 0), 0)
     const newTeamGold = Math.max(0, currentTeamGold + production + excavationIncome - unitUpkeep)
 
+    let coalToDeduct = activeFactories
     for (const np of freshNextTeam) {
+      const npResources = { ...(np.resources || {}) }
+      const playerCoal = npResources.coal || 0
+      if (coalToDeduct > 0 && playerCoal > 0) {
+        const deduct = Math.min(playerCoal, coalToDeduct)
+        npResources.coal = playerCoal - deduct
+        coalToDeduct -= deduct
+      }
       await supabase
         .from('wg_game_players')
         .update({
           gold: Math.round(newTeamGold / nextTeamPlayers.length),
           has_ended_turn: false,
+          resources: npResources,
         })
         .eq('id', np.id)
     }
@@ -603,7 +601,7 @@ export function useGameState(gameId) {
     game, players, units, unitTypes, tiles, discoveredTiles, loading,
     currentPlayer, isMyTurn, isAdmin,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-    excavate, upgradeShipCompartment, upgradeUnit,
+    excavate, upgradeShipCompartment, levelUpUnit,
     persistDiscoveredTiles, productionPerTurn, economy,
     refresh: fetchAll,
   }

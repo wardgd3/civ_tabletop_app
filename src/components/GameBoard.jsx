@@ -45,7 +45,7 @@ export default function GameBoard({
   game, players, units, unitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-  excavate, upgradeShipCompartment, upgradeUnit,
+  excavate, upgradeShipCompartment, levelUpUnit,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -784,6 +784,9 @@ export default function GameBoard({
                 <span className="flex items-center gap-2 font-semibold" style={{ color: '#c9d1d9' }}>
                   <img src={`/assets/${encodeURIComponent(selectedUnit.wg_unit_types?.icon)}`} alt={selectedUnit.wg_unit_types?.name} className="w-20 h-20 object-contain" />
                   {selectedUnit.wg_unit_types?.name}
+                  {(selectedUnit.upgrades?.level || 0) > 0 && (
+                    <span className="text-xs font-mono" style={{ color: '#cca43b' }}>Lv{selectedUnit.upgrades.level}</span>
+                  )}
                 </span>
                 <span className="font-mono" style={{ color: '#6e7681' }}>HP {selectedUnit.current_hp}/{selectedUnit.wg_unit_types?.hp}</span>
               </div>
@@ -862,43 +865,42 @@ export default function GameBoard({
                   Trade with Space Guild
                 </button>
               )}
-              {(() => {
-                const exLevel = (selectedUnit.upgrades || {}).example || 0
+              {selectedUnit.owner_id === currentPlayer?.player_id && (() => {
+                const unitLevel = selectedUnit.upgrades?.level || 0
+                const maxLevel = 5
+                const upgradeCost = (unitLevel + 1) * 5
+                const canAfford = isAdmin || (economy?.teamGold ?? 0) >= upgradeCost
                 return (
-                  <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                  <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: '#c9d1d9' }}>
-                        ★ Example
-                      </span>
-                      <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>
-                        Lv {exLevel}/5
-                      </span>
+                      <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>Unit Level</span>
+                      <span className="text-[10px] font-mono" style={{ color: '#8b949e' }}>Lv {unitLevel}/{maxLevel}</span>
                     </div>
-                    <div className="flex gap-0.5 mb-1.5">
-                      {Array.from({ length: 5 }, (_, i) => (
+                    <div className="flex gap-0.5 mb-2">
+                      {Array.from({ length: maxLevel }, (_, i) => (
                         <div
                           key={i}
-                          className="flex-1 h-1 rounded-full"
+                          className="flex-1 h-1.5 rounded-full"
                           style={{
-                            backgroundColor: i < exLevel ? '#e6a020' : '#21262d',
-                            border: `1px solid ${i < exLevel ? '#e6a020' : '#30363d'}`,
+                            backgroundColor: i < unitLevel ? '#cca43b' : '#21262d',
+                            border: `1px solid ${i < unitLevel ? '#cca43b' : '#30363d'}`,
                           }}
                         />
                       ))}
                     </div>
-                    {exLevel < 5 ? (
+                    {unitLevel < maxLevel ? (
                       <button
                         onClick={async () => {
-                          try { await upgradeUnit(selectedUnit.id, 'example') } catch (err) { setError(err.message) }
+                          try { await levelUpUnit(selectedUnit.id) } catch (err) { setError(err.message) }
                         }}
-                        className="w-full py-1 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                        style={{ backgroundColor: '#e6a02020', color: '#e6a020', border: '1px solid #e6a02040' }}
+                        disabled={!canAfford}
+                        className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
+                        style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
                       >
-                        <img src="/assets/iron.png" alt="Iron" className="w-3 h-3 object-contain" />
-                        10 Iron — Upgrade
+                        Level Up (⚒{upgradeCost})
                       </button>
                     ) : (
-                      <div className="text-[10px] font-semibold text-center py-1" style={{ color: '#e6a020' }}>
+                      <div className="text-[10px] font-semibold text-center py-1" style={{ color: '#cca43b' }}>
                         MAX LEVEL
                       </div>
                     )}
@@ -969,14 +971,11 @@ export default function GameBoard({
               const alreadyHasCC = isCC && hasCommandCenter
               const buildingNeedsCC = isBuilding && !hasCommandCenter
               const cantAfford = !isAdmin && (economy?.teamGold ?? currentPlayer?.gold ?? 0) < ut.cost
-              const needsCoal = ut.name === 'Factory' && !isAdmin
-              const teamCoal = needsCoal ? allPlayers.filter(p => p.color === currentPlayer?.color).reduce((s, p) => s + ((p.resources || {}).coal || 0), 0) : 0
-              const cantAffordCoal = needsCoal && teamCoal < 2
               return (
               <button
                 key={ut.id}
                 onClick={() => setSelectedUnitType(ut.id)}
-                disabled={cantAfford || cantAffordCoal || needsCC || alreadyHasCC || buildingNeedsCC}
+                disabled={cantAfford || needsCC || alreadyHasCC || buildingNeedsCC}
                 className="flex flex-col lg:flex-row items-center lg:justify-between p-2 lg:p-3 rounded text-sm lg:text-base transition-colors disabled:opacity-20 cursor-pointer gap-1 lg:gap-3"
                 style={selectedUnitType === ut.id
                   ? { backgroundColor: '#1a2a3a', color: '#c9d1d9', border: '1px solid #3a4a5a' }
@@ -984,9 +983,7 @@ export default function GameBoard({
               >
                 <img src={`/assets/${encodeURIComponent(ut.icon)}`} alt={ut.name} className="w-10 h-10 lg:w-16 lg:h-16 object-contain shrink-0" />
                 <span className="font-medium text-xs lg:text-sm truncate max-w-full">{ut.name}</span>
-                <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>
-                  ⚒{ut.cost}{ut.name === 'Factory' && ' +2 coal'}
-                </span>
+                <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>⚒{ut.cost}</span>
               </button>
               )
             })}
@@ -1149,6 +1146,20 @@ export default function GameBoard({
                         className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full"
                         style={{ backgroundColor: getPlayerColor(unit.owner_id), border: '1px solid #12161d' }}
                       />
+                      {(unit.upgrades?.level || 0) > 0 && (
+                        <div
+                          className="absolute -top-0.5 -left-0.5 flex items-center justify-center rounded-full"
+                          style={{
+                            width: 7, height: 7,
+                            backgroundColor: '#1a1a0d',
+                            border: '1px solid #cca43b',
+                            fontSize: 5, fontWeight: 'bold',
+                            color: '#cca43b', lineHeight: 1,
+                          }}
+                        >
+                          {unit.upgrades.level}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1189,7 +1200,12 @@ export default function GameBoard({
                           className="object-contain"
                           style={{ maxHeight: 80, maxWidth: 80 }}
                         />
-                        <div className="text-xs font-semibold text-center" style={{ color: '#c9d1d9' }}>{hu.wg_unit_types.name}</div>
+                        <div className="text-xs font-semibold text-center" style={{ color: '#c9d1d9' }}>
+                          {hu.wg_unit_types.name}
+                          {(hu.upgrades?.level || 0) > 0 && (
+                            <span className="ml-1 font-mono" style={{ color: '#cca43b' }}>Lv{hu.upgrades.level}</span>
+                          )}
+                        </div>
                         <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>HP {hu.current_hp}/{hu.wg_unit_types.hp}</div>
                       </div>
                     )}
@@ -1291,31 +1307,11 @@ export default function GameBoard({
             <div className="w-54 h-full overflow-y-auto p-3" style={{ backgroundColor: '#0d1117', borderLeft: '1px solid #2a3140' }}>
               <button
                 onClick={onExitFullscreen}
-                className="mb-2 px-2 py-1 text-lg font-bold rounded transition-colors cursor-pointer"
-                style={{ backgroundColor: '#2a1a1a', color: '#f47067', border: '1px solid #3d2525', lineHeight: 1 }}
+                className="w-full mb-3 px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                style={{ backgroundColor: '#2a1a1a', color: '#f47067', border: '1px solid #3d2525' }}
               >
-                ✕
+                Exit Fullscreen
               </button>
-              <div className="flex rounded overflow-hidden mb-3" style={{ border: '1px solid #30363d' }}>
-                <button
-                  onClick={() => setActiveBoard('ground')}
-                  className="flex-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors cursor-pointer"
-                  style={activeBoard === 'ground'
-                    ? { backgroundColor: '#1c3043', color: '#6cb4e6' }
-                    : { backgroundColor: '#21262d', color: '#4a5568' }}
-                >
-                  Ground
-                </button>
-                <button
-                  onClick={() => setActiveBoard('space')}
-                  className="flex-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors cursor-pointer"
-                  style={activeBoard === 'space'
-                    ? { backgroundColor: '#2a1a3a', color: '#c080e0' }
-                    : { backgroundColor: '#21262d', color: '#4a5568' }}
-                >
-                  Space
-                </button>
-              </div>
               {sidebarContent}
             </div>
           )}

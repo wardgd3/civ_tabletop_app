@@ -125,7 +125,7 @@ export default function Game() {
           endTurn={gameState.endTurn}
           excavate={gameState.excavate}
           upgradeShipCompartment={gameState.upgradeShipCompartment}
-          upgradeUnit={gameState.upgradeUnit}
+          levelUpUnit={gameState.levelUpUnit}
           isAdmin={gameState.isAdmin}
           productionPerTurn={gameState.productionPerTurn}
           economy={gameState.economy}
