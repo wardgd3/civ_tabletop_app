@@ -160,10 +160,10 @@ export function useGameState(gameId) {
     if (!unitType || !currentPlayer) throw new Error('Invalid deployment')
     if (!isAdmin && teamGold < unitType.cost) throw new Error('Not enough production')
 
-    const occupied = units.find(u => u.grid_row === row && u.grid_col === col)
-    if (occupied) throw new Error('Cell is occupied')
-
     const unitBoard = unitType.board || 'ground'
+
+    const occupied = units.find(u => u.grid_row === row && u.grid_col === col && (u.board || 'ground') === unitBoard)
+    if (occupied) throw new Error('Cell is occupied')
     const boardTiles = tiles.filter(t => (t.board || 'ground') === unitBoard)
 
     const myCC = units.find(u => u.owner_id === userId && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
@@ -254,7 +254,7 @@ export function useGameState(gameId) {
     const dist = hexDistance(unit.grid_row, unit.grid_col, newRow, newCol)
     if (dist > maxRange) throw new Error('Too far')
 
-    const occupied = units.find(u => u.grid_row === newRow && u.grid_col === newCol && u.id !== unitId)
+    const occupied = units.find(u => u.grid_row === newRow && u.grid_col === newCol && u.id !== unitId && (u.board || 'ground') === unitBoard)
     if (occupied) throw new Error('Cell is occupied')
 
     if (destTile) {
