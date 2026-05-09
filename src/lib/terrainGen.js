@@ -769,6 +769,16 @@ export function generateSpaceTerrain(rows, cols, seed) {
     }
   }
 
+  // Place 4-8 stars scattered across the map
+  const starCount = 4 + Math.floor(rand() * 5)
+  for (let i = 0; i < starCount; i++) {
+    const sr = 3 + Math.floor(rand() * (rows - 6))
+    const sc = 3 + Math.floor(rand() * (cols - 6))
+    const t = tileAt(sr, sc)
+    if (t.terrain === 'asteroid' || t.terrain === 'large_asteroid') continue
+    t.terrain = 'star'
+  }
+
   placeSpaceResources(tiles, rand)
 
   const centerR = Math.floor(rows / 2)
