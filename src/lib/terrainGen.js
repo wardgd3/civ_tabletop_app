@@ -124,8 +124,8 @@ export function generateTerrain(rows, cols, seed) {
     }
   }
 
-  generateMountainRanges(tiles, rows, cols, rand)
   const mainRiver = generateMainRiver(tiles, rows, cols, elevMap, rand)
+  generateMountainRanges(tiles, rows, cols, rand, mainRiver)
   generateRivers(tiles, rows, cols, elevMap, rand)
   generateLargeLake(tiles, rows, cols, elevMap, rand, mainRiver)
   generateLakes(tiles, rows, cols, elevMap, moistMap)
@@ -135,79 +135,127 @@ export function generateTerrain(rows, cols, seed) {
   return tiles
 }
 
-function generateMountainRanges(tiles, rows, cols, rand) {
+function generateMountainRanges(tiles, rows, cols, rand, mainRiver) {
   const tileAt = (r, c) => tiles[r * cols + c]
   const allMountains = new Set()
-  const rangeCount = 3 + Math.floor(rand() * 2)
+  const riverSet = mainRiver ? mainRiver.riverTiles : new Set()
 
+  let riverFlowsHorizontal = true
+  if (mainRiver && mainRiver.path.length > 1) {
+    const first = mainRiver.path[0]
+    const last = mainRiver.path[mainRiver.path.length - 1]
+    riverFlowsHorizontal = Math.abs(last[1] - first[1]) > Math.abs(last[0] - first[0])
+  }
+
+  const rangeCount = 1 + Math.floor(rand() * 2)
   for (let i = 0; i < rangeCount; i++) {
-    let sr, sc, attempts = 0
-    do {
-      sr = 3 + Math.floor(rand() * (rows - 6))
-      sc = 3 + Math.floor(rand() * (cols - 6))
-      attempts++
-    } while (attempts < 80 && allMountains.has(`${sr}-${sc}`))
-    if (attempts >= 80) continue
+    buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, riverFlowsHorizontal)
+  }
+}
 
-    const length = 10 + Math.floor(rand() * 10)
-    const chain = [[sr, sc]]
-    allMountains.add(`${sr}-${sc}`)
-    let cr = sr, cc = sc
-    let dirR = rand() < 0.5 ? -1 : 1
-    let dirC = rand() < 0.5 ? -1 : 1
+function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, riverFlowsHorizontal) {
+  const tileAt = (r, c) => tiles[r * cols + c]
 
-    for (let step = 1; step < length; step++) {
-      if (rand() < 0.3) {
-        if (rand() < 0.5) dirR = dirR === 0 ? (rand() < 0.5 ? -1 : 1) : (rand() < 0.3 ? 0 : -dirR)
-        else dirC = dirC === 0 ? (rand() < 0.5 ? -1 : 1) : (rand() < 0.3 ? 0 : -dirC)
+  // Pick start and end on opposite edges, perpendicular to river
+  let sr, sc, er, ec
+  if (riverFlowsHorizontal) {
+    sc = Math.floor(cols * (0.15 + rand() * 0.7))
+    ec = sc + Math.floor((rand() - 0.5) * cols * 0.3)
+    ec = Math.max(0, Math.min(cols - 1, ec))
+    sr = 0
+    er = rows - 1
+  } else {
+    sr = Math.floor(rows * (0.15 + rand() * 0.7))
+    er = sr + Math.floor((rand() - 0.5) * rows * 0.3)
+    er = Math.max(0, Math.min(rows - 1, er))
+    sc = 0
+    ec = cols - 1
+  }
+
+  // Walk from start to end edge, similar to river generation
+  const noiseScale = 0.15
+  const wanderStrength = 4
+
+  const key = (r, c) => r * cols + c
+  const INF = 1e9
+  const dist = new Float64Array(rows * cols).fill(INF)
+  const prev = new Int32Array(rows * cols).fill(-1)
+  dist[key(sr, sc)] = 0
+
+  const heap = [[0, sr, sc]]
+  while (heap.length > 0) {
+    heap.sort((a, b) => a[0] - b[0])
+    const [d, cr, cc] = heap.shift()
+    if (cr === er && cc === ec) break
+    if (d > dist[key(cr, cc)]) continue
+
+    for (const [nr, nc] of hexNeighbors(cr, cc, rows, cols)) {
+      if (riverSet.has(`${nr}-${nc}`)) continue
+      const t = tileAt(nr, nc).terrain
+      let cost = 1
+      if (t === 'river' || t === 'lake') cost = 100
+
+      const seed1 = Math.sin(nr * 5.7 + nc * 9.3) * 43758.5453
+      const wander = (Math.sin(seed1 + nr * noiseScale + nc * noiseScale * 2.3) + 1) * wanderStrength
+      cost += wander
+
+      const nd = d + cost
+      if (nd < dist[key(nr, nc)]) {
+        dist[key(nr, nc)] = nd
+        prev[key(nr, nc)] = key(cr, cc)
+        heap.push([nd, nr, nc])
       }
-
-      const neighbors = hexNeighbors(cr, cc, rows, cols)
-      const scored = neighbors
-        .filter(([nr, nc]) => nr >= 2 && nr < rows - 2 && nc >= 2 && nc < cols - 2 && !allMountains.has(`${nr}-${nc}`))
-        .map(([nr, nc]) => {
-          const dr = nr - cr, dc = nc - cc
-          let score = 0
-          if (dirR !== 0 && Math.sign(dr) === dirR) score += 2
-          if (dirC !== 0 && Math.sign(dc) === dirC) score += 2
-          if (dirR === 0 && dr === 0) score += 1
-          if (dirC === 0 && dc === 0) score += 1
-          score += rand() * 1.5
-          return { r: nr, c: nc, score }
-        })
-
-      if (scored.length === 0) break
-      scored.sort((a, b) => b.score - a.score)
-      const pick = scored[0]
-      cr = pick.r
-      cc = pick.c
-      chain.push([cr, cc])
-      allMountains.add(`${cr}-${cc}`)
     }
+  }
 
-    if (chain.length < 4) {
-      for (const [r, c] of chain) allMountains.delete(`${r}-${c}`)
-      continue
+  if (dist[key(er, ec)] >= INF) return
+
+  const path = []
+  let cur = key(er, ec)
+  while (cur !== -1) {
+    const r = Math.floor(cur / cols)
+    const c = cur % cols
+    path.push([r, c])
+    cur = prev[cur]
+  }
+  path.reverse()
+
+  // Place 2-3 gaps (passes) through the range for gameplay
+  const gapCount = 2 + Math.floor(rand() * 2)
+  const gapIndices = new Set()
+  for (let g = 0; g < gapCount; g++) {
+    const gapCenter = Math.floor(path.length * (0.15 + rand() * 0.7))
+    const gapSize = 1 + Math.floor(rand() * 2)
+    for (let offset = -gapSize; offset <= gapSize; offset++) {
+      const idx = gapCenter + offset
+      if (idx >= 0 && idx < path.length) gapIndices.add(idx)
     }
+  }
 
-    for (const [r, c] of chain) {
-      tileAt(r, c).terrain = 'mountain'
-    }
+  // Place mountains along the path, skipping gaps
+  for (let i = 0; i < path.length; i++) {
+    if (gapIndices.has(i)) continue
+    const [r, c] = path[i]
+    if (riverSet.has(`${r}-${c}`)) continue
+    tileAt(r, c).terrain = 'mountain'
+    allMountains.add(`${r}-${c}`)
+  }
 
-    let widened = 0
-    for (let j = 2; j < chain.length - 2; j += 3) {
-      if (widened >= 3 && rand() < 0.5) continue
-      const [mr, mc] = chain[j]
-      const neighbors = hexNeighbors(mr, mc, rows, cols)
-      const picks = neighbors.filter(([nr, nc]) =>
-        !allMountains.has(`${nr}-${nc}`) && nr >= 2 && nr < rows - 2 && nc >= 2 && nc < cols - 2
-      )
-      if (picks.length > 0) {
-        const [wr, wc] = picks[Math.floor(rand() * picks.length)]
-        tileAt(wr, wc).terrain = 'mountain'
-        allMountains.add(`${wr}-${wc}`)
-        widened++
-      }
+  // Occasionally widen to 2 tiles for visual weight
+  for (let j = 3; j < path.length - 3; j += 3) {
+    if (gapIndices.has(j)) continue
+    if (rand() < 0.4) continue
+    const [mr, mc] = path[j]
+    const neighbors = hexNeighbors(mr, mc, rows, cols)
+    const picks = neighbors.filter(([nr, nc]) =>
+      !allMountains.has(`${nr}-${nc}`) && !riverSet.has(`${nr}-${nc}`) &&
+      nr >= 0 && nr < rows && nc >= 0 && nc < cols &&
+      tileAt(nr, nc).terrain !== 'river' && tileAt(nr, nc).terrain !== 'lake'
+    )
+    if (picks.length > 0) {
+      const [wr, wc] = picks[Math.floor(rand() * picks.length)]
+      tileAt(wr, wc).terrain = 'mountain'
+      allMountains.add(`${wr}-${wc}`)
     }
   }
 }
@@ -305,61 +353,64 @@ function generateMainRiver(tiles, rows, cols, elevMap, rand) {
     tileAt(r, c).hasRiver = true
   }
 
-  const sideChoices = []
+  // Widen river: for each path tile, add neighbors on both perpendicular sides
   for (let i = 0; i < path.length; i++) {
     const [r, c] = path[i]
-    const prev = i > 0 ? path[i - 1] : path[i]
-    const next = i < path.length - 1 ? path[i + 1] : path[i]
-    const dr = next[0] - prev[0]
-    const dc = next[1] - prev[1]
+    const prevPt = i > 0 ? path[i - 1] : path[i]
+    const nextPt = i < path.length - 1 ? path[i + 1] : path[i]
+    const dr = nextPt[0] - prevPt[0]
+    const dc = nextPt[1] - prevPt[1]
     const perpR = -dc
     const perpC = dr
 
     const neighbors = hexNeighbors(r, c, rows, cols)
+
+    // Sort neighbors into perpendicular sides
     let bestSame = null, bestSameScore = -1e9
     let bestOpp = null, bestOppScore = -1e9
-
     for (const [nr, nc] of neighbors) {
-      if (riverTiles.has(`${nr}-${nc}`)) continue
       const dot = (nr - r) * perpR + (nc - c) * perpC
-      const score = dot
-      if (dot >= 0) {
-        if (score > bestSameScore) { bestSameScore = score; bestSame = [nr, nc] }
-      } else {
-        if (-score > bestOppScore) { bestOppScore = -score; bestOpp = [nr, nc] }
+      if (dot > 0 && dot > bestSameScore) { bestSameScore = dot; bestSame = [nr, nc] }
+      if (dot < 0 && -dot > bestOppScore) { bestOppScore = -dot; bestOpp = [nr, nc] }
+    }
+
+    // Add one tile on each perpendicular side (guarantees 3-wide minimum)
+    for (const side of [bestSame, bestOpp]) {
+      if (!side) continue
+      const [nr, nc] = side
+      if (!riverTiles.has(`${nr}-${nc}`)) {
+        tileAt(nr, nc).terrain = 'river'
+        tileAt(nr, nc).hasRiver = true
+        riverTiles.add(`${nr}-${nc}`)
+      }
+
+      // Add a second ring tile beyond each side (4-5 wide base)
+      const outerNeighbors = hexNeighbors(nr, nc, rows, cols)
+      for (const [onr, onc] of outerNeighbors) {
+        if (riverTiles.has(`${onr}-${onc}`)) continue
+        const dot = (onr - r) * perpR + (onc - c) * perpC
+        // Only expand further out on the same side
+        if ((side === bestSame && dot > 0) || (side === bestOpp && dot < 0)) {
+          tileAt(onr, onc).terrain = 'river'
+          tileAt(onr, onc).hasRiver = true
+          riverTiles.add(`${onr}-${onc}`)
+          break
+        }
       }
     }
-    sideChoices.push({ same: bestSame, opp: bestOpp })
   }
 
-  let prevChoice = null
-  for (let i = 0; i < path.length; i++) {
-    const pick = sideChoices[i]
-    const is3Wide = rand() < 0.1
-
-    let chosen = pick.same || pick.opp
-    if (prevChoice && pick.same) {
-      const [pr, pc] = prevChoice
-      const ds = pick.same ? Math.abs(pick.same[0] - pr) + Math.abs(pick.same[1] - pc) : 99
-      const dopp = pick.opp ? Math.abs(pick.opp[0] - pr) + Math.abs(pick.opp[1] - pc) : 99
-      chosen = ds <= dopp ? pick.same : (pick.opp || pick.same)
-    }
-
-    if (chosen) {
-      const [br, bc] = chosen
-      if (!riverTiles.has(`${br}-${bc}`)) {
-        tileAt(br, bc).terrain = 'river'
-        tileAt(br, bc).hasRiver = true
-        riverTiles.add(`${br}-${bc}`)
-      }
-      prevChoice = chosen
-
-      if (is3Wide) {
-        const opp = chosen === pick.same ? pick.opp : pick.same
-        if (opp && !riverTiles.has(`${opp[0]}-${opp[1]}`)) {
-          tileAt(opp[0], opp[1]).terrain = 'river'
-          tileAt(opp[0], opp[1]).hasRiver = true
-          riverTiles.add(`${opp[0]}-${opp[1]}`)
+  // Guarantee pass: any path tile with fewer than 2 river neighbors gets filled
+  for (const [r, c] of path) {
+    const neighbors = hexNeighbors(r, c, rows, cols)
+    const riverNeighborCount = neighbors.filter(([nr, nc]) => riverTiles.has(`${nr}-${nc}`)).length
+    if (riverNeighborCount < 2) {
+      for (const [nr, nc] of neighbors) {
+        if (!riverTiles.has(`${nr}-${nc}`)) {
+          tileAt(nr, nc).terrain = 'river'
+          tileAt(nr, nc).hasRiver = true
+          riverTiles.add(`${nr}-${nc}`)
+          if (neighbors.filter(([nr2, nc2]) => riverTiles.has(`${nr2}-${nc2}`)).length >= 2) break
         }
       }
     }
