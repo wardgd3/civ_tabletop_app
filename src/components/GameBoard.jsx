@@ -958,8 +958,8 @@ export default function GameBoard({
               setSelectedUnitId(csUnit.id)
               setMode('move')
             }}
-            onUpgrade={async (unitId, compartment) => {
-              try { await upgradeShipCompartment(unitId, compartment) } catch (err) { setError(err.message) }
+            onUpgrade={async (unitId, compartment, slotIndex, tierLevel) => {
+              try { await upgradeShipCompartment(unitId, compartment, slotIndex, tierLevel) } catch (err) { setError(err.message) }
             }}
           />
         )

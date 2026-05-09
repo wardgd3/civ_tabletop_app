@@ -445,19 +445,24 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
-  async function upgradeShipCompartment(unitId, compartmentId) {
+  async function upgradeShipCompartment(unitId, compartmentId, slotIndex, tierLevel) {
     const unit = units.find(u => u.id === unitId)
     if (!unit) throw new Error('Unit not found')
 
     const upgrades = unit.upgrades || {}
-    const currentLevel = upgrades[compartmentId] || 0
-    if (currentLevel >= 5) throw new Error('Already max level')
+    const existing = upgrades[compartmentId]
+    const slots = Array.isArray(existing) ? [...existing] : []
 
-    const ironCost = 10
+    const currentTier = slots[slotIndex] || 0
+    if (tierLevel <= currentTier) throw new Error('Already at this tier or higher')
+
+    const tierCosts = [0, 10, 25]
+    const ironCost = tierCosts[tierLevel - 1] || 0
+
     const resources = { ...(currentPlayer.resources || {}) }
-    if (!isAdmin && (resources.iron || 0) < ironCost) throw new Error('Not enough iron')
+    if (!isAdmin && ironCost > 0 && (resources.iron || 0) < ironCost) throw new Error('Not enough iron')
 
-    if (!isAdmin) {
+    if (!isAdmin && ironCost > 0) {
       resources.iron = (resources.iron || 0) - ironCost
       const { error: resError } = await supabase
         .from('wg_game_players')
@@ -466,7 +471,10 @@ export function useGameState(gameId) {
       if (resError) throw resError
     }
 
-    const newUpgrades = { ...upgrades, [compartmentId]: currentLevel + 1 }
+    while (slots.length <= slotIndex) slots.push(0)
+    slots[slotIndex] = tierLevel
+
+    const newUpgrades = { ...upgrades, [compartmentId]: slots }
     const { error } = await supabase
       .from('wg_units')
       .update({ upgrades: newUpgrades })
