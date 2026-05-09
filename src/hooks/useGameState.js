@@ -166,8 +166,9 @@ export function useGameState(gameId) {
     if (occupied) throw new Error('Cell is occupied')
     const boardTiles = tiles.filter(t => (t.board || 'ground') === unitBoard)
 
-    const myCC = units.find(u => u.owner_id === userId && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
-    const myBuildings = units.filter(u => u.owner_id === userId && (u.wg_unit_types?.name === 'Base' || u.wg_unit_types?.name === 'Factory'))
+    const myCC = units.find(u => u.owner_id === userId && (u.board || 'ground') === unitBoard && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
+    const myCCAnyBoard = units.find(u => u.owner_id === userId && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
+    const myBuildings = units.filter(u => u.owner_id === userId && (u.board || 'ground') === unitBoard && (u.wg_unit_types?.name === 'Base' || u.wg_unit_types?.name === 'Factory'))
     const myStructures = myCC ? [myCC, ...myBuildings] : []
 
     function distToNearest(r, c, structs) {
@@ -182,18 +183,20 @@ export function useGameState(gameId) {
     const isMiningStation = unitType.name === 'Mining Station'
 
     if (unitType.name === 'Command Center' || unitType.name === 'Command Ship') {
-      if (myCC) throw new Error('Only one Command Center/Ship allowed')
+      if (myCC) throw new Error('Only one Command Center/Ship allowed per board')
       const distFromEdge = Math.min(row, game.grid_rows - 1 - row, col, game.grid_cols - 1 - col)
       if (distFromEdge > 3) throw new Error('Must be within 3 tiles of an edge')
-      const enemyCCs = units.filter(u => u.owner_id !== userId && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
+      const enemyCCs = units.filter(u => u.owner_id !== userId && (u.board || 'ground') === unitBoard && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
       const tooClose = enemyCCs.some(cc => hexDistance(cc.grid_row, cc.grid_col, row, col) < 20)
       if (tooClose) throw new Error('Too close to enemy Command Center (min 20 tiles)')
     } else if (unitType.name === 'Base' || unitType.name === 'Factory') {
-      if (!myCC) throw new Error('Deploy a Command Center first')
+      if (!myCC && !myCCAnyBoard) throw new Error('Deploy a Command Center first')
+      if (!myCC) throw new Error('Deploy a Command structure on this board first')
       const dist = distToNearest(row, col, myStructures)
       if (dist > 4) throw new Error(`${unitType.name} must be within 4 tiles of a structure`)
     } else {
-      if (!myCC) throw new Error('Deploy a Command Center first')
+      if (!myCC && !myCCAnyBoard) throw new Error('Deploy a Command Center first')
+      if (!myCC) throw new Error('Deploy a Command structure on this board first')
       const dist = distToNearest(row, col, myStructures)
       if (dist > unitType.movement) throw new Error('Too far from Command Center or Base')
     }
