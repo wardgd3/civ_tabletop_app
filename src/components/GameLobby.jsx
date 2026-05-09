@@ -3,6 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useGames } from '../hooks/useGames'
 import { useFriends } from '../hooks/useFriends'
 
+const MAP_SIZES = [
+  { id: 'small',    label: 'Small',       rows: 24, cols: 36 },
+  { id: 'standard', label: 'Standard',    rows: 32, cols: 48 },
+  { id: 'large',    label: 'Large',       rows: 48, cols: 72 },
+  { id: 'xlarge',   label: 'Extra Large', rows: 64, cols: 96 },
+  { id: 'huge',     label: 'Huge',        rows: 96, cols: 144 },
+]
+
 export default function GameLobby() {
   const { games, invites, loading, createGame, createAdminGame, inviteToGame, acceptInvite, declineInvite, startGame, deleteGame, updatePlayerColor, updatePlayerSpace } = useGames()
   const { friends } = useFriends()
@@ -14,6 +22,8 @@ export default function GameLobby() {
   const [invitingGameId, setInvitingGameId] = useState(null)
   const [menuOpenId, setMenuOpenId] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  const [showAdminSize, setShowAdminSize] = useState(false)
+  const [adminMapSize, setAdminMapSize] = useState('standard')
   const menuRef = useRef(null)
 
   useEffect(() => {
@@ -48,18 +58,11 @@ export default function GameLobby() {
         <h2 className="text-xl font-bold" style={{ color: '#c9d1d9' }}>Games</h2>
         <div className="flex gap-2">
           <button
-            onClick={async () => {
-              try {
-                const g = await createAdminGame()
-                navigate(`/game/${g.id}`)
-              } catch (err) {
-                alert(err.message)
-              }
-            }}
+            onClick={() => setShowAdminSize(!showAdminSize)}
             className="px-4 py-2 text-sm font-medium rounded transition-colors"
             style={{ backgroundColor: '#2a1a2a', color: '#c080c0', border: '1px solid #3d2a3d' }}
           >
-            Admin Game
+            Admin
           </button>
           <button
             onClick={() => setShowCreate(!showCreate)}
@@ -72,6 +75,43 @@ export default function GameLobby() {
           </button>
         </div>
       </div>
+
+      {showAdminSize && (
+        <div className="p-3 rounded space-y-2" style={{ backgroundColor: '#161b22', border: '1px solid #3d2a3d' }}>
+          <div className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#c080c0' }}>Admin — Select Map Size</div>
+          <div className="flex flex-wrap gap-1.5">
+            {MAP_SIZES.map(s => (
+              <button
+                key={s.id}
+                onClick={() => setAdminMapSize(s.id)}
+                className="px-2.5 py-1.5 text-xs rounded transition-colors"
+                style={adminMapSize === s.id
+                  ? { backgroundColor: '#3d2a3d', color: '#c080c0', border: '1px solid #5a3a5a' }
+                  : { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+              >
+                {s.label}
+                <span className="text-[9px] ml-1 opacity-50">{s.cols}x{s.rows}</span>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                const size = MAP_SIZES.find(s => s.id === adminMapSize) || MAP_SIZES[1]
+                const g = await createAdminGame(size.rows, size.cols)
+                setShowAdminSize(false)
+                navigate(`/game/${g.id}`)
+              } catch (err) {
+                alert(err.message)
+              }
+            }}
+            className="w-full py-1.5 text-xs font-medium rounded transition-colors"
+            style={{ backgroundColor: '#3d2a3d', color: '#c080c0', border: '1px solid #5a3a5a' }}
+          >
+            Create Admin Game
+          </button>
+        </div>
+      )}
 
       {showCreate && (
         <form onSubmit={handleCreate} className="flex gap-2">

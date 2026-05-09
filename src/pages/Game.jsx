@@ -127,6 +127,7 @@ export default function Game() {
           upgradeShipCompartment={gameState.upgradeShipCompartment}
           isAdmin={gameState.isAdmin}
           productionPerTurn={gameState.productionPerTurn}
+          economy={gameState.economy}
           isFullscreen={isFullscreen}
           onExitFullscreen={toggleFullscreen}
           activeBoard={activeBoard}

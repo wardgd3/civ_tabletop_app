@@ -31,10 +31,9 @@ export const RESOURCES = {
 }
 
 export const LUXURY_RESOURCES = {
-  AMETHYST:   { id: 'amethyst',   name: 'Amethyst',   icon: 'amethyst.png',   chance: 0.0075 },
-  RUBY:       { id: 'ruby',       name: 'Ruby',       icon: 'ruby.png',       chance: 0.0075 },
-  SAPPHIRE:   { id: 'sapphire',   name: 'Sapphire',   icon: 'sapphire.png',   chance: 0.0075 },
-  DIAMOND:    { id: 'diamond',    name: 'Diamond',    icon: 'diamond.png',    chance: 0.0025 },
+  SAPPHIRE:   { id: 'sapphire',   name: 'Sapphire',   icon: 'sapphire.png',   chance: 0.60, yield: 2 },
+  RUBY:       { id: 'ruby',       name: 'Ruby',       icon: 'ruby.png',       chance: 0.30, yield: 4 },
+  DIAMOND:    { id: 'diamond',    name: 'Diamond',    icon: 'diamond.png',    chance: 0.10, yield: 6 },
 }
 
 export const SPACE_RESOURCES = {
@@ -640,7 +639,7 @@ function placeResources(tiles, rows, cols, rand) {
 
   const luxuryList = Object.values(LUXURY_RESOURCES)
   const totalWeight = luxuryList.reduce((s, r) => s + r.chance, 0)
-  const targetCount = Math.floor(rows * cols * 0.05)
+  const targetCount = Math.floor(rows * cols * 0.015)
   const eligible = tiles.filter(t => !t.resource && t.terrain !== 'mountain' && t.terrain !== 'river' && t.terrain !== 'lake' && t.terrain !== 'ocean')
   for (let i = eligible.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { LUXURY_RESOURCES } from '../lib/terrainGen'
+
+const LUXURY_BY_ID = Object.fromEntries(Object.values(LUXURY_RESOURCES).map(r => [r.id, r]))
 
 function hexDistance(r1, c1, r2, c2) {
   const q1 = c1 - ((r1 - (r1 & 1)) >> 1)
@@ -30,8 +33,8 @@ export function useGameState(gameId) {
     : game?.current_player_id === userId
   const isAdmin = !!game?.is_admin
 
-  const productionPerTurn = (() => {
-    if (!currentPlayer) return 0
+  const economy = (() => {
+    if (!currentPlayer) return { production: 0, upkeep: 0, luxuryIncome: 0, net: 0 }
     const teamPlayerIds = players.filter(p => p.color === myColor).map(p => p.player_id)
     const teamUnits = units.filter(u => teamPlayerIds.includes(u.owner_id))
     const ccCount = teamUnits.filter(u =>
@@ -41,8 +44,16 @@ export function useGameState(gameId) {
     const teamResources = currentPlayer.resources || {}
     const coalAvailable = teamResources.coal || 0
     const activeFactories = Math.min(factoryCount, coalAvailable)
-    return ccCount + activeFactories
+    const production = ccCount + activeFactories
+    const upkeep = teamUnits.length
+    let luxuryIncome = 0
+    for (const [resId, amount] of Object.entries(teamResources)) {
+      const lux = LUXURY_BY_ID[resId]
+      if (lux && amount > 0) luxuryIncome += amount * lux.yield
+    }
+    return { production, upkeep, luxuryIncome, net: production + luxuryIncome - upkeep }
   })()
+  const productionPerTurn = economy.production
 
   const fetchAll = useCallback(async () => {
     if (!gameId || !userId) return
@@ -366,7 +377,10 @@ export function useGameState(gameId) {
     const { error: tileError } = await supabase
       .from('wg_game_tiles')
       .update({ resource: null, ore_amount: 0 })
-      .eq('id', tile.id)
+      .eq('game_id', gameId)
+      .eq('grid_row', unit.grid_row)
+      .eq('grid_col', unit.grid_col)
+      .eq('board', unitBoard)
     if (tileError) throw tileError
 
     await fetchAll()
@@ -467,10 +481,17 @@ export function useGameState(gameId) {
         npResources.coal = coalAvailable - activeFactories
       }
 
+      const unitUpkeep = npUnits.length
+      let luxuryIncome = 0
+      for (const [resId, amount] of Object.entries(npResources)) {
+        const lux = LUXURY_BY_ID[resId]
+        if (lux && amount > 0) luxuryIncome += amount * lux.yield
+      }
+
       await supabase
         .from('wg_game_players')
         .update({
-          gold: freshPlayer.gold + production,
+          gold: Math.max(0, freshPlayer.gold + production + luxuryIncome - unitUpkeep),
           has_ended_turn: false,
           resources: npResources,
         })
@@ -509,7 +530,7 @@ export function useGameState(gameId) {
     currentPlayer, isMyTurn, isAdmin,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
     excavate, upgradeShipCompartment,
-    persistDiscoveredTiles, productionPerTurn,
+    persistDiscoveredTiles, productionPerTurn, economy,
     refresh: fetchAll,
   }
 }

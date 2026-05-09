@@ -56,6 +56,9 @@ export function useGames() {
   }, [fetchGames])
 
   async function createGame(name, gridRows = 32, gridCols = 48, maxPlayers = 2) {
+    const { data: { session: freshSession } } = await supabase.auth.getSession()
+    if (!freshSession) throw new Error('Session expired — please sign in again')
+
     const terrainSeed = Math.floor(Math.random() * 2147483647)
 
     const { data, error } = await supabase
@@ -109,6 +112,9 @@ export function useGames() {
   }
 
   async function createAdminGame(gridRows = 32, gridCols = 48) {
+    const { data: { session: freshSession } } = await supabase.auth.getSession()
+    if (!freshSession) throw new Error('Session expired — please sign in again')
+
     const terrainSeed = Math.floor(Math.random() * 2147483647)
 
     const { data, error } = await supabase
@@ -168,7 +174,11 @@ export function useGames() {
     const { error: playerErr } = await supabase
       .from('wg_game_players')
       .insert({ game_id: data.id, player_id: userId, player_order: 0, color: '#3b82f6', gold: 99999 })
-    if (playerErr) throw playerErr
+    if (playerErr) {
+      await supabase.from('wg_game_tiles').delete().eq('game_id', data.id)
+      await supabase.from('wg_games').delete().eq('id', data.id)
+      throw playerErr
+    }
 
     await fetchGames()
     return data

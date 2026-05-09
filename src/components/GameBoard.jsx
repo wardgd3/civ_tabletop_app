@@ -48,7 +48,7 @@ export default function GameBoard({
   excavate, upgradeShipCompartment,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
-  productionPerTurn,
+  productionPerTurn, economy,
 }) {
   const [selectedUnitId, setSelectedUnitId] = useState(null)
   const [selectedUnitType, setSelectedUnitType] = useState(null)
@@ -691,8 +691,20 @@ export default function GameBoard({
             {isMyTurn ? 'YOUR TURN' : 'Waiting...'}
           </div>
           <div className="text-[10px] font-mono mt-0.5" style={{ color: '#8b949e' }}>
-            ⚒ {currentPlayer?.gold || 0} (+{productionPerTurn}/turn)
+            ⚒ {currentPlayer?.gold || 0}
+            {economy && (
+              <span style={{ color: economy.net >= 0 ? '#6a9a72' : '#e05050' }}>
+                {' '}({economy.net >= 0 ? '+' : ''}{economy.net}/turn)
+              </span>
+            )}
           </div>
+          {economy && (
+            <div className="text-[9px] font-mono mt-0.5 hidden lg:block" style={{ color: '#6e7681' }}>
+              <span style={{ color: '#6a9a72' }}>+{economy.production} prod</span>
+              {economy.luxuryIncome > 0 && <span style={{ color: '#c080e0' }}> +{economy.luxuryIncome} gems</span>}
+              <span style={{ color: '#e07050' }}> -{economy.upkeep} upkeep</span>
+            </div>
+          )}
         </div>
         <div className="flex gap-3 lg:hidden">
           {players.map(p => (
