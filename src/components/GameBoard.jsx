@@ -678,7 +678,9 @@ export default function GameBoard({
 
   const canExcavate = selectedUnit && (selectedUnit.wg_unit_types?.name === 'Mining Station' || selectedUnit.wg_unit_types?.name === 'Excavator')
   const selectedUnitTile = selectedUnit ? tileMap.get(`${selectedUnit.grid_row}-${selectedUnit.grid_col}`) : null
-  const hasOreToExcavate = canExcavate && selectedUnitTile?.resource && selectedUnitTile?.ore_amount > 0
+  const selectedTileLux = selectedUnitTile?.resource ? RESOURCE_BY_ID[selectedUnitTile.resource] : null
+  const isSelectedTileLuxury = selectedTileLux && selectedTileLux.yield != null
+  const hasOreToExcavate = canExcavate && selectedUnitTile?.resource && (isSelectedTileLuxury || selectedUnitTile?.ore_amount > 0)
 
   const resources = currentPlayer?.resources || {}
 
@@ -824,7 +826,8 @@ export default function GameBoard({
                   className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
                   style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
                 >
-                  Excavate ({selectedUnitTile.ore_amount} {RESOURCE_BY_ID[selectedUnitTile.resource]?.name || selectedUnitTile.resource})
+                  Excavate {RESOURCE_BY_ID[selectedUnitTile.resource]?.name || selectedUnitTile.resource}
+                  {isSelectedTileLuxury ? ` (+${selectedTileLux.yield}g/turn)` : ` (${selectedUnitTile.ore_amount})`}
                 </button>
               )}
             </div>
@@ -1102,7 +1105,7 @@ export default function GameBoard({
                         </div>
                         {info.resource && (
                           <div className="text-[10px] font-mono" style={{ color: '#cca43b' }}>
-                            {info.resource.name}{info.oreAmount ? ` (${info.oreAmount})` : ''}
+                            {info.resource.name}{info.resource.yield != null ? ` (+${info.resource.yield}g/turn)` : info.oreAmount ? ` (${info.oreAmount})` : ''}
                           </div>
                         )}
                       </div>

@@ -31,6 +31,7 @@ export const RESOURCES = {
 }
 
 export const LUXURY_RESOURCES = {
+  AMETHYST:   { id: 'amethyst',   name: 'Amethyst',   icon: 'amethyst.png',   chance: 0.45, yield: 2 },
   SAPPHIRE:   { id: 'sapphire',   name: 'Sapphire',   icon: 'sapphire.png',   chance: 0.60, yield: 2 },
   RUBY:       { id: 'ruby',       name: 'Ruby',       icon: 'ruby.png',       chance: 0.30, yield: 4 },
   DIAMOND:    { id: 'diamond',    name: 'Diamond',    icon: 'diamond.png',    chance: 0.10, yield: 6 },
@@ -654,7 +655,6 @@ function placeResources(tiles, rows, cols, rand) {
       if (roll <= 0) { picked = res; break }
     }
     eligible[i].resource = picked.id
-    eligible[i].oreAmount = 1 + Math.floor(rand() * 3)
   }
 }
 

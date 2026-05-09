@@ -40,16 +40,17 @@ export function useGameState(gameId) {
     const ccCount = teamUnits.filter(u =>
       u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'
     ).length
+    const baseCount = teamUnits.filter(u => u.wg_unit_types?.name === 'Base').length
     const factoryCount = teamUnits.filter(u => u.wg_unit_types?.name === 'Factory').length
     const teamResources = currentPlayer.resources || {}
     const coalAvailable = teamResources.coal || 0
     const activeFactories = Math.min(factoryCount, coalAvailable)
-    const production = ccCount + activeFactories
+    const production = (ccCount * 4) + (baseCount * 2) + activeFactories
     const upkeep = teamUnits.length
     let luxuryIncome = 0
     for (const [resId, amount] of Object.entries(teamResources)) {
       const lux = LUXURY_BY_ID[resId]
-      if (lux && amount > 0) luxuryIncome += amount * lux.yield
+      if (lux) luxuryIncome += lux.yield
     }
     return { production, upkeep, luxuryIncome, net: production + luxuryIncome - upkeep }
   })()
@@ -363,10 +364,17 @@ export function useGameState(gameId) {
     const unitBoard = unit.board || 'ground'
     const tile = tiles.find(t => t.grid_row === unit.grid_row && t.grid_col === unit.grid_col && (t.board || 'ground') === unitBoard)
     if (!tile || !tile.resource) throw new Error('No resource on this tile')
-    if (!tile.ore_amount || tile.ore_amount <= 0) throw new Error('No ore remaining')
+
+    const isLuxury = !!LUXURY_BY_ID[tile.resource]
+
+    if (!isLuxury && (!tile.ore_amount || tile.ore_amount <= 0)) throw new Error('No ore remaining')
 
     const resources = { ...(currentPlayer.resources || {}) }
-    resources[tile.resource] = (resources[tile.resource] || 0) + tile.ore_amount
+    if (isLuxury) {
+      resources[tile.resource] = 1
+    } else {
+      resources[tile.resource] = (resources[tile.resource] || 0) + tile.ore_amount
+    }
 
     const { error: resError } = await supabase
       .from('wg_game_players')
@@ -471,11 +479,12 @@ export function useGameState(gameId) {
       const ccCount = npUnits.filter(u =>
         u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'
       ).length
+      const baseCount = npUnits.filter(u => u.wg_unit_types?.name === 'Base').length
       const factoryCount = npUnits.filter(u => u.wg_unit_types?.name === 'Factory').length
       const npResources = { ...(freshPlayer.resources || {}) }
       const coalAvailable = npResources.coal || 0
       const activeFactories = Math.min(factoryCount, coalAvailable)
-      const production = ccCount + activeFactories
+      const production = (ccCount * 4) + (baseCount * 2) + activeFactories
 
       if (activeFactories > 0) {
         npResources.coal = coalAvailable - activeFactories
@@ -483,9 +492,9 @@ export function useGameState(gameId) {
 
       const unitUpkeep = npUnits.length
       let luxuryIncome = 0
-      for (const [resId, amount] of Object.entries(npResources)) {
+      for (const [resId] of Object.entries(npResources)) {
         const lux = LUXURY_BY_ID[resId]
-        if (lux && amount > 0) luxuryIncome += amount * lux.yield
+        if (lux) luxuryIncome += lux.yield
       }
 
       await supabase
