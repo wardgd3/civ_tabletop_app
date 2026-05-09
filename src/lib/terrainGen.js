@@ -15,12 +15,13 @@ export const TERRAIN = {
   LAKE:            { id: 'lake',            name: 'Lake',            color: '#1e4470', darkColor: '#122a45' },
   RIVER:           { id: 'river',           name: 'River',           color: '#1e4470', darkColor: '#122a45' },
   SAND:            { id: 'sand',            name: 'Sand',            color: '#807550', darkColor: '#554d34' },
-  VOID:            { id: 'void',            name: 'Void',            color: '#0c0c1a', darkColor: '#060610' },
+  VOID:            { id: 'void',            name: 'Void',            color: '#0d1117', darkColor: '#0d1117' },
   NEBULA:          { id: 'nebula',          name: 'Nebula',          color: '#1a1035', darkColor: '#0e0820' },
   ASTEROID:        { id: 'asteroid',        name: 'Asteroid',        color: '#3a3228', darkColor: '#252018' },
   LARGE_ASTEROID:  { id: 'large_asteroid',  name: 'Large Asteroid',  color: '#4a4238', darkColor: '#302a20' },
   STAR:            { id: 'star',            name: 'Star',            color: '#d4b840', darkColor: '#8a7828' },
-  DUST:            { id: 'dust',            name: 'Dust Cloud',      color: '#151520', darkColor: '#0a0a12' },
+  DUST:            { id: 'dust',            name: 'Dust Cloud',      color: '#121620', darkColor: '#0d1117' },
+  SPACE:           { id: 'space',           name: 'Space',           color: '#0d1117', darkColor: '#0d1117' },
 }
 
 export const RESOURCES = {

@@ -155,18 +155,20 @@ export default function GameBoard({
   }, [visibleTiles, discoveredTiles, persistDiscoveredTiles, activeBoard])
 
   function getTileColor(row, col, isVisible, isDiscovered) {
+    const isSpace = activeBoard === 'space'
+    const fogColor = isSpace ? '#0d1117' : '#1a2029'
     const tile = tileMap.get(`${row}-${col}`)
-    if (!tile) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : '#1a2029'
+    if (!tile) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : fogColor
     const terrain = TERRAIN_BY_ID[tile.terrain]
-    if (!terrain) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : '#1a2029'
+    if (!terrain) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : fogColor
     if (tile.has_road) {
       if (isVisible) return '#8a7a60'
       if (isDiscovered) return '#5a5040'
-      return '#1a2029'
+      return fogColor
     }
     if (isVisible) return terrain.color
     if (isDiscovered) return terrain.darkColor
-    return '#1a2029'
+    return fogColor
   }
 
   function getTerrainInfo(row, col) {
