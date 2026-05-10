@@ -438,7 +438,7 @@ export default function GameBoard({
       cells.add(`${nr}-${nc}`)
     }
     return cells
-  })() : []
+  })() : new Set()
 
   const ccAdjacentTiles = useMemo(() => {
     const map = new Map()
