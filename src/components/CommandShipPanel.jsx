@@ -994,7 +994,7 @@ export default function CommandShipPanel({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <img
-            src={isCommandShip ? '/assets/mothership.png' : unitName === 'Base' ? '/assets/base.png' : '/assets/command center.png'}
+            src={isCommandShip ? '/assets/commandship2.png' : unitName === 'Base' ? '/assets/base.png' : '/assets/command center.png'}
             alt={unitName}
             className="w-6 h-6 object-contain"
           />
