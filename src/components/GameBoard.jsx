@@ -253,6 +253,48 @@ export default function GameBoard({
     const map = new Map()
     const isSpace = activeBoard === 'space'
 
+    // Precompute asteroid edge distance for elevation-style shading
+    const asteroidDepth = new Map()
+    if (isSpace) {
+      const asteroidSet = new Set()
+      for (const tile of tiles) {
+        if (tile.terrain === 'asteroid' || tile.terrain === 'large_asteroid') {
+          asteroidSet.add(`${tile.grid_row}-${tile.grid_col}`)
+        }
+      }
+      // Find edge asteroids (adjacent to non-asteroid)
+      const edgeTiles = []
+      for (const k of asteroidSet) {
+        const [r, c] = k.split('-').map(Number)
+        const neighbors = hexNeighborsBoard(r, c, rows, cols)
+        let isEdge = false
+        for (const [nr, nc] of neighbors) {
+          if (!asteroidSet.has(`${nr}-${nc}`)) { isEdge = true; break }
+        }
+        if (isEdge) {
+          asteroidDepth.set(k, 0)
+          edgeTiles.push(k)
+        }
+      }
+      // BFS inward from edges
+      let frontier = edgeTiles
+      while (frontier.length > 0) {
+        const next = []
+        for (const k of frontier) {
+          const d = asteroidDepth.get(k)
+          const [r, c] = k.split('-').map(Number)
+          for (const [nr, nc] of hexNeighborsBoard(r, c, rows, cols)) {
+            const nk = `${nr}-${nc}`
+            if (asteroidSet.has(nk) && !asteroidDepth.has(nk)) {
+              asteroidDepth.set(nk, d + 1)
+              next.push(nk)
+            }
+          }
+        }
+        frontier = next
+      }
+    }
+
     for (const tile of tiles) {
       const r = tile.grid_row, c = tile.grid_col
       const terrain = TERRAIN_BY_ID[tile.terrain]
@@ -323,17 +365,22 @@ export default function GameBoard({
           const h2 = tileHash(r + 31, c + 17)
           const warmCool = (h2 - 0.5) * 0.12
           const brightDark = (tileHash(r + 53, c + 7) - 0.5) * 0.08
+          // Elevation shading: darker at edges, lighter in center
+          const depth = asteroidDepth.get(`${r}-${c}`) || 0
+          const depthShift = Math.min(depth, 3) * 0.08 // up to ~24% lighter at center
+          const edgeDarken = depth === 0 ? -0.10 : 0
+          const elevAdj = depthShift + edgeDarken
           const [ar, ag, ab] = parseHex(baseColor)
           baseColor = toHex(
-            ar * (1 + warmCool + brightDark),
-            ag * (1 + brightDark),
-            ab * (1 - warmCool * 0.6 + brightDark)
+            ar * (1 + warmCool + brightDark + elevAdj),
+            ag * (1 + brightDark + elevAdj),
+            ab * (1 - warmCool * 0.6 + brightDark + elevAdj)
           )
           const [adr, adg, adb] = parseHex(baseDark)
           baseDark = toHex(
-            adr * (1 + warmCool + brightDark),
-            adg * (1 + brightDark),
-            adb * (1 - warmCool * 0.6 + brightDark)
+            adr * (1 + warmCool + brightDark + elevAdj),
+            adg * (1 + brightDark + elevAdj),
+            adb * (1 - warmCool * 0.6 + brightDark + elevAdj)
           )
         }
 
