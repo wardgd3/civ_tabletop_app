@@ -810,7 +810,7 @@ export function useGameState(gameId) {
     if (!transport) throw new Error('Transport not found')
 
     const dist = hexDistance(struct.grid_row, struct.grid_col, transport.grid_row, transport.grid_col)
-    if (dist > 1) throw new Error('Transport must be adjacent to structure')
+    if (dist > 2) throw new Error('Transport must be within 2 tiles of structure')
 
     const upgrades = struct.upgrades || {}
     const loadingBay = [...(upgrades.loadingBay || [])]

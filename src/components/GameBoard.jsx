@@ -992,7 +992,7 @@ export default function GameBoard({
                   u.owner_id === currentPlayer?.player_id &&
                   (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Base') &&
                   (u.board || 'ground') === (selectedUnit.board || 'ground') &&
-                  hexDistance(u.grid_row, u.grid_col, selectedUnit.grid_row, selectedUnit.grid_col) <= 1
+                  hexDistance(u.grid_row, u.grid_col, selectedUnit.grid_row, selectedUnit.grid_col) <= 2
                 )
                 if (nearbyStruct.length === 0) return null
                 return nearbyStruct.map(struct => {
