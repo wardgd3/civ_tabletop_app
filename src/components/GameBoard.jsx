@@ -6,7 +6,7 @@ const HEX_SIZE = 16
 const HEX_W = Math.round(Math.sqrt(3) * HEX_SIZE)
 const HEX_H = HEX_SIZE * 2
 const ROW_H = HEX_H * 0.75
-const GAP = 0.5
+const GAP = 0.3
 const RENDER_W = HEX_W - GAP
 const RENDER_H = HEX_H - GAP
 
@@ -18,23 +18,47 @@ function hexDistance(r1, c1, r2, c2) {
   return Math.max(Math.abs(q1 - q2), Math.abs(r1 - r2), Math.abs(s1 - s2))
 }
 
+const TERRAIN_BY_ID = Object.fromEntries(Object.values(TERRAIN).map(t => [t.id, t]))
+
+const TERRAIN_ELEVATION = {
+  ocean: 0, lake: 0, river: 0.1, coast: 0.15, sand: 0.2,
+  desert: 0.3, plains: 0.3, grassland: 0.35, forest: 0.4,
+  jungle: 0.4, tundra: 0.3, snow: 0.35, hills: 0.5, mountain: 0.7,
+}
+const WATER_TERRAINS = new Set(['ocean', 'coast', 'lake', 'river'])
+const SPACE_EMPTY = new Set(['void', 'space', 'dust'])
+const SPACE_DENSE = new Set(['nebula', 'nebula_core', 'nebula_bright', 'nebula_hotspot'])
+
+const SPACE_ELEVATION = {
+  space: 0, void: 0, dust: 0.1,
+  nebula: 0.25, nebula_core: 0.4, nebula_bright: 0.5, nebula_hotspot: 0.6,
+  asteroid: 0.35, large_asteroid: 0.45, star: 0.8,
+}
+
 function tileHash(r, c) {
-  let h = (r * 374761 + c * 668265) | 0
-  h = ((h >> 16) ^ h) * 0x45d9f3b | 0
-  h = ((h >> 16) ^ h) * 0x45d9f3b | 0
-  return ((h >> 16) ^ h) & 0x7fffffff
+  let h = (r * 374761393 + c * 668265263) | 0
+  h = (h ^ (h >> 13)) * 1274126177
+  h = h ^ (h >> 16)
+  return (h & 0x7fffffff) / 0x7fffffff
 }
 
 function parseHex(hex) {
-  const h = hex.replace('#', '')
-  return [parseInt(h.substring(0, 2), 16), parseInt(h.substring(2, 4), 16), parseInt(h.substring(4, 6), 16)]
+  return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]
 }
 
 function toHex(r, g, b) {
   return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')
 }
 
-const TERRAIN_BY_ID = Object.fromEntries(Object.values(TERRAIN).map(t => [t.id, t]))
+function blendColors(base, target, amount) {
+  const [br, bg, bb] = parseHex(base)
+  const [tr, tg, tb] = parseHex(target)
+  return toHex(
+    br + (tr - br) * amount,
+    bg + (tg - bg) * amount,
+    bb + (tb - bb) * amount,
+  )
+}
 const RESOURCE_BY_ID = Object.fromEntries([
   ...Object.values(RESOURCES).map(r => [r.id, r]),
   ...Object.values(SPACE_RESOURCES).map(r => [r.id, r]),
@@ -225,6 +249,145 @@ export default function GameBoard({
     return theme?.colors || null
   }, [game.terrain_theme])
 
+  const enhancedColorMap = useMemo(() => {
+    const map = new Map()
+    const isSpace = activeBoard === 'space'
+
+    for (const tile of tiles) {
+      const r = tile.grid_row, c = tile.grid_col
+      const terrain = TERRAIN_BY_ID[tile.terrain]
+      if (!terrain) continue
+
+      const themed = themeColors && themeColors[tile.terrain]
+      let baseColor = themed ? themed.color : terrain.color
+      let baseDark = themed ? themed.darkColor : terrain.darkColor
+
+      if (isSpace) {
+        const isEmpty = SPACE_EMPTY.has(tile.terrain)
+        if (!isEmpty) {
+          const neighbors = hexNeighborsBoard(r, c, rows, cols)
+          let nr2 = 0, ng = 0, nb = 0
+          let dr = 0, dg = 0, db = 0
+          let count = 0
+          for (const [nr, nc] of neighbors) {
+            const nt = tileMap.get(`${nr}-${nc}`)
+            if (!nt) continue
+            const nt2 = TERRAIN_BY_ID[nt.terrain]
+            if (!nt2) continue
+            const [r3, g3, b3] = parseHex(nt2.color)
+            const [r4, g4, b4] = parseHex(nt2.darkColor)
+            nr2 += r3; ng += g3; nb += b3
+            dr += r4; dg += g4; db += b4
+            count++
+          }
+          if (count > 0) {
+            const avgColor = toHex(nr2 / count, ng / count, nb / count)
+            const avgDark = toHex(dr / count, dg / count, db / count)
+            baseColor = blendColors(baseColor, avgColor, 0.15)
+            baseDark = blendColors(baseDark, avgDark, 0.15)
+          }
+        }
+        if (SPACE_DENSE.has(tile.terrain)) {
+          const neighbors = hexNeighborsBoard(r, c, rows, cols)
+          let emptyCount = 0
+          for (const [nr, nc] of neighbors) {
+            const nt = tileMap.get(`${nr}-${nc}`)
+            if (nt && SPACE_EMPTY.has(nt.terrain)) emptyCount++
+          }
+          if (emptyCount > 0) {
+            const fadeAmt = Math.min(emptyCount * 0.06, 0.25)
+            baseColor = blendColors(baseColor, '#0d1117', fadeAmt)
+            baseDark = blendColors(baseDark, '#0d1117', fadeAmt)
+          }
+        }
+        if (tile.terrain !== 'star') {
+          const neighbors = hexNeighborsBoard(r, c, rows, cols)
+          for (const [nr, nc] of neighbors) {
+            const nt = tileMap.get(`${nr}-${nc}`)
+            if (nt && nt.terrain === 'star') {
+              baseColor = blendColors(baseColor, '#e8e8f0', 0.15)
+              baseDark = blendColors(baseDark, '#a0a0a8', 0.15)
+              break
+            }
+          }
+        }
+
+        const hash = tileHash(r, c)
+        const jitter = (hash - 0.5) * 0.10
+        const [cr, cg, cb] = parseHex(baseColor)
+        const [dr2, dg2, db2] = parseHex(baseDark)
+        baseColor = toHex(cr * (1 + jitter), cg * (1 + jitter), cb * (1 + jitter))
+        baseDark = toHex(dr2 * (1 + jitter), dg2 * (1 + jitter), db2 * (1 + jitter))
+
+        const elev = SPACE_ELEVATION[tile.terrain] ?? 0.1
+        const elevShift = (elev - 0.2) * 0.08
+        const [er, eg, eb] = parseHex(baseColor)
+        baseColor = toHex(er * (1 + elevShift), eg * (1 + elevShift), eb * (1 + elevShift))
+        const [edr, edg, edb] = parseHex(baseDark)
+        baseDark = toHex(edr * (1 + elevShift), edg * (1 + elevShift), edb * (1 + elevShift))
+      } else {
+        const isWater = WATER_TERRAINS.has(tile.terrain)
+        if (isWater) {
+          const neighbors = hexNeighborsBoard(r, c, rows, cols)
+          let landCount = 0
+          for (const [nr, nc] of neighbors) {
+            const nt = tileMap.get(`${nr}-${nc}`)
+            if (nt && !WATER_TERRAINS.has(nt.terrain)) landCount++
+          }
+          if (landCount > 0) {
+            const shallowAmt = Math.min(landCount * 0.06, 0.25)
+            baseColor = blendColors(baseColor, '#4a7a8a', shallowAmt)
+            baseDark = blendColors(baseDark, '#2a4a55', shallowAmt)
+          }
+        }
+
+        if (!isWater) {
+          const neighbors = hexNeighborsBoard(r, c, rows, cols)
+          let nr2 = 0, ng = 0, nb = 0
+          let dr = 0, dg = 0, db = 0
+          let count = 0
+          for (const [nr, nc] of neighbors) {
+            const nt = tileMap.get(`${nr}-${nc}`)
+            if (!nt) continue
+            const nt2 = TERRAIN_BY_ID[nt.terrain]
+            if (!nt2) continue
+            const nThemed = themeColors && themeColors[nt.terrain]
+            const nc2 = nThemed ? nThemed.color : nt2.color
+            const nd2 = nThemed ? nThemed.darkColor : nt2.darkColor
+            const [r3, g3, b3] = parseHex(nc2)
+            const [r4, g4, b4] = parseHex(nd2)
+            nr2 += r3; ng += g3; nb += b3
+            dr += r4; dg += g4; db += b4
+            count++
+          }
+          if (count > 0) {
+            const avgColor = toHex(nr2 / count, ng / count, nb / count)
+            const avgDark = toHex(dr / count, dg / count, db / count)
+            baseColor = blendColors(baseColor, avgColor, 0.12)
+            baseDark = blendColors(baseDark, avgDark, 0.12)
+          }
+        }
+
+        const hash = tileHash(r, c)
+        const jitter = (hash - 0.5) * 0.10
+        const [cr, cg, cb] = parseHex(baseColor)
+        const [dr2, dg2, db2] = parseHex(baseDark)
+        baseColor = toHex(cr * (1 + jitter), cg * (1 + jitter), cb * (1 + jitter))
+        baseDark = toHex(dr2 * (1 + jitter), dg2 * (1 + jitter), db2 * (1 + jitter))
+
+        const elev = TERRAIN_ELEVATION[tile.terrain] ?? 0.3
+        const elevShift = (elev - 0.3) * 0.08
+        const [er, eg, eb] = parseHex(baseColor)
+        baseColor = toHex(er * (1 + elevShift), eg * (1 + elevShift), eb * (1 + elevShift))
+        const [edr, edg, edb] = parseHex(baseDark)
+        baseDark = toHex(edr * (1 + elevShift), edg * (1 + elevShift), edb * (1 + elevShift))
+      }
+
+      map.set(`${r}-${c}`, { color: baseColor, darkColor: baseDark })
+    }
+    return map
+  }, [tiles, tileMap, themeColors, activeBoard, rows, cols])
+
   function getTileColor(row, col, isVisible, isDiscovered) {
     const isSpace = activeBoard === 'space'
     const fogColor = isSpace ? '#0d1117' : '#1a2029'
@@ -237,18 +400,16 @@ export default function GameBoard({
       if (isDiscovered) return '#5a5040'
       return fogColor
     }
-    const themed = themeColors && themeColors[tile.terrain]
-    let baseColor
-    if (isVisible) baseColor = themed ? themed.color : terrain.color
-    else if (isDiscovered) baseColor = themed ? themed.darkColor : terrain.darkColor
-    else return fogColor
-    if (tile.terrain === 'mountain') {
-      const h = tileHash(row, col)
-      const jitter = ((h % 100) / 100 - 0.5) * 0.1
-      const [r, g, b] = parseHex(baseColor)
-      return toHex(r + r * jitter, g + g * jitter * 0.8, b + b * jitter * 0.6)
+    const enhanced = enhancedColorMap.get(`${row}-${col}`)
+    if (enhanced) {
+      if (isVisible) return enhanced.color
+      if (isDiscovered) return enhanced.darkColor
+    } else {
+      const themed = themeColors && themeColors[tile.terrain]
+      if (isVisible) return themed ? themed.color : terrain.color
+      if (isDiscovered) return themed ? themed.darkColor : terrain.darkColor
     }
-    return baseColor
+    return fogColor
   }
 
   function getTerrainInfo(row, col) {
@@ -497,7 +658,7 @@ export default function GameBoard({
       cells.add(`${nr}-${nc}`)
     }
     return cells
-  })() : []
+  })() : new Set()
 
   const ccAdjacentTiles = useMemo(() => {
     const map = new Map()
@@ -1408,8 +1569,7 @@ export default function GameBoard({
               else bg = tileBg
 
               const isCC = showUnit && (unit?.wg_unit_types?.name === 'Command Center' || unit?.wg_unit_types?.name === 'Command Ship')
-              const ccAdjColor = ccAdjacentTiles.get(cellKey)
-              const unitTeamColor = showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' ? getPlayerColor(unit.owner_id) : ccAdjColor || null
+              const unitTeamColor = null
 
               const x = col * HEX_W + (row & 1 ? HEX_W / 2 : 0) + GAP / 2
               const y = row * ROW_H + GAP / 2
@@ -1456,21 +1616,7 @@ export default function GameBoard({
                   {!showUnit && (isVisible || isDiscovered) && (() => {
                     const tile = tileMap.get(cellKey)
                     if (!tile?.resource) return null
-                    if (tile.resource === 'space_guild') {
-                      return (
-                        <img
-                          src="/assets/spaceguild.png"
-                          alt="Space Guild"
-                          className="absolute object-contain pointer-events-none z-[5]"
-                          style={{
-                            width: RENDER_W - 4,
-                            height: RENDER_H - 6,
-                            opacity: isVisible ? 1 : 0.5,
-                            filter: 'drop-shadow(0 0 4px #6cb4e6)',
-                          }}
-                        />
-                      )
-                    }
+                    if (tile.resource === 'space_guild') return null
                     const res = RESOURCE_BY_ID[tile.resource]
                     if (!res?.icon) return null
                     return (
@@ -1489,11 +1635,12 @@ export default function GameBoard({
                   {showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' && (() => {
                     const pColor = getPlayerColor(unit.owner_id)
                     const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
-                    const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * 0.86
+                    const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * 1.032
                     return (
                       <div className="relative flex items-center justify-center z-10" style={{ width: tokenSize, height: tokenSize }}>
                         <div
                           className="absolute inset-0 rounded-full overflow-hidden"
+                          style={{ border: `2px solid ${pColor}`, boxShadow: `0 0 6px ${pColor}40` }}
                         >
                           <img
                             src={getUnitIcon(unit.wg_unit_types)}
@@ -1532,6 +1679,34 @@ export default function GameBoard({
                 </div>
               )
             })}
+            {spaceGuildTile && (visibleTiles.has(`${spaceGuildTile.grid_row}-${spaceGuildTile.grid_col}`) || discoveredTiles.has(`${activeBoard || 'ground'}-${spaceGuildTile.grid_row}-${spaceGuildTile.grid_col}`)) && (() => {
+              const sgR = spaceGuildTile.grid_row, sgC = spaceGuildTile.grid_col
+              const sgX = sgC * HEX_W + (sgR & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
+              const sgY = sgR * ROW_H + RENDER_H / 2
+              const sgSize = HEX_W * 1.907
+              const sgVisible = visibleTiles.has(`${sgR}-${sgC}`)
+              return (
+                <div
+                  key="sg-overlay"
+                  className="absolute pointer-events-none z-10"
+                  style={{
+                    left: sgX - sgSize / 2,
+                    top: sgY - sgSize / 2,
+                    width: sgSize,
+                    height: sgSize,
+                  }}
+                >
+                  <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: '2px solid #6cb4e6', boxShadow: '0 0 8px #6cb4e640' }}>
+                    <img
+                      src="/assets/spaceguild.png"
+                      alt="Space Guild"
+                      className="w-full h-full object-cover"
+                      style={{ opacity: sgVisible ? 1 : 0.5 }}
+                    />
+                  </div>
+                </div>
+              )
+            })()}
             {units.filter(u => (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship') && (u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`))).map(cc => {
               const ccX = cc.grid_col * HEX_W + (cc.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
               const ccY = cc.grid_row * ROW_H + RENDER_H / 2
@@ -1551,7 +1726,7 @@ export default function GameBoard({
                 >
                   <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `2px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
                     <img
-                      src={getUnitIcon(cc.wg_unit_types)}
+                      src={cc.wg_unit_types?.name === 'Command Ship' ? '/assets/mothership2.png' : getUnitIcon(cc.wg_unit_types)}
                       alt={cc.wg_unit_types?.name}
                       className="w-full h-full object-cover"
                     />
