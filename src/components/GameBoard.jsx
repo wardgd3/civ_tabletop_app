@@ -64,6 +64,8 @@ const RESOURCE_BY_ID = Object.fromEntries([
   ...Object.values(SPACE_RESOURCES).map(r => [r.id, r]),
   ...Object.values(LUXURY_RESOURCES).map(r => [r.id, r]),
 ])
+const UNIT_DISPLAY_NAMES = { 'Armor Transport': 'Convoy' }
+const unitDisplayName = (name) => UNIT_DISPLAY_NAMES[name] || name
 function getUnitIcon(unitType) {
   if (!unitType?.icon) return '/assets/infantry.png'
   if (unitType.name === 'Command Ship') return '/assets/mothership.png'
@@ -1256,7 +1258,7 @@ export default function GameBoard({
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 font-semibold" style={{ color: '#c9d1d9' }}>
                   <img src={getUnitIcon(selectedUnit.wg_unit_types)} alt={selectedUnit.wg_unit_types?.name} className="w-20 h-20 object-contain" />
-                  {selectedUnit.wg_unit_types?.name}
+                  {unitDisplayName(selectedUnit.wg_unit_types?.name)}
                   {(selectedUnit.upgrades?.level || 0) > 0 && (
                     <span className="text-xs font-mono" style={{ color: '#cca43b' }}>Lv{selectedUnit.upgrades.level}</span>
                   )}
