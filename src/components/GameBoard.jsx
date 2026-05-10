@@ -1577,6 +1577,25 @@ export default function GameBoard({
                 }
               }
 
+              let voidStarBg = null
+              if (tileData?.terrain === 'void' && (isVisible || isDiscovered)) {
+                const h1 = tileHash(row, col)
+                const starCount = h1 > 0.85 ? 2 : (h1 > 0.7 ? 1 : 0)
+                if (starCount > 0) {
+                  const grads = []
+                  for (let s = 0; s < starCount; s++) {
+                    const h2 = tileHash(row + s * 97, col + s * 53)
+                    const h3 = tileHash(row + s * 31, col + s * 71)
+                    const cx = 15 + (h2 % 70)
+                    const cy = 20 + (h3 % 60)
+                    const size = 1 + (h2 % 3) * 0.5
+                    const opacity = 0.25 + (h3 % 40) * 0.01
+                    grads.push(`radial-gradient(circle ${size}px at ${cx}% ${cy}%, rgba(220,225,240,${opacity}) 0%, transparent 100%)`)
+                  }
+                  voidStarBg = grads.join(', ')
+                }
+              }
+
               let bg
               let moveOverlay = false
               if (isSelected) bg = '#203348'
@@ -1609,7 +1628,9 @@ export default function GameBoard({
                     clipPath: hexClip,
                     ...(mountainBg && !unitTeamColor
                       ? { background: mountainBg }
-                      : { backgroundColor: unitTeamColor || bg }),
+                      : voidStarBg
+                        ? { background: `${voidStarBg}, ${bg}` }
+                        : { backgroundColor: unitTeamColor || bg }),
                     pointerEvents: spaceHeld ? 'none' : 'auto',
                   }}
                 >
