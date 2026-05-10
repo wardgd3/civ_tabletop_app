@@ -240,6 +240,7 @@ export default function GameBoard({
     if (!unit?.wg_unit_types) return new Set()
     const unitName = unit.wg_unit_types.name
     const baseRange = unit.wg_unit_types.movement
+    const usedSoFar = unit.moves_used || 0
     const sourceTile = tileMap.get(`${unit.grid_row}-${unit.grid_col}`)
     const sourceHasRoad = sourceTile?.has_road
 
@@ -259,8 +260,9 @@ export default function GameBoard({
         const nHasRoad = nTile?.has_road
         let cost = 1
         const maxRange = (sourceHasRoad && nHasRoad) ? baseRange + 2 : baseRange
+        const remainingRange = maxRange - usedSoFar
         const newDist = dist + cost
-        if (newDist > maxRange) continue
+        if (newDist > remainingRange) continue
         const prev = visited.get(nk)
         if (prev !== undefined && prev <= newDist) continue
         visited.set(nk, newDist)
@@ -315,7 +317,8 @@ export default function GameBoard({
     return cells
   }
 
-  const moveRange = selectedUnit && (isAdmin || !selectedUnit.has_moved) ? getMoveRange(selectedUnit) : new Set()
+  const hasRemainingMoves = selectedUnit && !selectedUnit.has_moved && (selectedUnit.moves_used || 0) < (selectedUnit.wg_unit_types?.movement || 0)
+  const moveRange = selectedUnit && (isAdmin || hasRemainingMoves) ? getMoveRange(selectedUnit) : new Set()
   const attackRange = mode === 'attack' && selectedUnit ? getAttackRange(selectedUnit) : new Set()
   const buildRange = mode === 'build' && selectedUnit ? getBuildRange(selectedUnit) : new Set()
   const destroyRange = mode === 'destroy' && selectedUnit ? getDestroyRange(selectedUnit) : new Set()
@@ -772,10 +775,15 @@ export default function GameBoard({
 
     if (selectedUnit && moveRange.has(cellKey) && !showUnit) {
       try {
+        const moveDist = hexDistance(selectedUnit.grid_row, selectedUnit.grid_col, row, col)
+        const usedAfter = (selectedUnit.moves_used || 0) + moveDist
+        const maxRange = selectedUnit.wg_unit_types?.movement || 0
         await moveUnit(selectedUnit.id, row, col)
-        setSelectedUnitId(null)
-        setCommandShipUnitId(null)
-        setMode('select')
+        if (usedAfter >= maxRange) {
+          setSelectedUnitId(null)
+          setCommandShipUnitId(null)
+          setMode('select')
+        }
       } catch (err) {
         setError(err.message)
       }
@@ -972,7 +980,7 @@ export default function GameBoard({
                 <span className="font-mono" style={{ color: '#6e7681' }}>HP {selectedUnit.current_hp}/{selectedUnit.wg_unit_types?.hp}</span>
               </div>
               <div className="flex items-center justify-between mt-2">
-                <span className="font-mono" style={{ color: '#6e7681' }}>ATK {selectedUnit.wg_unit_types?.attack} | DEF {selectedUnit.wg_unit_types?.defense}</span>
+                <span className="font-mono" style={{ color: '#6e7681' }}>ATK {selectedUnit.wg_unit_types?.attack} | DEF {selectedUnit.wg_unit_types?.defense} | MOV {Math.max(0, (selectedUnit.wg_unit_types?.movement || 0) - (selectedUnit.moves_used || 0))}/{selectedUnit.wg_unit_types?.movement}</span>
                 <div className="flex gap-1">
                   {selectedUnit.wg_unit_types?.name === 'Engineer' ? (
                     <>
