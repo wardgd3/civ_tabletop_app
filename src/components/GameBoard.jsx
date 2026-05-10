@@ -374,12 +374,14 @@ export default function GameBoard({
   const transportDeployRange = transportDeployInfo ? (() => {
     const struct = units.find(u => u.id === transportDeployInfo.structId)
     if (!struct) return []
-    const neighbors = hexNeighborsBoard(struct.grid_row, struct.grid_col, rows, cols)
     const cells = []
-    for (const [nr, nc] of neighbors) {
-      if (getUnitAt(nr, nc)) continue
-      if (isImpassable(nr, nc)) continue
-      cells.push(`${nr}-${nc}`)
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const d = hexDistance(struct.grid_row, struct.grid_col, r, c)
+        if (d > 0 && d <= 3 && !getUnitAt(r, c) && !isImpassable(r, c)) {
+          cells.push(`${r}-${c}`)
+        }
+      }
     }
     return cells
   })() : []
