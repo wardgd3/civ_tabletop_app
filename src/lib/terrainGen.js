@@ -985,14 +985,36 @@ function generateNebulaFlow(tiles, rows, cols, rand, noise) {
     frontier = next
   }
 
-  // Use noise to create irregular cloud boundary and assign layers
+  // Precompute smooth width along path using low-frequency noise
+  const pathWidths = []
+  for (let i = 0; i < path.length; i++) {
+    const t = i / path.length
+    const w = noise.octaves(t * 2.5 + 400, 0.5, 2, 2.0, 0.5)
+    pathWidths.push(4 + (w + 0.3) * (maxRadius * 0.4))
+  }
+  // Smooth the widths with a moving average for gentle tapering
+  const smoothed = [...pathWidths]
+  const windowSize = Math.max(5, Math.floor(path.length * 0.08))
+  for (let i = 0; i < path.length; i++) {
+    let sum = 0, count = 0
+    for (let j = Math.max(0, i - windowSize); j <= Math.min(path.length - 1, i + windowSize); j++) {
+      sum += pathWidths[j]
+      count++
+    }
+    smoothed[i] = sum / count
+  }
+
+  // Assign each BFS tile to its nearest path index to get the local width
   for (const [k, fd] of distFromPath) {
     const [r, c] = k.split('-').map(Number)
-    const nx = c / cols, ny = r / rows
-    // Large scale noise for broad bulges, biased high for wider nebula
-    const edgeNoise = noise.octaves(nx * 3 + 500, ny * 3 + 500, 3, 2.0, 0.5)
-    const detailNoise = noise.octaves(nx * 8 + 700, ny * 8 + 700, 2, 2.0, 0.5) * 0.2
-    const cloudThreshold = 4 + (edgeNoise + detailNoise + 0.2) * (maxRadius * 0.45)
+    // Find closest path tile
+    let minDist = Infinity, closestIdx = 0
+    for (let i = 0; i < path.length; i += 2) {
+      const [pr, pc] = path[i]
+      const d = Math.abs(r - pr) + Math.abs(c - pc)
+      if (d < minDist) { minDist = d; closestIdx = i }
+    }
+    const cloudThreshold = smoothed[closestIdx]
 
     if (fd > cloudThreshold) continue
 
