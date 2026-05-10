@@ -319,6 +319,24 @@ export default function GameBoard({
         baseColor = toHex(cr * (1 + jitter), cg * (1 + jitter), cb * (1 + jitter))
         baseDark = toHex(dr2 * (1 + jitter), dg2 * (1 + jitter), db2 * (1 + jitter))
 
+        if (tile.terrain === 'asteroid' || tile.terrain === 'large_asteroid') {
+          const h2 = tileHash(r + 31, c + 17)
+          const warmCool = (h2 - 0.5) * 0.12
+          const brightDark = (tileHash(r + 53, c + 7) - 0.5) * 0.08
+          const [ar, ag, ab] = parseHex(baseColor)
+          baseColor = toHex(
+            ar * (1 + warmCool + brightDark),
+            ag * (1 + brightDark),
+            ab * (1 - warmCool * 0.6 + brightDark)
+          )
+          const [adr, adg, adb] = parseHex(baseDark)
+          baseDark = toHex(
+            adr * (1 + warmCool + brightDark),
+            adg * (1 + brightDark),
+            adb * (1 - warmCool * 0.6 + brightDark)
+          )
+        }
+
         const elev = SPACE_ELEVATION[tile.terrain] ?? 0.1
         const elevShift = (elev - 0.2) * 0.08
         const [er, eg, eb] = parseHex(baseColor)
