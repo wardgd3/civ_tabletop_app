@@ -169,20 +169,12 @@ export default function GameBoard({
     return map
   }, [tiles])
 
-  const { mountainShadowTiles, mountainInterior } = useMemo(() => {
-    const shadow = new Set()
+  const mountainInterior = useMemo(() => {
     const interior = new Set()
     for (const t of tiles) {
       if (t.terrain !== 'mountain') continue
       const r = t.grid_row, c = t.grid_col
       const odd = r & 1
-      const below = odd ? [[r+1, c], [r+1, c+1]] : [[r+1, c-1], [r+1, c]]
-      for (const [nr, nc] of below) {
-        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
-          const neighbor = tileMap.get(`${nr}-${nc}`)
-          if (neighbor && neighbor.terrain !== 'mountain') shadow.add(`${nr}-${nc}`)
-        }
-      }
       const above = odd ? [[r-1, c], [r-1, c+1]] : [[r-1, c-1], [r-1, c]]
       const hasMountainAbove = above.some(([ar, ac]) => {
         if (ar < 0 || ar >= rows || ac < 0 || ac >= cols) return false
@@ -191,7 +183,7 @@ export default function GameBoard({
       })
       if (hasMountainAbove && tileHash(r, c) > 0.4) interior.add(`${r}-${c}`)
     }
-    return { mountainShadowTiles: shadow, mountainInterior: interior }
+    return interior
   }, [tiles, tileMap, rows, cols])
 
   const unitPosMap = useMemo(() => {
@@ -1621,8 +1613,6 @@ export default function GameBoard({
               const isMountain = tileData?.terrain === 'mountain' && (isVisible || isDiscovered)
               const isMountainPeak = isMountain && !mountainInterior.has(cellKey)
               const isMountainInner = isMountain && mountainInterior.has(cellKey)
-              const isMountainShadow = mountainShadowTiles.has(cellKey)
-
               let mountainBg = null
               if (isMountain) {
                 const h = tileHash(row, col)
@@ -1702,8 +1692,8 @@ export default function GameBoard({
                   {moveOverlay && (
                     <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
                   )}
-                  {isMountainShadow && (isVisible || isDiscovered) && (
-                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
+                  {isMountainInner && (isVisible || isDiscovered) && (
+                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', clipPath: hexClip }} />
                   )}
                   {(isCC || unitTeamColor) && (
                     <div
