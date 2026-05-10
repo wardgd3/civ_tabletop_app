@@ -129,7 +129,13 @@ export default function GameBoard({
     return map
   }, [tiles])
 
-  const visibleTiles = (() => {
+  const unitPosMap = useMemo(() => {
+    const map = new Map()
+    for (const u of units) map.set(`${u.grid_row}-${u.grid_col}`, u)
+    return map
+  }, [units])
+
+  const visibleTiles = useMemo(() => {
     const set = new Set()
     if (isAdmin) {
       for (let r = 0; r < rows; r++) {
@@ -143,8 +149,12 @@ export default function GameBoard({
     const teamUnits = units.filter(u => teamPlayerIds.includes(u.owner_id))
     for (const u of teamUnits) {
       const vis = u.wg_unit_types?.visibility ?? 2
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
+      const rMin = Math.max(0, u.grid_row - vis)
+      const rMax = Math.min(rows - 1, u.grid_row + vis)
+      const cMin = Math.max(0, u.grid_col - vis)
+      const cMax = Math.min(cols - 1, u.grid_col + vis)
+      for (let r = rMin; r <= rMax; r++) {
+        for (let c = cMin; c <= cMax; c++) {
           if (hexDistance(u.grid_row, u.grid_col, r, c) <= vis) {
             set.add(`${r}-${c}`)
           }
@@ -152,7 +162,7 @@ export default function GameBoard({
       }
     }
     return set
-  })()
+  }, [isAdmin, rows, cols, units, allPlayers, players, myColor])
 
   const prevVisibleRef = useRef(new Set())
   useEffect(() => {
@@ -206,11 +216,17 @@ export default function GameBoard({
   }
 
   function getUnitAt(row, col) {
-    return units.find(u => u.grid_row === row && u.grid_col === col)
+    return unitPosMap.get(`${row}-${col}`) || null
   }
 
+  const playerColorMap = useMemo(() => {
+    const map = new Map()
+    for (const p of (allPlayers || players)) map.set(p.player_id, p.color)
+    return map
+  }, [allPlayers, players])
+
   function getPlayerColor(playerId) {
-    return (allPlayers || players).find(p => p.player_id === playerId)?.color || '#888'
+    return playerColorMap.get(playerId) || '#888'
   }
 
   function getMoveRange(unit) {
@@ -245,19 +261,23 @@ export default function GameBoard({
         queue.push([nr, nc, newDist])
       }
     }
-    return [...new Set(cells)]
+    return new Set(cells)
   }
 
   function getAttackRange(unit) {
-    if (!unit?.wg_unit_types) return []
-    const cells = []
+    if (!unit?.wg_unit_types) return new Set()
+    const cells = new Set()
     const range = unit.wg_unit_types.attack_range
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
+    const rMin = Math.max(0, unit.grid_row - range)
+    const rMax = Math.min(rows - 1, unit.grid_row + range)
+    const cMin = Math.max(0, unit.grid_col - range)
+    const cMax = Math.min(cols - 1, unit.grid_col + range)
+    for (let r = rMin; r <= rMax; r++) {
+      for (let c = cMin; c <= cMax; c++) {
         const dist = hexDistance(unit.grid_row, unit.grid_col, r, c)
         const target = getUnitAt(r, c)
         if (dist > 0 && dist <= range && target && target.owner_id !== currentPlayer?.player_id) {
-          cells.push(`${r}-${c}`)
+          cells.add(`${r}-${c}`)
         }
       }
     }
@@ -265,39 +285,33 @@ export default function GameBoard({
   }
 
   function getBuildRange(unit) {
-    if (!unit?.wg_unit_types || unit.wg_unit_types.name !== 'Engineer') return []
-    const cells = []
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const dist = hexDistance(unit.grid_row, unit.grid_col, r, c)
-        if (dist !== 1) continue
-        const tile = tileMap.get(`${r}-${c}`)
-        if (!tile || tile.has_road || tile.terrain === 'mountain') continue
-        cells.push(`${r}-${c}`)
-      }
+    if (!unit?.wg_unit_types || unit.wg_unit_types.name !== 'Engineer') return new Set()
+    const cells = new Set()
+    const neighbors = hexNeighborsBoard(unit.grid_row, unit.grid_col, rows, cols)
+    for (const [nr, nc] of neighbors) {
+      const tile = tileMap.get(`${nr}-${nc}`)
+      if (!tile || tile.has_road || tile.terrain === 'mountain') continue
+      cells.add(`${nr}-${nc}`)
     }
     return cells
   }
 
   function getDestroyRange(unit) {
-    if (!unit?.wg_unit_types || unit.wg_unit_types.name !== 'Engineer') return []
-    const cells = []
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const dist = hexDistance(unit.grid_row, unit.grid_col, r, c)
-        if (dist !== 1) continue
-        const tile = tileMap.get(`${r}-${c}`)
-        if (!tile || !tile.has_road) continue
-        cells.push(`${r}-${c}`)
-      }
+    if (!unit?.wg_unit_types || unit.wg_unit_types.name !== 'Engineer') return new Set()
+    const cells = new Set()
+    const neighbors = hexNeighborsBoard(unit.grid_row, unit.grid_col, rows, cols)
+    for (const [nr, nc] of neighbors) {
+      const tile = tileMap.get(`${nr}-${nc}`)
+      if (!tile || !tile.has_road) continue
+      cells.add(`${nr}-${nc}`)
     }
     return cells
   }
 
-  const moveRange = selectedUnit && (isAdmin || !selectedUnit.has_moved) ? getMoveRange(selectedUnit) : []
-  const attackRange = mode === 'attack' && selectedUnit ? getAttackRange(selectedUnit) : []
-  const buildRange = mode === 'build' && selectedUnit ? getBuildRange(selectedUnit) : []
-  const destroyRange = mode === 'destroy' && selectedUnit ? getDestroyRange(selectedUnit) : []
+  const moveRange = selectedUnit && (isAdmin || !selectedUnit.has_moved) ? getMoveRange(selectedUnit) : new Set()
+  const attackRange = mode === 'attack' && selectedUnit ? getAttackRange(selectedUnit) : new Set()
+  const buildRange = mode === 'build' && selectedUnit ? getBuildRange(selectedUnit) : new Set()
+  const destroyRange = mode === 'destroy' && selectedUnit ? getDestroyRange(selectedUnit) : new Set()
 
   function isNearEdge(r, c) {
     return Math.min(r, rows - 1 - r, c, cols - 1 - c) <= 3
@@ -318,35 +332,52 @@ export default function GameBoard({
   }
 
   function getDeployRange(unitTypeData) {
-    if (!unitTypeData) return []
-    const cells = []
+    if (!unitTypeData) return new Set()
+    const cells = new Set()
     const isMiningStation = unitTypeData.name === 'Mining Station'
     if (unitTypeData.name === 'Command Center' || unitTypeData.name === 'Command Ship') {
-      if (hasCommandStructureOnThisBoard) return []
+      if (hasCommandStructureOnThisBoard) return new Set()
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           if (!getUnitAt(r, c) && !isImpassable(r, c) && isNearEdge(r, c) && isFarFromEnemyCCs(r, c)) {
-            cells.push(`${r}-${c}`)
+            cells.add(`${r}-${c}`)
           }
         }
       }
     } else if (unitTypeData.name === 'Base' || unitTypeData.name === 'Factory') {
-      if (!hasCommandCenter) return []
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const d = distToNearestStructure(r, c)
-          if (!getUnitAt(r, c) && !isImpassable(r, c) && d > 0 && d <= 4) {
-            cells.push(`${r}-${c}`)
+      if (!hasCommandCenter) return new Set()
+      const range = 4
+      for (const s of myStructures) {
+        const rMin = Math.max(0, s.grid_row - range)
+        const rMax = Math.min(rows - 1, s.grid_row + range)
+        const cMin = Math.max(0, s.grid_col - range)
+        const cMax = Math.min(cols - 1, s.grid_col + range)
+        for (let r = rMin; r <= rMax; r++) {
+          for (let c = cMin; c <= cMax; c++) {
+            const key = `${r}-${c}`
+            if (cells.has(key)) continue
+            const d = hexDistance(s.grid_row, s.grid_col, r, c)
+            if (d > 0 && d <= range && !getUnitAt(r, c) && !isImpassable(r, c)) {
+              cells.add(key)
+            }
           }
         }
       }
     } else if (hasCommandCenter) {
       const range = 3
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const d = distToNearestStructure(r, c)
-          if (!getUnitAt(r, c) && !isImpassable(r, c, isMiningStation ? 'Mining Station' : null) && d > 0 && d <= range) {
-            cells.push(`${r}-${c}`)
+      for (const s of myStructures) {
+        const rMin = Math.max(0, s.grid_row - range)
+        const rMax = Math.min(rows - 1, s.grid_row + range)
+        const cMin = Math.max(0, s.grid_col - range)
+        const cMax = Math.min(cols - 1, s.grid_col + range)
+        for (let r = rMin; r <= rMax; r++) {
+          for (let c = cMin; c <= cMax; c++) {
+            const key = `${r}-${c}`
+            if (cells.has(key)) continue
+            const d = hexDistance(s.grid_row, s.grid_col, r, c)
+            if (d > 0 && d <= range && !getUnitAt(r, c) && !isImpassable(r, c, isMiningStation ? 'Mining Station' : null)) {
+              cells.add(key)
+            }
           }
         }
       }
@@ -354,47 +385,57 @@ export default function GameBoard({
     return cells
   }
 
-  const deployRange = mode === 'deploy' && selectedUnitTypeData ? getDeployRange(selectedUnitTypeData) : []
+  const deployRange = mode === 'deploy' && selectedUnitTypeData ? getDeployRange(selectedUnitTypeData) : new Set()
 
   const bayDeployRange = bayDeployInfo ? (() => {
     const cc = units.find(u => u.id === bayDeployInfo.shipId)
-    if (!cc) return []
-    const cells = []
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
+    if (!cc) return new Set()
+    const cells = new Set()
+    const range = 3
+    const rMin = Math.max(0, cc.grid_row - range)
+    const rMax = Math.min(rows - 1, cc.grid_row + range)
+    const cMin = Math.max(0, cc.grid_col - range)
+    const cMax = Math.min(cols - 1, cc.grid_col + range)
+    for (let r = rMin; r <= rMax; r++) {
+      for (let c = cMin; c <= cMax; c++) {
         const d = hexDistance(cc.grid_row, cc.grid_col, r, c)
-        if (d > 0 && d <= 3 && !getUnitAt(r, c) && !isImpassable(r, c)) {
-          cells.push(`${r}-${c}`)
+        if (d > 0 && d <= range && !getUnitAt(r, c) && !isImpassable(r, c)) {
+          cells.add(`${r}-${c}`)
         }
       }
     }
     return cells
-  })() : []
+  })() : new Set()
 
   const transportDeployRange = transportDeployInfo ? (() => {
     const struct = units.find(u => u.id === transportDeployInfo.structId)
-    if (!struct) return []
-    const cells = []
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
+    if (!struct) return new Set()
+    const cells = new Set()
+    const range = 3
+    const rMin = Math.max(0, struct.grid_row - range)
+    const rMax = Math.min(rows - 1, struct.grid_row + range)
+    const cMin = Math.max(0, struct.grid_col - range)
+    const cMax = Math.min(cols - 1, struct.grid_col + range)
+    for (let r = rMin; r <= rMax; r++) {
+      for (let c = cMin; c <= cMax; c++) {
         const d = hexDistance(struct.grid_row, struct.grid_col, r, c)
-        if (d > 0 && d <= 3 && !getUnitAt(r, c) && !isImpassable(r, c)) {
-          cells.push(`${r}-${c}`)
+        if (d > 0 && d <= range && !getUnitAt(r, c) && !isImpassable(r, c)) {
+          cells.add(`${r}-${c}`)
         }
       }
     }
     return cells
-  })() : []
+  })() : new Set()
 
   const unitFromTransportDeployRange = unitDeployFromTransportInfo ? (() => {
     const transport = units.find(u => u.id === unitDeployFromTransportInfo.transportId)
-    if (!transport) return []
+    if (!transport) return new Set()
     const neighbors = hexNeighborsBoard(transport.grid_row, transport.grid_col, rows, cols)
-    const cells = []
+    const cells = new Set()
     for (const [nr, nc] of neighbors) {
       if (getUnitAt(nr, nc)) continue
       if (isImpassable(nr, nc)) continue
-      cells.push(`${nr}-${nc}`)
+      cells.add(`${nr}-${nc}`)
     }
     return cells
   })() : []
@@ -676,7 +717,7 @@ export default function GameBoard({
     const cellKey = `${row}-${col}`
 
     if (unitDeployFromTransportInfo) {
-      if (!unitFromTransportDeployRange.includes(cellKey)) {
+      if (!unitFromTransportDeployRange.has(cellKey)) {
         setUnitDeployFromTransportInfo(null)
         return
       }
@@ -691,7 +732,7 @@ export default function GameBoard({
     }
 
     if (bayDeployInfo) {
-      if (!bayDeployRange.includes(cellKey)) {
+      if (!bayDeployRange.has(cellKey)) {
         setBayDeployInfo(null)
         return
       }
@@ -705,7 +746,7 @@ export default function GameBoard({
     }
 
     if (transportDeployInfo) {
-      if (!transportDeployRange.includes(cellKey)) {
+      if (!transportDeployRange.has(cellKey)) {
         setTransportDeployInfo(null)
         return
       }
@@ -722,7 +763,7 @@ export default function GameBoard({
     const isVisible = visibleTiles.has(cellKey)
     const showUnit = unit && (unit.owner_id === currentPlayer?.player_id || isVisible)
 
-    if (selectedUnit && moveRange.includes(cellKey) && !showUnit) {
+    if (selectedUnit && moveRange.has(cellKey) && !showUnit) {
       try {
         await moveUnit(selectedUnit.id, row, col)
         setSelectedUnitId(null)
@@ -755,7 +796,7 @@ export default function GameBoard({
 
     try {
       if (mode === 'deploy' && selectedUnitType) {
-        if (!deployRange.includes(cellKey)) {
+        if (!deployRange.has(cellKey)) {
           setError(hasCommandCenter ? 'Too far from Command Center or Base' : 'Deploy a Command Center first')
           return
         }
@@ -769,7 +810,7 @@ export default function GameBoard({
           setMode('select')
         }
       } else if (mode === 'build' && selectedUnit) {
-        if (buildRange.includes(cellKey)) {
+        if (buildRange.has(cellKey)) {
           try {
             await buildRoad(selectedUnit.id, row, col)
           } catch (buildErr) {
@@ -782,7 +823,7 @@ export default function GameBoard({
           setError('Select an adjacent tile to build a road')
         }
       } else if (mode === 'destroy' && selectedUnit) {
-        if (destroyRange.includes(cellKey)) {
+        if (destroyRange.has(cellKey)) {
           try {
             await destroyRoad(selectedUnit.id, row, col)
           } catch (destroyErr) {
@@ -1270,14 +1311,14 @@ export default function GameBoard({
               const unit = getUnitAt(row, col)
               const cellKey = `${row}-${col}`
               const isVisible = visibleTiles.has(cellKey)
-              const isInMoveRange = moveRange.includes(cellKey)
-              const isInAttackRange = attackRange.includes(cellKey)
-              const isInDeployRange = deployRange.includes(cellKey)
-              const isInBuildRange = buildRange.includes(cellKey)
-              const isInDestroyRange = destroyRange.includes(cellKey)
-              const isInBayDeployRange = bayDeployRange.includes(cellKey)
-              const isInTransportDeployRange = transportDeployRange.includes(cellKey)
-              const isInUnitFromTransportRange = unitFromTransportDeployRange.includes(cellKey)
+              const isInMoveRange = moveRange.has(cellKey)
+              const isInAttackRange = attackRange.has(cellKey)
+              const isInDeployRange = deployRange.has(cellKey)
+              const isInBuildRange = buildRange.has(cellKey)
+              const isInDestroyRange = destroyRange.has(cellKey)
+              const isInBayDeployRange = bayDeployRange.has(cellKey)
+              const isInTransportDeployRange = transportDeployRange.has(cellKey)
+              const isInUnitFromTransportRange = unitFromTransportDeployRange.has(cellKey)
               const isSelected = selectedUnit && selectedUnit.grid_row === row && selectedUnit.grid_col === col
 
               const board = activeBoard || 'ground'

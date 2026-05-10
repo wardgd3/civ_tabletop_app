@@ -754,29 +754,61 @@ export function useGameState(gameId) {
     if (!ut) throw new Error('Unit type not found')
 
     const upgrades = ship.upgrades || {}
-    const holdingBay = [...(upgrades.holdingBay || [])]
-    if (holdingBay.length >= 12) throw new Error('Unit bay full')
 
-    if (!isAdmin && teamGold < ut.cost) throw new Error('Not enough gold')
+    const isTransport = ut.name === 'Armor Transport'
 
-    if (!isAdmin) {
-      const perPlayer = Math.ceil(ut.cost / teamPlayers.length)
-      for (const tp of teamPlayers) {
-        await supabase
-          .from('wg_game_players')
-          .update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) })
-          .eq('id', tp.id)
+    if (isTransport) {
+      const loadingBay = [...(upgrades.loadingBay || [])]
+      const maxSlots = ship.wg_unit_types?.name === 'Base' ? 1 : 2
+      if (loadingBay.length >= maxSlots) throw new Error('Loading bay full')
+
+      if (!isAdmin && teamGold < ut.cost) throw new Error('Not enough gold')
+
+      if (!isAdmin) {
+        const perPlayer = Math.ceil(ut.cost / teamPlayers.length)
+        for (const tp of teamPlayers) {
+          await supabase
+            .from('wg_game_players')
+            .update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) })
+            .eq('id', tp.id)
+        }
       }
+
+      loadingBay.push({
+        typeId: unitTypeId,
+        typeName: unitTypeName,
+        hp: ut.hp,
+        units: [],
+      })
+
+      const newUpgrades = { ...upgrades, loadingBay }
+      await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+    } else {
+      const holdingBay = [...(upgrades.holdingBay || [])]
+      if (holdingBay.length >= 12) throw new Error('Barracks full')
+
+      if (!isAdmin && teamGold < ut.cost) throw new Error('Not enough gold')
+
+      if (!isAdmin) {
+        const perPlayer = Math.ceil(ut.cost / teamPlayers.length)
+        for (const tp of teamPlayers) {
+          await supabase
+            .from('wg_game_players')
+            .update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) })
+            .eq('id', tp.id)
+        }
+      }
+
+      holdingBay.push({
+        typeId: unitTypeId,
+        typeName: unitTypeName,
+        hp: ut.hp,
+      })
+
+      const newUpgrades = { ...upgrades, holdingBay }
+      await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
     }
 
-    holdingBay.push({
-      typeId: unitTypeId,
-      typeName: unitTypeName,
-      hp: ut.hp,
-    })
-
-    const newUpgrades = { ...upgrades, holdingBay }
-    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
     await fetchAll()
   }
 

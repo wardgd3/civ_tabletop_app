@@ -25,9 +25,10 @@ const ICONS = {
   ),
   cannon: (
     <svg viewBox="0 0 16 16" style={ICON_STYLE}>
-      <path d="M2 12 L6 8 L14 3" />
-      <circle cx="14" cy="3" r="1.5" />
-      <path d="M2 12 L4 14 L6 12" />
+      <circle cx="8" cy="8" r="5" />
+      <line x1="8" y1="1" x2="8" y2="15" />
+      <line x1="1" y1="8" x2="15" y2="8" />
+      <circle cx="8" cy="8" r="2" />
     </svg>
   ),
   missiles: (
@@ -152,7 +153,7 @@ const COMMAND_SHIP_COMPARTMENTS = [
   },
   {
     id: 'holding_bay',
-    name: 'Unit Bay',
+    name: 'Barracks',
     description: 'Produce and store up to 12 units. Deploy them to the ground board.',
     icon: 'holding_bay',
     color: '#a08040',
@@ -190,7 +191,7 @@ const COMMAND_CENTER_COMPARTMENTS = [
   },
   {
     id: 'iron_dome',
-    name: 'Iron Dome',
+    name: 'Defense Systems',
     description: 'Anti-projectile defense system.',
     icon: 'iron_dome',
     color: '#60b060',
@@ -225,7 +226,7 @@ const COMMAND_CENTER_COMPARTMENTS = [
   },
   {
     id: 'holding_bay',
-    name: 'Unit Bay',
+    name: 'Barracks',
     description: 'Produce and store up to 12 units. Deploy them to the ground board.',
     icon: 'holding_bay',
     color: '#a08040',
@@ -688,7 +689,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
   return (
     <div>
       <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-        Unit Bay ({holdingBay.length}/{HOLDING_BAY_CAPACITY})
+        Barracks ({holdingBay.length}/{HOLDING_BAY_CAPACITY})
       </div>
       <div className="flex flex-col gap-1 mb-2">
         {[row1, row2].map((row, rowIdx) => (
@@ -857,8 +858,9 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
               onClick={() => setSelectedTransport(isSelected ? null : i)}
               className="p-2 rounded text-left transition-all cursor-pointer"
               style={{
-                backgroundColor: isSelected ? comp.color + '20' : '#161b22',
-                border: `1px solid ${isSelected ? comp.color : '#30363d'}`,
+                backgroundColor: isSelected ? comp.color + '30' : comp.color + '15',
+                border: `1px solid ${isSelected ? comp.color : comp.color + '60'}`,
+                boxShadow: `0 0 4px ${comp.color}30`,
               }}
             >
               <div className="flex items-center justify-between mb-1">
@@ -875,8 +877,8 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
                   return (
                     <div key={j} className="flex-1 h-3 rounded"
                       style={{
-                        backgroundColor: loaded ? comp.color + '40' : '#21262d',
-                        border: `1px solid ${loaded ? comp.color + '80' : '#30363d'}`,
+                        backgroundColor: loaded ? comp.color + '60' : '#21262d',
+                        border: `1px solid ${loaded ? comp.color : '#30363d'}`,
                       }}
                     />
                   )
@@ -1046,7 +1048,7 @@ export default function CommandShipPanel({
           } else if (c.special === 'loading_bay') {
             const lb = upgrades.loadingBay || []
             statusText = `${lb.length}/${c.slots} docked`
-            statusSlots = Array.from({ length: c.slots }, (_, i) => lb[i] ? 1 : 0)
+            statusSlots = Array.from({ length: c.slots }, (_, i) => lb[i] ? 2 : 0)
           } else {
             const cSlots = getSlots(upgrades, c.id, c.slots)
             const filledCount = cSlots.filter(s => s > 0).length
@@ -1069,22 +1071,26 @@ export default function CommandShipPanel({
                 <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{c.name}</span>
               </div>
               <div className="flex gap-1">
-                {statusSlots.map((filled, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 h-4 rounded flex items-center justify-center"
-                    style={{
-                      backgroundColor: filled > 0 ? c.color + '30' : '#21262d',
-                      border: `1px solid ${filled > 0 ? c.color + '80' : '#30363d'}`,
-                    }}
-                  >
-                    {filled > 0 && !c.special && (
-                      <span className="text-[8px] font-bold" style={{ color: TIERS[filled - 1]?.color || c.color }}>
-                        T{filled}
-                      </span>
-                    )}
-                  </div>
-                ))}
+                {statusSlots.map((filled, i) => {
+                  const isLoadingBayFilled = c.special === 'loading_bay' && filled > 0
+                  return (
+                    <div
+                      key={i}
+                      className="flex-1 h-4 rounded flex items-center justify-center"
+                      style={{
+                        backgroundColor: isLoadingBayFilled ? c.color + '60' : filled > 0 ? c.color + '30' : '#21262d',
+                        border: `1px solid ${isLoadingBayFilled ? c.color : filled > 0 ? c.color + '80' : '#30363d'}`,
+                        boxShadow: isLoadingBayFilled ? `0 0 4px ${c.color}50` : 'none',
+                      }}
+                    >
+                      {filled > 0 && !c.special && (
+                        <span className="text-[8px] font-bold" style={{ color: TIERS[filled - 1]?.color || c.color }}>
+                          T{filled}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
               <div className="text-[9px] font-mono mt-0.5" style={{ color: '#6e7681' }}>
                 {statusText}
