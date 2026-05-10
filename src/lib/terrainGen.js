@@ -97,7 +97,7 @@ export const TERRAIN_THEMES = {
       tundra:    { color: '#5a9aaa', darkColor: '#365c66' },
       snow:      { color: '#b0d8e0', darkColor: '#6a8288' },
       hills:     { color: '#2a5060', darkColor: '#1a3038' },
-      mountain:  { color: '#2e5662', darkColor: '#1f3d4a' },
+      mountain:  { color: '#355e6c', darkColor: '#1f3d4a' },
       forest:    { color: '#264826', darkColor: '#1a301a' },
       jungle:    { color: '#1e4a1e', darkColor: '#163016' },
       lake:      { color: '#083b48', darkColor: '#05232b' },
@@ -911,18 +911,18 @@ export function generateSpaceTerrain(rows, cols, seed) {
     }
   }
 
-  // Place nebula hotspots at centers of bright nebula regions
-  const denseSet = new Set(['nebula', 'nebula_core', 'nebula_bright'])
+  // Place nebula hotspots only at deep centers of nebula_bright clusters
+  const brightSet = new Set(['nebula_bright'])
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const t = tileAt(r, c)
       if (t.terrain !== 'nebula_bright') continue
       const neighbors = hexNeighbors(r, c, rows, cols)
-      let denseCount = 0
+      let brightCount = 0
       for (const [nr, nc] of neighbors) {
-        if (denseSet.has(tileAt(nr, nc).terrain)) denseCount++
+        if (brightSet.has(tileAt(nr, nc).terrain)) brightCount++
       }
-      if (denseCount >= 5) {
+      if (brightCount === 6) {
         t.terrain = 'nebula_hotspot'
       }
     }
