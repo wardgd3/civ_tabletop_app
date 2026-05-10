@@ -890,14 +890,13 @@ function generateGreatLake(tiles, rows, cols, rand, mainRiver) {
       if (lakeTiles.length >= targetSize) break
       const nk = `${nr}-${nc}`
       if (lakeSet.has(nk)) continue
-      if (nr < margin || nr >= rows - margin || nc < margin || nc >= cols - margin) continue
       if (riverTiles.has(nk)) continue
       const nt = tileAt(nr, nc).terrain
       if (nt === 'river' || nt === 'ocean' || nt === 'coast') continue
-      const dist = Math.abs(nr - lr) + Math.abs(nc - lc)
+      const dist = Math.sqrt((nr - lr) ** 2 + (nc - lc) ** 2)
       if (dist > maxRadius) continue
       const seed1 = Math.sin(nr * 7.3 + nc * 11.1) * 43758.5453
-      const edgeNoise = (seed1 - Math.floor(seed1)) * 3
+      const edgeNoise = (seed1 - Math.floor(seed1)) * 2
       if (dist + edgeNoise > maxRadius + 1) continue
       lakeSet.add(nk)
       lakeTiles.push([nr, nc])
