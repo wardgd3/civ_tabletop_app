@@ -842,24 +842,36 @@ export function generateSpaceTerrain(rows, cols, seed) {
   const tiles = []
   const tileAt = (r, c) => tiles[r * cols + c]
 
+  // Diagonal direction for nebula flow
+  const angle = 0.6 + (rand() - 0.5) * 0.4
+  const cosA = Math.cos(angle), sinA = Math.sin(angle)
+
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const nx = c / cols
       const ny = r / rows
 
       const density = noise.octaves(nx * 5, ny * 5, 3, 2.0, 0.5)
-      const nebula = noise.octaves(nx * 1.8 + 50, ny * 1.8 + 50, 3, 2.0, 0.5)
+
+      // Rotate and stretch coordinates for diagonal nebula flow
+      const rx = nx * cosA - ny * sinA
+      const ry = nx * sinA + ny * cosA
+      const nebula = noise.octaves(rx * 1.2 + 50, ry * 2.5 + 50, 3, 2.0, 0.5)
+      // Distance from diagonal center line to shape as one continuous cloud
+      const diagDist = Math.abs((nx - 0.5) * sinA - (ny - 0.5) * cosA)
+      const cloudMask = Math.max(0, 1 - diagDist * 2.8)
+      const masked = nebula * cloudMask
 
       let terrain
       if (density > 0.55 && rand() < 0.25) {
         terrain = TERRAIN.ASTEROID
-      } else if (nebula > 0.58) {
+      } else if (masked > 0.42) {
         terrain = TERRAIN.NEBULA_HOTSPOT
-      } else if (nebula > 0.45) {
+      } else if (masked > 0.34) {
         terrain = TERRAIN.NEBULA_BRIGHT
-      } else if (nebula > 0.35) {
+      } else if (masked > 0.24) {
         terrain = TERRAIN.NEBULA_CORE
-      } else if (nebula > 0.2) {
+      } else if (masked > 0.12) {
         terrain = TERRAIN.NEBULA
       } else {
         terrain = TERRAIN.VOID
@@ -956,6 +968,29 @@ export function generateSpaceTerrain(rows, cols, seed) {
     }
 
     for (const [ar, ac] of cluster) {
+      tileAt(ar, ac).terrain = 'large_asteroid'
+    }
+  }
+
+  // Super large asteroid on large maps (100-120 tiles)
+  if (cols > 48) {
+    const slr = 8 + Math.floor(rand() * (rows - 16))
+    const slc = 8 + Math.floor(rand() * (cols - 16))
+    const slSize = 100 + Math.floor(rand() * 21)
+    const slCluster = [[slr, slc]]
+    const slUsed = new Set([`${slr}-${slc}`])
+
+    for (let step = 0; step < slSize * 3 && slCluster.length < slSize; step++) {
+      const [sr, sc] = slCluster[Math.floor(rand() * slCluster.length)]
+      const neighbors = hexNeighbors(sr, sc, rows, cols)
+      const candidates = neighbors.filter(([nr, nc]) => !slUsed.has(`${nr}-${nc}`))
+      if (candidates.length === 0) continue
+      const [nr, nc] = candidates[Math.floor(rand() * candidates.length)]
+      slUsed.add(`${nr}-${nc}`)
+      slCluster.push([nr, nc])
+    }
+
+    for (const [ar, ac] of slCluster) {
       tileAt(ar, ac).terrain = 'large_asteroid'
     }
   }
