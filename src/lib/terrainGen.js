@@ -97,7 +97,7 @@ export const TERRAIN_THEMES = {
       tundra:    { color: '#5a9aaa', darkColor: '#365c66' },
       snow:      { color: '#b0d8e0', darkColor: '#6a8288' },
       hills:     { color: '#2a5060', darkColor: '#1a3038' },
-      mountain:  { color: '#c8dae0', darkColor: '#546a70' },
+      mountain:  { color: '#40464b', darkColor: '#292e32' },
       forest:    { color: '#264826', darkColor: '#1a301a' },
       jungle:    { color: '#1e4a1e', darkColor: '#163016' },
       lake:      { color: '#083b48', darkColor: '#05232b' },
