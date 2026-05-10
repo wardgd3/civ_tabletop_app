@@ -97,7 +97,7 @@ export const TERRAIN_THEMES = {
       tundra:    { color: '#5a9aaa', darkColor: '#365c66' },
       snow:      { color: '#b0d8e0', darkColor: '#6a8288' },
       hills:     { color: '#2a5060', darkColor: '#1a3038' },
-      mountain:  { color: '#8ab0b8', darkColor: '#546a70' },
+      mountain:  { color: '#c8dae0', darkColor: '#546a70' },
       forest:    { color: '#264826', darkColor: '#1a301a' },
       jungle:    { color: '#1e4a1e', darkColor: '#163016' },
       lake:      { color: '#083b48', darkColor: '#05232b' },
@@ -370,11 +370,39 @@ function generateCoastalInlets(tiles, rows, cols, rand, noise) {
     }
   }
 
-  // Apply water terrain - ocean at edges, coast further in
+  // Compute distance from land for each water tile (BFS from edges of water)
+  const waterDistFromLand = new Map()
+  let landBorder = []
   for (const k of waterSet) {
     const [r, c] = k.split('-').map(Number)
-    const isEdge = r <= 1 || r >= rows - 2 || c <= 1 || c >= cols - 2
-    tileAt(r, c).terrain = isEdge ? 'ocean' : 'coast'
+    const touchesLand = hexNeighbors(r, c, rows, cols).some(([nr, nc]) => !waterSet.has(`${nr}-${nc}`))
+    const isEdge = r <= 0 || r >= rows - 1 || c <= 0 || c >= cols - 1
+    if (touchesLand || isEdge) {
+      waterDistFromLand.set(k, 0)
+      landBorder.push(k)
+    }
+  }
+  while (landBorder.length > 0) {
+    const next = []
+    for (const k of landBorder) {
+      const d = waterDistFromLand.get(k)
+      const [r, c] = k.split('-').map(Number)
+      for (const [nr, nc] of hexNeighbors(r, c, rows, cols)) {
+        const nk = `${nr}-${nc}`
+        if (waterSet.has(nk) && !waterDistFromLand.has(nk)) {
+          waterDistFromLand.set(nk, d + 1)
+          next.push(nk)
+        }
+      }
+    }
+    landBorder = next
+  }
+
+  // Apply water terrain - ocean for deep center tiles, coast for shallow edges
+  for (const k of waterSet) {
+    const [r, c] = k.split('-').map(Number)
+    const depth = waterDistFromLand.get(k) || 0
+    tileAt(r, c).terrain = depth >= 2 ? 'ocean' : 'coast'
   }
 
   // Place coast tiles around the water edges that touch land
@@ -448,8 +476,11 @@ function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, riv
     for (const [nr, nc] of hexNeighbors(cr, cc, rows, cols)) {
       const t = tileAt(nr, nc).terrain
       let cost = 1
-      // Allow crossing river/lake at high cost (won't place mountains there)
-      if (t === 'river' || t === 'lake') cost = 20
+      const WATER = ['river', 'lake', 'ocean', 'coast']
+      if (WATER.includes(t)) cost = 50
+      // Also penalize tiles adjacent to water
+      const adjWater = hexNeighbors(nr, nc, rows, cols).some(([wr, wc]) => WATER.includes(tileAt(wr, wc).terrain))
+      if (adjWater) cost += 20
 
       const seed1 = Math.sin(nr * 5.7 + nc * 9.3) * 43758.5453
       const wander = (Math.sin(seed1 + nr * noiseScale + nc * noiseScale * 2.3) + 1) * wanderStrength
@@ -497,11 +528,14 @@ function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, riv
   }
 
   // Place mountains along the path, skipping gaps and water tiles
+  const WATER_SET = new Set(['river', 'lake', 'ocean', 'coast'])
   for (let i = 0; i < path.length; i++) {
     if (gapIndices.has(i)) continue
     const [r, c] = path[i]
     const t = tileAt(r, c).terrain
-    if (t === 'river' || t === 'lake') continue
+    if (WATER_SET.has(t)) continue
+    const adjWater = hexNeighbors(r, c, rows, cols).some(([wr, wc]) => WATER_SET.has(tileAt(wr, wc).terrain))
+    if (adjWater) continue
     tileAt(r, c).terrain = 'mountain'
     allMountains.add(`${r}-${c}`)
   }
@@ -528,7 +562,9 @@ function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, riv
     for (const [nr, nc] of neighbors) {
       if (allMountains.has(`${nr}-${nc}`)) continue
       const t = tileAt(nr, nc).terrain
-      if (t === 'river' || t === 'lake') continue
+      if (WATER_SET.has(t)) continue
+      const nearWater = hexNeighbors(nr, nc, rows, cols).some(([wr, wc]) => WATER_SET.has(tileAt(wr, wc).terrain))
+      if (nearWater) continue
       const dot = ((nr - mr) * perpR + (nc - mc) * perpC) * side
       if (dot > bestScore) { bestScore = dot; best = [nr, nc] }
     }
