@@ -143,7 +143,7 @@ const COMMAND_SHIP_COMPARTMENTS = [
   },
   {
     id: 'transport',
-    name: 'Transport',
+    name: 'Convoy Bay',
     description: 'Build convoy ships to transport ground units. 5 turns to reach ground.',
     icon: 'transport',
     color: '#50b0b0',
@@ -216,7 +216,7 @@ const COMMAND_CENTER_COMPARTMENTS = [
   },
   {
     id: 'transport',
-    name: 'Transport',
+    name: 'Convoy Bay',
     description: 'Receive and send convoys between Command Ship and Command Center.',
     icon: 'transport',
     color: '#50b0b0',

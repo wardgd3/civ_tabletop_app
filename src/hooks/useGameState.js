@@ -1065,9 +1065,17 @@ export function useGameState(gameId) {
         const newTurns = convoy.turnsLeft - 1
         if (newTurns <= 0) {
           changed = true
+          const isGroundStruct = (struct.board || 'ground') === 'ground'
+          const loadingBay = [...(structUpgrades.loadingBay || [])]
+          const maxLoadingSlots = struct.wg_unit_types?.name === 'Base' ? 1 : 2
           for (const u of (convoy.units || [])) {
-            if (holdingBay.length < 12) holdingBay.push(u)
+            if (isGroundStruct && u.typeName === 'Armor Transport' && loadingBay.length < maxLoadingSlots) {
+              loadingBay.push({ ...u, units: u.units || [] })
+            } else if (holdingBay.length < 12) {
+              holdingBay.push(u)
+            }
           }
+          structUpgrades.loadingBay = loadingBay
           const cargo = convoy.cargo || {}
           if (cargo.gold) cargoGoldToAdd += cargo.gold
           if (cargo.resources && Object.keys(cargo.resources).length > 0) {
@@ -1089,7 +1097,7 @@ export function useGameState(gameId) {
 
       if (changed) {
         await supabase.from('wg_units').update({
-          upgrades: { ...structUpgrades, convoys: updatedConvoys, holdingBay }
+          upgrades: { ...structUpgrades, convoys: updatedConvoys, holdingBay, loadingBay: structUpgrades.loadingBay }
         }).eq('id', struct.id)
       }
     }
