@@ -295,6 +295,49 @@ export function useGameState(gameId) {
     if (newHp <= 0) {
       const { error } = await supabase.from('wg_units').update({ current_hp: 0, is_alive: false }).eq('id', targetId)
       if (error) throw error
+
+      const loadedUnits = target.upgrades?.loadedUnits || []
+      if (loadedUnits.length > 0) {
+        const targetBoard = target.board || 'ground'
+        const odd = target.grid_row & 1
+        const dirs = odd
+          ? [[-1,0],[-1,1],[0,1],[1,1],[1,0],[0,-1]]
+          : [[-1,-1],[-1,0],[0,1],[1,0],[1,-1],[0,-1]]
+        const occupiedSet = new Set(units.filter(u => (u.board || 'ground') === targetBoard && u.id !== targetId).map(u => `${u.grid_row}-${u.grid_col}`))
+        const impassable = targetBoard === 'space'
+          ? new Set(['asteroid', 'large_asteroid', 'star'])
+          : new Set(['ocean', 'mountain', 'lake', 'river'])
+        const tilesByKey = new Map(tiles.filter(t => (t.board || 'ground') === targetBoard).map(t => [`${t.grid_row}-${t.grid_col}`, t]))
+        const available = []
+        for (const [dr, dc] of dirs) {
+          const nr = target.grid_row + dr, nc = target.grid_col + dc
+          const key = `${nr}-${nc}`
+          if (occupiedSet.has(key)) continue
+          const tile = tilesByKey.get(key)
+          if (tile && impassable.has(tile.terrain)) continue
+          available.push({ row: nr, col: nc })
+        }
+        const toInsert = []
+        for (const soldier of loadedUnits) {
+          const spot = available.shift()
+          if (!spot) break
+          toInsert.push({
+            game_id: gameId,
+            owner_id: target.owner_id,
+            unit_type_id: soldier.typeId,
+            grid_row: spot.row,
+            grid_col: spot.col,
+            current_hp: soldier.hp,
+            board: targetBoard,
+            has_moved: true,
+            has_attacked: true,
+            is_alive: true,
+          })
+        }
+        if (toInsert.length > 0) {
+          await supabase.from('wg_units').insert(toInsert)
+        }
+      }
     } else {
       const { error } = await supabase.from('wg_units').update({ current_hp: newHp }).eq('id', targetId)
       if (error) throw error
