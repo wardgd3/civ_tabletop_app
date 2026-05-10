@@ -1131,8 +1131,7 @@ export default function GameBoard({
               else bg = getTileColor(row, col, isVisible, isDiscovered)
 
               const isCC = showUnit && (unit?.wg_unit_types?.name === 'Command Center' || unit?.wg_unit_types?.name === 'Command Ship')
-              const ccColor = isCC ? getPlayerColor(unit.owner_id) : null
-              const unitTeamColor = showUnit && !isCC ? getPlayerColor(unit.owner_id) : null
+              const unitTeamColor = showUnit ? getPlayerColor(unit.owner_id) : null
 
               const x = col * HEX_W + (row & 1 ? HEX_W / 2 : 0) + GAP / 2
               const y = row * ROW_H + GAP / 2
@@ -1150,7 +1149,7 @@ export default function GameBoard({
                     width: RENDER_W,
                     height: RENDER_H,
                     clipPath: hexClip,
-                    backgroundColor: unitTeamColor || ccColor || bg,
+                    backgroundColor: unitTeamColor || bg,
                     pointerEvents: spaceHeld ? 'none' : 'auto',
                   }}
                 >
@@ -1197,7 +1196,7 @@ export default function GameBoard({
                       />
                     )
                   })()}
-                  {showUnit && !isCC && (() => {
+                  {showUnit && (() => {
                     const pColor = getPlayerColor(unit.owner_id)
                     const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
                     const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * 0.91
@@ -1240,77 +1239,6 @@ export default function GameBoard({
                       </div>
                     )
                   })()}
-                </div>
-              )
-            })}
-            {units.filter(u =>
-              u.is_alive &&
-              (u.wg_unit_types?.name === 'Command Ship' || u.wg_unit_types?.name === 'Command Center') &&
-              (u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`))
-            ).map(csUnit => {
-              const cr = csUnit.grid_row, cc = csUnit.grid_col
-              const cx = cc * HEX_W + (cr & 1 ? HEX_W / 2 : 0) + GAP / 2
-              const cy = cr * ROW_H + GAP / 2
-
-              const neighborOffsets = hexNeighborsBoard(cr, cc, rows, cols)
-              let minX = cx, minY = cy, maxX = cx + RENDER_W, maxY = cy + RENDER_H
-              for (const [nr, nc] of neighborOffsets) {
-                const nx = nc * HEX_W + (nr & 1 ? HEX_W / 2 : 0) + GAP / 2
-                const ny = nr * ROW_H + GAP / 2
-                minX = Math.min(minX, nx)
-                minY = Math.min(minY, ny)
-                maxX = Math.max(maxX, nx + RENDER_W)
-                maxY = Math.max(maxY, ny + RENDER_H)
-              }
-
-              const overW = maxX - minX
-              const overH = maxY - minY
-              const imgSize = Math.min(overW, overH) * 0.5625
-              const playerColor = getPlayerColor(csUnit.owner_id)
-
-              return (
-                <div
-                  key={`cs-overlay-${csUnit.id}`}
-                  className="absolute flex items-center justify-center pointer-events-none"
-                  style={{
-                    left: minX,
-                    top: minY,
-                    width: overW,
-                    height: overH,
-                    zIndex: 15,
-                  }}
-                >
-                  <img
-                    src={getUnitIcon(csUnit.wg_unit_types)}
-                    alt={csUnit.wg_unit_types?.name}
-                    className="object-contain pointer-events-none"
-                    style={{
-                      width: imgSize,
-                      height: imgSize,
-                      filter: `drop-shadow(0 0 6px ${playerColor}) drop-shadow(0 0 12px ${playerColor}40)`,
-                    }}
-                  />
-                  <div
-                    className="absolute rounded-full"
-                    style={{
-                      bottom: (overH - imgSize) / 2 - 2,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      height: 3,
-                      width: `${(csUnit.current_hp / csUnit.wg_unit_types?.hp) * 60}%`,
-                      backgroundColor: csUnit.current_hp / csUnit.wg_unit_types?.hp > 0.5 ? '#4a8060' : '#804a4a',
-                      minWidth: 8,
-                    }}
-                  />
-                  <div
-                    className="absolute w-2.5 h-2.5 rounded-full"
-                    style={{
-                      top: (overH - imgSize) / 2 - 2,
-                      right: (overW - imgSize) / 2 - 2,
-                      backgroundColor: playerColor,
-                      border: '1.5px solid #12161d',
-                    }}
-                  />
                 </div>
               )
             })}
