@@ -1553,10 +1553,30 @@ export default function GameBoard({
 
               const tileBg = getTileColor(row, col, isVisible, isDiscovered)
               const tileData = tileMap.get(cellKey)
-              const isMountain = tileData?.terrain === 'mountain'
+              const isMountain = tileData?.terrain === 'mountain' && (isVisible || isDiscovered)
               const isMountainPeak = isMountain && !mountainInterior.has(cellKey)
               const isMountainInner = isMountain && mountainInterior.has(cellKey)
               const isMountainShadow = mountainShadowTiles.has(cellKey)
+
+              let mountainBg = null
+              if (isMountain) {
+                const h = tileHash(row, col)
+                const lightJitter = (h - 0.5) * 0.12
+                const darkJitter = ((h * 7 + 0.3) % 1 - 0.5) * 0.12
+                const [lr, lg, lb] = parseHex(tileBg)
+                const isTundra = game.terrain_theme === 'crystal_tundra'
+                const lightColor = toHex(lr * (1 + lightJitter), lg * (1 + lightJitter), lb * (1 + lightJitter))
+                const shadowR = lr * (isTundra ? 0.57 : 0.67)
+                const shadowG = lg * (isTundra ? 0.64 : 0.64)
+                const shadowB = lb * (isTundra ? 0.74 : 0.62)
+                const darkColor = toHex(shadowR * (1 + darkJitter), shadowG * (1 + darkJitter), shadowB * (1 + darkJitter))
+                if (isMountainPeak) {
+                  mountainBg = `linear-gradient(to bottom, ${lightColor} 50%, ${darkColor} 50%)`
+                } else {
+                  mountainBg = darkColor
+                }
+              }
+
               let bg
               let moveOverlay = false
               if (isSelected) bg = '#203348'
@@ -1587,18 +1607,14 @@ export default function GameBoard({
                     width: RENDER_W,
                     height: RENDER_H,
                     clipPath: hexClip,
-                    backgroundColor: unitTeamColor || bg,
+                    ...(mountainBg && !unitTeamColor
+                      ? { background: mountainBg }
+                      : { backgroundColor: unitTeamColor || bg }),
                     pointerEvents: spaceHeld ? 'none' : 'auto',
                   }}
                 >
                   {moveOverlay && (
                     <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
-                  )}
-                  {isMountainPeak && (isVisible || isDiscovered) && (
-                    <div className="absolute inset-0 z-[1]" style={{ background: 'linear-gradient(to bottom, transparent 50%, rgba(20, 15, 10, 0.5) 50%)', clipPath: hexClip }} />
-                  )}
-                  {isMountainInner && (isVisible || isDiscovered) && (
-                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(20, 15, 10, 0.5)', clipPath: hexClip }} />
                   )}
                   {isMountainShadow && (isVisible || isDiscovered) && (
                     <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />

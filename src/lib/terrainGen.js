@@ -19,7 +19,7 @@ export const TERRAIN = {
   NEBULA:          { id: 'nebula',          name: 'Nebula',          color: '#130c28', darkColor: '#0a0618' },
   NEBULA_CORE:     { id: 'nebula_core',     name: 'Nebula Core',     color: '#2c1236', darkColor: '#180a24' },
   NEBULA_BRIGHT:   { id: 'nebula_bright',   name: 'Nebula Bright',   color: '#441e4e', darkColor: '#281034' },
-  NEBULA_HOTSPOT:  { id: 'nebula_hotspot',  name: 'Nebula Hotspot',  color: '#6a3080', darkColor: '#3e1a4e' },
+  NEBULA_HOTSPOT:  { id: 'nebula_hotspot',  name: 'Nebula Hotspot',  color: '#7a3868', darkColor: '#4a2040' },
   ASTEROID:        { id: 'asteroid',        name: 'Asteroid',        color: '#3a3228', darkColor: '#252018' },
   LARGE_ASTEROID:  { id: 'large_asteroid',  name: 'Large Asteroid',  color: '#4a4238', darkColor: '#302a20' },
   STAR:            { id: 'star',            name: 'Star',            color: '#e8e0c8', darkColor: '#a09880' },
@@ -97,7 +97,7 @@ export const TERRAIN_THEMES = {
       tundra:    { color: '#5a9aaa', darkColor: '#365c66' },
       snow:      { color: '#b0d8e0', darkColor: '#6a8288' },
       hills:     { color: '#2a5060', darkColor: '#1a3038' },
-      mountain:  { color: '#355e6c', darkColor: '#1f3d4a' },
+      mountain:  { color: '#2a4b56', darkColor: '#1f3d4a' },
       forest:    { color: '#264826', darkColor: '#1a301a' },
       jungle:    { color: '#1e4a1e', darkColor: '#163016' },
       lake:      { color: '#083b48', darkColor: '#05232b' },
@@ -272,26 +272,17 @@ function generateMountainRanges(tiles, rows, cols, rand, mainRiver) {
   }
 }
 
-function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, riverFlowsHorizontal) {
+function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, _riverFlowsHorizontal) {
   const tileAt = (r, c) => tiles[r * cols + c]
 
-  // Pick a start tile on one edge, perpendicular to river
-  let sr, sc
-  if (riverFlowsHorizontal) {
-    sc = Math.floor(cols * (0.15 + rand() * 0.7))
-    sr = 0
-  } else {
-    sr = Math.floor(rows * (0.15 + rand() * 0.7))
-    sc = 0
-  }
+  // Mountains flow mostly horizontal (left to right) with volatile curves
+  const sr = Math.floor(rows * (0.15 + rand() * 0.7))
+  const sc = 0
 
-  // Pathfind to ANY tile on the opposite edge
-  const isGoal = riverFlowsHorizontal
-    ? (r, _c) => r === rows - 1
-    : (_r, c) => c === cols - 1
+  const isGoal = (_r, c) => c === cols - 1
 
-  const noiseScale = 0.15
-  const wanderStrength = 4
+  const noiseScale = 0.25
+  const wanderStrength = 8
 
   const key = (r, c) => r * cols + c
   const INF = 1e9
@@ -338,12 +329,12 @@ function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, riv
   }
   path.reverse()
 
-  // Place 2-3 gaps (passes) through the range for gameplay
-  const gapCount = 2 + Math.floor(rand() * 2)
+  // Place 3-4 gaps (passes) through the range for gameplay
+  const gapCount = 3 + Math.floor(rand() * 2)
   const gapIndices = new Set()
   for (let g = 0; g < gapCount; g++) {
-    const gapCenter = Math.floor(path.length * (0.15 + rand() * 0.7))
-    const gapSize = 1 + Math.floor(rand() * 2)
+    const gapCenter = Math.floor(path.length * (0.1 + rand() * 0.8))
+    const gapSize = 2 + Math.floor(rand() * 2)
     for (let offset = -gapSize; offset <= gapSize; offset++) {
       const idx = gapCenter + offset
       if (idx >= 0 && idx < path.length) gapIndices.add(idx)
@@ -869,6 +860,8 @@ export function generateSpaceTerrain(rows, cols, seed) {
       let terrain
       if (density > 0.55 && rand() < 0.25) {
         terrain = TERRAIN.ASTEROID
+      } else if (nebula > 0.58) {
+        terrain = TERRAIN.NEBULA_HOTSPOT
       } else if (nebula > 0.45) {
         terrain = TERRAIN.NEBULA_BRIGHT
       } else if (nebula > 0.35) {
@@ -911,22 +904,6 @@ export function generateSpaceTerrain(rows, cols, seed) {
     }
   }
 
-  // Place nebula hotspots only at deep centers of nebula_bright clusters
-  const brightSet = new Set(['nebula_bright'])
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const t = tileAt(r, c)
-      if (t.terrain !== 'nebula_bright') continue
-      const neighbors = hexNeighbors(r, c, rows, cols)
-      let brightCount = 0
-      for (const [nr, nc] of neighbors) {
-        if (brightSet.has(tileAt(nr, nc).terrain)) brightCount++
-      }
-      if (brightCount === 6) {
-        t.terrain = 'nebula_hotspot'
-      }
-    }
-  }
 
   // Place 3-4 large asteroid clusters
   const clusterCount = 3 + (rand() < 0.5 ? 1 : 0)
