@@ -329,11 +329,11 @@ function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, _ri
   }
   path.reverse()
 
-  // Place 3-4 gaps (passes) through the range for gameplay
-  const gapCount = 3 + Math.floor(rand() * 2)
+  // Place 4-6 gaps (passes) through the range, 2-3 tiles wide
+  const gapCount = 4 + Math.floor(rand() * 3)
   const gapIndices = new Set()
   for (let g = 0; g < gapCount; g++) {
-    const gapCenter = Math.floor(path.length * (0.1 + rand() * 0.8))
+    const gapCenter = Math.floor(path.length * (0.08 + rand() * 0.84))
     const gapSize = 2 + Math.floor(rand() * 2)
     for (let offset = -gapSize; offset <= gapSize; offset++) {
       const idx = gapCenter + offset
@@ -391,24 +391,17 @@ function generateMainRiver(tiles, rows, cols, elevMap, rand) {
     return t !== 'mountain'
   }
 
-  const topEdge = [], bottomEdge = [], leftEdge = [], rightEdge = []
+  // Rivers flow north to south (top to bottom)
+  const topEdge = [], bottomEdge = []
   for (let c = 0; c < cols; c++) {
     if (isLand(0, c)) topEdge.push([0, c])
     if (isLand(rows - 1, c)) bottomEdge.push([rows - 1, c])
   }
-  for (let r = 0; r < rows; r++) {
-    if (isLand(r, 0)) leftEdge.push([r, 0])
-    if (isLand(r, cols - 1)) rightEdge.push([r, cols - 1])
-  }
 
-  const pairs = []
-  if (leftEdge.length > 0 && rightEdge.length > 0) pairs.push([leftEdge, rightEdge])
-  if (topEdge.length > 0 && bottomEdge.length > 0) pairs.push([topEdge, bottomEdge])
-  if (pairs.length === 0) return
+  if (topEdge.length === 0 || bottomEdge.length === 0) return
 
-  const [sideA, sideB] = pairs[Math.floor(rand() * pairs.length)]
-  const [sr, sc] = sideA[Math.floor(rand() * sideA.length)]
-  const [er, ec] = sideB[Math.floor(rand() * sideB.length)]
+  const [sr, sc] = topEdge[Math.floor(rand() * topEdge.length)]
+  const [er, ec] = bottomEdge[Math.floor(rand() * bottomEdge.length)]
 
   const noiseScale = 0.15
   const wanderStrength = 6

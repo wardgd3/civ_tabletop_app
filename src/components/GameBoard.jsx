@@ -1566,9 +1566,9 @@ export default function GameBoard({
                 const [lr, lg, lb] = parseHex(tileBg)
                 const isTundra = game.terrain_theme === 'crystal_tundra'
                 const lightColor = toHex(lr * (1 + lightJitter), lg * (1 + lightJitter), lb * (1 + lightJitter))
-                const shadowR = lr * (isTundra ? 0.57 : 0.67)
-                const shadowG = lg * (isTundra ? 0.64 : 0.64)
-                const shadowB = lb * (isTundra ? 0.74 : 0.62)
+                const shadowR = lr * (isTundra ? 0.72 : 0.67)
+                const shadowG = lg * (isTundra ? 0.79 : 0.64)
+                const shadowB = lb * (isTundra ? 0.89 : 0.62)
                 const darkColor = toHex(shadowR * (1 + darkJitter), shadowG * (1 + darkJitter), shadowB * (1 + darkJitter))
                 if (isMountainPeak) {
                   mountainBg = `linear-gradient(to bottom, ${lightColor} 50%, ${darkColor} 50%)`
