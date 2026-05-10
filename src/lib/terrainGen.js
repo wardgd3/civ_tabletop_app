@@ -364,14 +364,9 @@ function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, _ri
     if (gapIndices.has(j)) continue
     const [mr, mc] = path[j]
 
-    // Taper: full width (3) when far from gaps, narrow near gaps
+    // Taper: 2 tiles when far from gaps, 1 tile near gaps
     const gapDist = distToGap[j]
-    let targetWidth
-    if (gapDist <= 1) targetWidth = 0      // just the spine
-    else if (gapDist <= 3) targetWidth = 1  // 2 tiles total
-    else targetWidth = 2                     // 3 tiles total (1 each side)
-
-    if (targetWidth === 0) continue
+    if (gapDist <= 2) continue // just the spine near gaps
 
     const prevPt = j > 0 ? path[j - 1] : path[j]
     const nextPt = j < path.length - 1 ? path[j + 1] : path[j]
@@ -380,23 +375,20 @@ function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, _ri
     const perpR = -dc
     const perpC = dr
     const neighbors = hexNeighbors(mr, mc, rows, cols)
+    const side = Math.sin(j * 0.05 + mr * 1.3) > 0 ? 1 : -1
 
-    // Add one tile on each perpendicular side
-    for (const sideDir of [1, -1]) {
-      if (targetWidth < (sideDir === -1 ? 2 : 1)) continue
-      let best = null, bestScore = -1e9
-      for (const [nr, nc] of neighbors) {
-        if (allMountains.has(`${nr}-${nc}`)) continue
-        const t = tileAt(nr, nc).terrain
-        if (t === 'river' || t === 'lake') continue
-        const dot = ((nr - mr) * perpR + (nc - mc) * perpC) * sideDir
-        if (dot > bestScore) { bestScore = dot; best = [nr, nc] }
-      }
-      if (best) {
-        const [wr, wc] = best
-        tileAt(wr, wc).terrain = 'mountain'
-        allMountains.add(`${wr}-${wc}`)
-      }
+    let best = null, bestScore = -1e9
+    for (const [nr, nc] of neighbors) {
+      if (allMountains.has(`${nr}-${nc}`)) continue
+      const t = tileAt(nr, nc).terrain
+      if (t === 'river' || t === 'lake') continue
+      const dot = ((nr - mr) * perpR + (nc - mc) * perpC) * side
+      if (dot > bestScore) { bestScore = dot; best = [nr, nc] }
+    }
+    if (best) {
+      const [wr, wc] = best
+      tileAt(wr, wc).terrain = 'mountain'
+      allMountains.add(`${wr}-${wc}`)
     }
   }
 }
@@ -948,65 +940,58 @@ function generateNebulaFlow(tiles, rows, cols, rand, noise) {
   const brightSet = new Set()
   const hotspotSet = new Set()
 
-  // Precompute width at each path position using noise for volatile variation
-  const widths = []
-  for (let i = 0; i < path.length; i++) {
-    const t = i / path.length
-    const n1 = Math.sin(i * 0.06 + 1.7) * 0.4
-    const n2 = noise.octaves(t * 3.5 + 300, 0.5, 2, 2.0, 0.5) * 0.6
-    const widthNoise = n1 + n2
-    widths.push(Math.max(4, Math.floor(4 + widthNoise * 6)))
-  }
+  // Use noise field to create organic cloud shape around the path spine
+  const maxRadius = Math.max(6, Math.floor(Math.min(rows, cols) * 0.3))
 
-  // Single BFS from ALL path tiles simultaneously, tracking min distance to path
+  // Single BFS from ALL path tiles, tracking distance
   const distFromPath = new Map()
   let frontier = []
   for (let i = 0; i < path.length; i++) {
     const [r, c] = path[i]
     const k = `${r}-${c}`
     distFromPath.set(k, 0)
-    frontier.push([r, c, 0, i])
+    frontier.push([r, c, 0])
   }
 
   while (frontier.length > 0) {
     const next = []
-    for (const [fr, fc, fd, pathIdx] of frontier) {
-      const maxW = widths[pathIdx]
-      if (fd >= maxW) continue
+    for (const [fr, fc, fd] of frontier) {
+      if (fd >= maxRadius) continue
       for (const [nr, nc] of hexNeighbors(fr, fc, rows, cols)) {
         const nk = `${nr}-${nc}`
         const newDist = fd + 1
         if (!distFromPath.has(nk) || distFromPath.get(nk) > newDist) {
           distFromPath.set(nk, newDist)
-          next.push([nr, nc, newDist, pathIdx])
+          next.push([nr, nc, newDist])
         }
       }
     }
     frontier = next
   }
 
-  // Assign terrain based on distance ratio to nearest path tile's width
+  // Use noise to create irregular cloud boundary and assign layers
   for (const [k, fd] of distFromPath) {
     const [r, c] = k.split('-').map(Number)
-    // Find which path tile is closest to determine width context
-    let minPathDist = Infinity
-    let closestIdx = 0
-    for (let i = 0; i < path.length; i += 3) {
-      const [pr, pc] = path[i]
-      const d = Math.abs(r - pr) + Math.abs(c - pc)
-      if (d < minPathDist) { minPathDist = d; closestIdx = i }
-    }
-    const maxW = widths[closestIdx]
-    const distRatio = fd / Math.max(maxW, 1)
+    const nx = c / cols, ny = r / rows
+    // Per-tile noise for irregular edges - large scale for broad bulges
+    const edgeNoise = noise.octaves(nx * 4 + 500, ny * 4 + 500, 3, 2.0, 0.5)
+    // Small scale noise for fine detail on edges
+    const detailNoise = noise.octaves(nx * 10 + 700, ny * 10 + 700, 2, 2.0, 0.5) * 0.3
+    // Combined threshold: closer to path = always included, farther = noise decides
+    const cloudThreshold = 3 + (edgeNoise + detailNoise) * (maxRadius * 0.7)
 
-    if (distRatio < 0.2) {
+    if (fd > cloudThreshold) continue
+
+    const distRatio = fd / Math.max(cloudThreshold, 1)
+
+    if (distRatio < 0.15) {
       hotspotSet.add(k)
       brightSet.add(k)
       coreSet.add(k)
-    } else if (distRatio < 0.4) {
+    } else if (distRatio < 0.35) {
       brightSet.add(k)
       coreSet.add(k)
-    } else if (distRatio < 0.7) {
+    } else if (distRatio < 0.6) {
       coreSet.add(k)
     }
     nebulaSet.add(k)
