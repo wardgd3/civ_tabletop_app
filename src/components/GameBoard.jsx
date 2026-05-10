@@ -66,7 +66,7 @@ const RESOURCE_BY_ID = Object.fromEntries([
 ])
 function getUnitIcon(unitType) {
   if (!unitType?.icon) return '/assets/infantry.png'
-  if (unitType.name === 'Command Ship') return '/assets/mothership.png'
+  if (unitType.name === 'Command Ship') return '/assets/commandship2.png'
   return `/assets/${encodeURIComponent(unitType.icon)}`
 }
 
@@ -1837,7 +1837,7 @@ export default function GameBoard({
                 >
                   <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `2px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
                     <img
-                      src={cc.wg_unit_types?.name === 'Command Ship' ? '/assets/mothership2.png' : getUnitIcon(cc.wg_unit_types)}
+                      src={cc.wg_unit_types?.name === 'Command Ship' ? '/assets/commandship2.png' : getUnitIcon(cc.wg_unit_types)}
                       alt={cc.wg_unit_types?.name}
                       className="w-full h-full object-cover"
                     />
