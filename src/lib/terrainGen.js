@@ -17,8 +17,9 @@ export const TERRAIN = {
   SAND:            { id: 'sand',            name: 'Sand',            color: '#807550', darkColor: '#554d34' },
   VOID:            { id: 'void',            name: 'Void',            color: '#0a0e12', darkColor: '#0a0e12' },
   NEBULA:          { id: 'nebula',          name: 'Nebula',          color: '#130c28', darkColor: '#0a0618' },
-  NEBULA_CORE:     { id: 'nebula_core',     name: 'Nebula Core',     color: '#371744', darkColor: '#1e0d2d' },
-  NEBULA_BRIGHT:   { id: 'nebula_bright',   name: 'Nebula Core',     color: '#552662', darkColor: '#321441' },
+  NEBULA_CORE:     { id: 'nebula_core',     name: 'Nebula Core',     color: '#2c1236', darkColor: '#180a24' },
+  NEBULA_BRIGHT:   { id: 'nebula_bright',   name: 'Nebula Bright',   color: '#441e4e', darkColor: '#281034' },
+  NEBULA_HOTSPOT:  { id: 'nebula_hotspot',  name: 'Nebula Hotspot',  color: '#6a3080', darkColor: '#3e1a4e' },
   ASTEROID:        { id: 'asteroid',        name: 'Asteroid',        color: '#3a3228', darkColor: '#252018' },
   LARGE_ASTEROID:  { id: 'large_asteroid',  name: 'Large Asteroid',  color: '#4a4238', darkColor: '#302a20' },
   STAR:            { id: 'star',            name: 'Star',            color: '#e8e0c8', darkColor: '#a09880' },
@@ -906,6 +907,23 @@ export function generateSpaceTerrain(rows, cols, seed) {
             nt2.terrain = 'nebula'
           }
         }
+      }
+    }
+  }
+
+  // Place nebula hotspots at centers of bright nebula regions
+  const denseSet = new Set(['nebula', 'nebula_core', 'nebula_bright'])
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const t = tileAt(r, c)
+      if (t.terrain !== 'nebula_bright') continue
+      const neighbors = hexNeighbors(r, c, rows, cols)
+      let denseCount = 0
+      for (const [nr, nc] of neighbors) {
+        if (denseSet.has(tileAt(nr, nc).terrain)) denseCount++
+      }
+      if (denseCount >= 5) {
+        t.terrain = 'nebula_hotspot'
       }
     }
   }

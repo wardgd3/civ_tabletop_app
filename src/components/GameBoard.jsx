@@ -27,11 +27,11 @@ const TERRAIN_ELEVATION = {
 }
 const WATER_TERRAINS = new Set(['ocean', 'coast', 'lake', 'river'])
 const SPACE_EMPTY = new Set(['void', 'space', 'dust'])
-const SPACE_DENSE = new Set(['nebula', 'nebula_core', 'nebula_bright'])
+const SPACE_DENSE = new Set(['nebula', 'nebula_core', 'nebula_bright', 'nebula_hotspot'])
 
 const SPACE_ELEVATION = {
   space: 0, void: 0, dust: 0.1,
-  nebula: 0.25, nebula_core: 0.4, nebula_bright: 0.5,
+  nebula: 0.25, nebula_core: 0.4, nebula_bright: 0.5, nebula_hotspot: 0.6,
   asteroid: 0.35, large_asteroid: 0.45, star: 0.8,
 }
 
@@ -284,25 +284,6 @@ export default function GameBoard({
               baseDark = blendColors(baseDark, '#a0a0a8', 0.15)
               break
             }
-          }
-        }
-        if (tile.terrain === 'nebula_bright') {
-          const neighbors = hexNeighborsBoard(r, c, rows, cols)
-          let denseCount = 0
-          for (const [nr, nc] of neighbors) {
-            const nt = tileMap.get(`${nr}-${nc}`)
-            if (nt && SPACE_DENSE.has(nt.terrain)) denseCount++
-          }
-          if (denseCount >= 5) {
-            const [hr, hg, hb] = parseHex(baseColor)
-            baseColor = toHex(hr * 1.4, hg * 1.4, hb * 1.4)
-            const [hdr, hdg, hdb] = parseHex(baseDark)
-            baseDark = toHex(hdr * 1.3, hdg * 1.3, hdb * 1.3)
-          } else if (denseCount >= 4) {
-            const [hr, hg, hb] = parseHex(baseColor)
-            baseColor = toHex(hr * 1.2, hg * 1.2, hb * 1.2)
-            const [hdr, hdg, hdb] = parseHex(baseDark)
-            baseDark = toHex(hdr * 1.15, hdg * 1.15, hdb * 1.15)
           }
         }
 
@@ -1698,7 +1679,7 @@ export default function GameBoard({
                 >
                   <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `2px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
                     <img
-                      src={getUnitIcon(cc.wg_unit_types)}
+                      src={cc.wg_unit_types?.name === 'Command Ship' ? '/assets/mothership2.png' : getUnitIcon(cc.wg_unit_types)}
                       alt={cc.wg_unit_types?.name}
                       className="w-full h-full object-cover"
                     />
