@@ -248,6 +248,7 @@ export function generateTerrain(rows, cols, seed) {
   generateMountainRanges(tiles, rows, cols, rand, mainRiver)
   generateRivers(tiles, rows, cols, elevMap, rand)
   generateLargeLake(tiles, rows, cols, elevMap, rand, mainRiver)
+  generateGreatLake(tiles, rows, cols, rand, mainRiver)
   generateLakes(tiles, rows, cols, elevMap, moistMap)
   placeSandBanks(tiles, rows, cols, rand)
   placeResources(tiles, rows, cols, rand)
@@ -856,6 +857,72 @@ function generateLargeLake(tiles, rows, cols, elevMap, rand, mainRiver) {
     riverTiles.add(`${br}-${bc}`)
     cr = br
     cc = bc
+  }
+}
+
+function generateGreatLake(tiles, rows, cols, rand, mainRiver) {
+  if (rows * cols < 1500) return
+  const tileAt = (r, c) => tiles[r * cols + c]
+  const WATER = new Set(['river', 'lake', 'ocean', 'coast', 'mountain'])
+  const riverTiles = mainRiver ? mainRiver.riverTiles : new Set()
+
+  const targetSize = 300 + Math.floor(rand() * 51)
+  const margin = 6
+  let center = null
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const cr = margin + Math.floor(rand() * (rows - margin * 2))
+    const cc = margin + Math.floor(rand() * (cols - margin * 2))
+    const t = tileAt(cr, cc).terrain
+    if (WATER.has(t)) continue
+    let tooClose = false
+    for (let dr = -8; dr <= 8 && !tooClose; dr++) {
+      for (let dc = -8; dc <= 8 && !tooClose; dc++) {
+        const nr = cr + dr, nc = cc + dc
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue
+        if (riverTiles.has(`${nr}-${nc}`)) tooClose = true
+        const nt = tileAt(nr, nc).terrain
+        if (nt === 'ocean' || nt === 'coast') tooClose = true
+      }
+    }
+    if (tooClose) continue
+    center = [cr, cc]
+    break
+  }
+  if (!center) return
+
+  const [lr, lc] = center
+  const lakeSet = new Set([`${lr}-${lc}`])
+  const lakeTiles = [[lr, lc]]
+  const maxRadius = Math.ceil(Math.sqrt(targetSize)) + 2
+
+  for (let i = 0; i < lakeTiles.length && lakeTiles.length < targetSize; i++) {
+    const [r, c] = lakeTiles[i]
+    const neighbors = hexNeighbors(r, c, rows, cols)
+    for (let j = neighbors.length - 1; j > 0; j--) {
+      const k = Math.floor(rand() * (j + 1));
+      [neighbors[j], neighbors[k]] = [neighbors[k], neighbors[j]]
+    }
+    for (const [nr, nc] of neighbors) {
+      if (lakeTiles.length >= targetSize) break
+      const nk = `${nr}-${nc}`
+      if (lakeSet.has(nk)) continue
+      if (nr < margin || nr >= rows - margin || nc < margin || nc >= cols - margin) continue
+      if (riverTiles.has(nk)) continue
+      const nt = tileAt(nr, nc).terrain
+      if (nt === 'river' || nt === 'ocean' || nt === 'coast') continue
+      const dist = Math.abs(nr - lr) + Math.abs(nc - lc)
+      if (dist > maxRadius) continue
+      const seed1 = Math.sin(nr * 7.3 + nc * 11.1) * 43758.5453
+      const edgeNoise = (seed1 - Math.floor(seed1)) * 3
+      if (dist + edgeNoise > maxRadius + 1) continue
+      lakeSet.add(nk)
+      lakeTiles.push([nr, nc])
+    }
+  }
+
+  for (const [r, c] of lakeTiles) {
+    tileAt(r, c).terrain = 'lake'
+    tileAt(r, c).hasRiver = false
   }
 }
 
