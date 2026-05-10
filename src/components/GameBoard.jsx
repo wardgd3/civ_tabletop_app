@@ -1200,7 +1200,7 @@ export default function GameBoard({
                   {showUnit && !isCC && (() => {
                     const pColor = getPlayerColor(unit.owner_id)
                     const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
-                    const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * 0.85
+                    const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * 0.95
                     return (
                       <div className="relative flex items-center justify-center z-10" style={{ width: tokenSize, height: tokenSize }}>
                         <div
