@@ -258,115 +258,48 @@ export function generateTerrain(rows, cols, seed) {
 
 function generateCoastalInlets(tiles, rows, cols, rand, noise) {
   const tileAt = (r, c) => tiles[r * cols + c]
-  const key = (r, c) => r * cols + c
   const inletCount = 2 + Math.floor(rand() * 2)
 
-  // Collect edge positions grouped by side
-  const edges = [
-    { side: 'top', tiles: [] },
-    { side: 'bottom', tiles: [] },
-    { side: 'left', tiles: [] },
-    { side: 'right', tiles: [] },
-  ]
-  for (let c = 0; c < cols; c++) {
-    edges[0].tiles.push([0, c])
-    edges[1].tiles.push([rows - 1, c])
-  }
-  for (let r = 0; r < rows; r++) {
-    edges[2].tiles.push([r, 0])
-    edges[3].tiles.push([r, cols - 1])
-  }
-
-  // Shuffle edges and pick distinct sides
-  for (let i = edges.length - 1; i > 0; i--) {
+  const sides = ['top', 'bottom', 'left', 'right']
+  for (let i = sides.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
-    [edges[i], edges[j]] = [edges[j], edges[i]]
+    [sides[i], sides[j]] = [sides[j], sides[i]]
   }
 
   const waterSet = new Set()
 
-  for (let i = 0; i < Math.min(inletCount, edges.length); i++) {
-    const edge = edges[i]
-    const edgeTiles = edge.tiles
-    // Pick a start point along this edge
-    const startIdx = Math.floor(edgeTiles.length * (0.2 + rand() * 0.6))
-    const [sr, sc] = edgeTiles[startIdx]
+  for (let i = 0; i < Math.min(inletCount, sides.length); i++) {
+    const side = sides[i]
+    const depthRadius = 3 + Math.floor(rand() * 4)
+    const widthRadius = depthRadius * (1.4 + rand() * 0.8)
 
-    // Pathfind inward using Dijkstra with wander
-    const inletDepth = Math.floor(Math.min(rows, cols) * (0.08 + rand() * 0.1))
-    // Target is a point roughly inletDepth tiles inward from the edge
-    let tr, tc
-    if (edge.side === 'top') { tr = sr + inletDepth; tc = sc + Math.floor((rand() - 0.5) * cols * 0.3) }
-    else if (edge.side === 'bottom') { tr = sr - inletDepth; tc = sc + Math.floor((rand() - 0.5) * cols * 0.3) }
-    else if (edge.side === 'left') { tr = sr + Math.floor((rand() - 0.5) * rows * 0.3); tc = sc + inletDepth }
-    else { tr = sr + Math.floor((rand() - 0.5) * rows * 0.3); tc = sc - inletDepth }
-    tr = Math.max(2, Math.min(rows - 3, tr))
-    tc = Math.max(2, Math.min(cols - 3, tc))
-
-    const noiseScale = 0.12
-    const wanderStrength = 5
-    const INF = 1e9
-    const dist = new Float64Array(rows * cols).fill(INF)
-    const prev = new Int32Array(rows * cols).fill(-1)
-    dist[key(sr, sc)] = 0
-
-    const heap = [[0, sr, sc]]
-    while (heap.length > 0) {
-      heap.sort((a, b) => a[0] - b[0])
-      const [d, cr, cc] = heap.shift()
-      if (cr === tr && cc === tc) break
-      if (d > dist[key(cr, cc)]) continue
-
-      for (const [nr, nc] of hexNeighbors(cr, cc, rows, cols)) {
-        let cost = 1
-        const seed1 = Math.sin(nr * 5.1 + nc * 8.7) * 43758.5453
-        const wander = (Math.sin(seed1 + nr * noiseScale + nc * noiseScale * 2.3) + 1) * wanderStrength
-        cost += wander
-        const nd = d + cost
-        if (nd < dist[key(nr, nc)]) {
-          dist[key(nr, nc)] = nd
-          prev[key(nr, nc)] = key(cr, cc)
-          heap.push([nd, nr, nc])
-        }
-      }
+    let edgeR, edgeC
+    if (side === 'top' || side === 'bottom') {
+      edgeC = Math.floor(cols * (0.2 + rand() * 0.6))
+      edgeR = side === 'top' ? 0 : rows - 1
+    } else {
+      edgeR = Math.floor(rows * (0.2 + rand() * 0.6))
+      edgeC = side === 'left' ? 0 : cols - 1
     }
 
-    if (dist[key(tr, tc)] >= INF) continue
+    const scanR = Math.ceil(Math.max(depthRadius, widthRadius)) + 2
+    for (let dr = -scanR; dr <= scanR; dr++) {
+      for (let dc = -scanR; dc <= scanR; dc++) {
+        const r = edgeR + dr, c = edgeC + dc
+        if (r < 0 || r >= rows || c < 0 || c >= cols) continue
 
-    const path = []
-    let cur = key(tr, tc)
-    while (cur !== -1) {
-      const r = Math.floor(cur / cols)
-      const c = cur % cols
-      path.push([r, c])
-      cur = prev[cur]
-    }
-    path.reverse()
+        let inward, lateral
+        if (side === 'top') { inward = r; lateral = c - edgeC }
+        else if (side === 'bottom') { inward = rows - 1 - r; lateral = c - edgeC }
+        else if (side === 'left') { inward = c; lateral = r - edgeR }
+        else { inward = cols - 1 - c; lateral = r - edgeR }
 
-    // Paint water along path, wide at edge tapering to narrow at tip
-    for (let j = 0; j < path.length; j++) {
-      const [r, c] = path[j]
-      const t = j / path.length
-      // Wide at start (edge), tapers toward end
-      const width = Math.max(1, Math.floor(Math.sqrt(1 - t) * 6))
-
-      waterSet.add(`${r}-${c}`)
-      // BFS outward from path tile up to width
-      let ring = [[r, c]]
-      const visited = new Set([`${r}-${c}`])
-      for (let w = 0; w < width; w++) {
-        const nextRing = []
-        for (const [fr, fc] of ring) {
-          for (const [nr, nc] of hexNeighbors(fr, fc, rows, cols)) {
-            const nk = `${nr}-${nc}`
-            if (!visited.has(nk)) {
-              visited.add(nk)
-              waterSet.add(nk)
-              nextRing.push([nr, nc])
-            }
-          }
-        }
-        ring = nextRing
+        if (inward < 0) continue
+        const ellipseDist = (inward / depthRadius) ** 2 + (lateral / widthRadius) ** 2
+        const seed1 = Math.sin(r * 5.1 + c * 8.7) * 43758.5453
+        const edgeNoise = (seed1 - Math.floor(seed1) - 0.5) * 0.35
+        if (ellipseDist + edgeNoise > 1) continue
+        waterSet.add(`${r}-${c}`)
       }
     }
   }
@@ -863,17 +796,16 @@ function generateLargeLake(tiles, rows, cols, elevMap, rand, mainRiver) {
 function generateGreatLake(tiles, rows, cols, rand, mainRiver) {
   if (rows * cols < 1500) return
   const tileAt = (r, c) => tiles[r * cols + c]
-  const WATER = new Set(['river', 'lake', 'ocean', 'coast', 'mountain'])
+  const AVOID = new Set(['river', 'lake', 'ocean', 'coast', 'mountain'])
   const riverTiles = mainRiver ? mainRiver.riverTiles : new Set()
 
-  const targetSize = 300 + Math.floor(rand() * 51)
   const margin = 6
   let center = null
   for (let attempt = 0; attempt < 40; attempt++) {
     const cr = margin + Math.floor(rand() * (rows - margin * 2))
     const cc = margin + Math.floor(rand() * (cols - margin * 2))
     const t = tileAt(cr, cc).terrain
-    if (WATER.has(t)) continue
+    if (AVOID.has(t)) continue
     let tooClose = false
     for (let dr = -8; dr <= 8 && !tooClose; dr++) {
       for (let dc = -8; dc <= 8 && !tooClose; dc++) {
@@ -891,31 +823,27 @@ function generateGreatLake(tiles, rows, cols, rand, mainRiver) {
   if (!center) return
 
   const [lr, lc] = center
-  const lakeSet = new Set([`${lr}-${lc}`])
-  const lakeTiles = [[lr, lc]]
-  const maxRadius = Math.ceil(Math.sqrt(targetSize)) + 2
+  const angle = rand() * Math.PI
+  const radiusA = 8 + rand() * 4
+  const radiusB = radiusA * (0.55 + rand() * 0.2)
+  const cosA = Math.cos(angle), sinA = Math.sin(angle)
 
-  for (let i = 0; i < lakeTiles.length && lakeTiles.length < targetSize; i++) {
-    const [r, c] = lakeTiles[i]
-    const neighbors = hexNeighbors(r, c, rows, cols)
-    for (let j = neighbors.length - 1; j > 0; j--) {
-      const k = Math.floor(rand() * (j + 1));
-      [neighbors[j], neighbors[k]] = [neighbors[k], neighbors[j]]
-    }
-    for (const [nr, nc] of neighbors) {
-      if (lakeTiles.length >= targetSize) break
-      const nk = `${nr}-${nc}`
-      if (lakeSet.has(nk)) continue
-      if (riverTiles.has(nk)) continue
-      const nt = tileAt(nr, nc).terrain
+  const lakeTiles = []
+  const scanR = Math.ceil(Math.max(radiusA, radiusB)) + 2
+  for (let dr = -scanR; dr <= scanR; dr++) {
+    for (let dc = -scanR; dc <= scanR; dc++) {
+      const r = lr + dr, c = lc + dc
+      if (r < 0 || r >= rows || c < 0 || c >= cols) continue
+      const localR = dr * cosA + dc * sinA
+      const localC = -dr * sinA + dc * cosA
+      const ellipseDist = (localR / radiusA) ** 2 + (localC / radiusB) ** 2
+      const seed1 = Math.sin(r * 7.3 + c * 11.1) * 43758.5453
+      const edgeNoise = (seed1 - Math.floor(seed1) - 0.5) * 0.3
+      if (ellipseDist + edgeNoise > 1) continue
+      if (riverTiles.has(`${r}-${c}`)) continue
+      const nt = tileAt(r, c).terrain
       if (nt === 'river' || nt === 'ocean' || nt === 'coast') continue
-      const dist = Math.sqrt((nr - lr) ** 2 + (nc - lc) ** 2)
-      if (dist > maxRadius) continue
-      const seed1 = Math.sin(nr * 7.3 + nc * 11.1) * 43758.5453
-      const edgeNoise = (seed1 - Math.floor(seed1)) * 2
-      if (dist + edgeNoise > maxRadius + 1) continue
-      lakeSet.add(nk)
-      lakeTiles.push([nr, nc])
+      lakeTiles.push([r, c])
     }
   }
 
