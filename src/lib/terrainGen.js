@@ -9,7 +9,7 @@ export const TERRAIN = {
   TUNDRA:          { id: 'tundra',          name: 'Tundra',          color: '#4a5060', darkColor: '#303540' },
   SNOW:            { id: 'snow',            name: 'Snow',            color: '#606870', darkColor: '#404548' },
   HILLS:           { id: 'hills',           name: 'Hills',           color: '#554e38', darkColor: '#353020' },
-  MOUNTAIN:        { id: 'mountain',        name: 'Mountain',        color: '#4a3d2e', darkColor: '#2e2518' },
+  MOUNTAIN:        { id: 'mountain',        name: 'Mountain',        color: '#3d3830', darkColor: '#28241e' },
   FOREST:          { id: 'forest',          name: 'Forest',          color: '#264826', darkColor: '#1a301a' },
   JUNGLE:          { id: 'jungle',          name: 'Jungle',          color: '#1e4a1e', darkColor: '#163016' },
   LAKE:            { id: 'lake',            name: 'Lake',            color: '#1e4470', darkColor: '#122a45' },

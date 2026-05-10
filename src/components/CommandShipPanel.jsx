@@ -4,13 +4,12 @@ const ICON_STYLE = { width: 14, height: 14, fill: 'none', stroke: '#8b949e', str
 
 const ICONS = {
   reactor: (
-    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
-      <circle cx="8" cy="8" r="3" />
-      <circle cx="8" cy="8" r="6" strokeDasharray="2 2" />
-      <line x1="8" y1="1" x2="8" y2="3" />
-      <line x1="8" y1="13" x2="8" y2="15" />
-      <line x1="1" y1="8" x2="3" y2="8" />
-      <line x1="13" y1="8" x2="15" y2="8" />
+    <svg viewBox="0 0 100 100" style={ICON_STYLE}>
+      <circle cx="50" cy="50" r="48" fill="none" stroke="#8b949e" strokeWidth="8" />
+      <circle cx="50" cy="50" r="8" fill="#8b949e" stroke="none" />
+      <path d="M50 38 L36.4 14.5 A35 35 0 0 1 63.6 14.5 Z" fill="#8b949e" stroke="none" />
+      <path d="M60.4 55 L74 79 A35 35 0 0 1 42 86 Z" fill="#8b949e" stroke="none" />
+      <path d="M39.6 55 L26 79 A35 35 0 0 0 58 86 Z" fill="#8b949e" stroke="none" />
     </svg>
   ),
   shields: (
