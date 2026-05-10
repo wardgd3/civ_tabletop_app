@@ -821,7 +821,7 @@ export function useGameState(gameId) {
       typeId: transport.unit_type_id,
       typeName: transport.wg_unit_types?.name || 'Armored Transport',
       hp: transport.current_hp,
-      units: [],
+      units: transport.upgrades?.loadedUnits || [],
     })
 
     await supabase.from('wg_units').update({ is_alive: false }).eq('id', transportUnitId)
