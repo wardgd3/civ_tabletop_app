@@ -992,8 +992,7 @@ function generateNebulaFlow(tiles, rows, cols, rand, noise) {
     // Large scale noise for broad bulges, biased high for wider nebula
     const edgeNoise = noise.octaves(nx * 3 + 500, ny * 3 + 500, 3, 2.0, 0.5)
     const detailNoise = noise.octaves(nx * 8 + 700, ny * 8 + 700, 2, 2.0, 0.5) * 0.2
-    // Higher base + stronger multiplier = much wider cloud, thinner in some spots
-    const cloudThreshold = 5 + (edgeNoise + detailNoise + 0.3) * (maxRadius * 0.75)
+    const cloudThreshold = 4 + (edgeNoise + detailNoise + 0.2) * (maxRadius * 0.45)
 
     if (fd > cloudThreshold) continue
 
@@ -1012,48 +1011,17 @@ function generateNebulaFlow(tiles, rows, cols, rand, noise) {
     nebulaSet.add(k)
   }
 
-  // Guarantee minimum 2-4 tile border of dark nebula and core around the nebula
-  const nebulaEdge = new Set()
-  for (const k of nebulaSet) {
-    const [r, c] = k.split('-').map(Number)
-    for (let ring = 0; ring < 3; ring++) {
-      const expand = ring === 0 ? [[r, c]] : [...nebulaEdge].filter(ek => {
-        const [er, ec] = ek.split('-').map(Number)
-        return !nebulaSet.has(ek)
-      }).map(ek => ek.split('-').map(Number))
-      for (const [er, ec] of expand) {
-        for (const [nr, nc] of hexNeighbors(er, ec, rows, cols)) {
-          const nk = `${nr}-${nc}`
-          if (!nebulaSet.has(nk)) nebulaEdge.add(nk)
-        }
-      }
-    }
-  }
   // Add 2 rings of dark nebula around the existing shape
-  let outerFrontier = []
-  for (const k of nebulaSet) {
-    const [r, c] = k.split('-').map(Number)
-    for (const [nr, nc] of hexNeighbors(r, c, rows, cols)) {
-      const nk = `${nr}-${nc}`
-      if (!nebulaSet.has(nk)) {
-        nebulaSet.add(nk)
-        outerFrontier.push(nk)
-      }
-    }
-  }
-  for (let ring = 1; ring < 3; ring++) {
-    const nextFrontier = []
-    for (const k of outerFrontier) {
+  for (let ring = 0; ring < 2; ring++) {
+    const border = []
+    for (const k of nebulaSet) {
       const [r, c] = k.split('-').map(Number)
       for (const [nr, nc] of hexNeighbors(r, c, rows, cols)) {
         const nk = `${nr}-${nc}`
-        if (!nebulaSet.has(nk)) {
-          nebulaSet.add(nk)
-          nextFrontier.push(nk)
-        }
+        if (!nebulaSet.has(nk)) border.push(nk)
       }
     }
-    outerFrontier = nextFrontier
+    for (const nk of border) nebulaSet.add(nk)
   }
   // Add 2 rings of core around existing core
   const coreExpand = new Set(coreSet)

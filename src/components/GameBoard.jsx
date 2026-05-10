@@ -368,7 +368,7 @@ export default function GameBoard({
           // Elevation shading: darker at edges, lighter in center
           const depth = asteroidDepth.get(`${r}-${c}`) || 0
           const depthShift = Math.min(depth, 3) * 0.08 // up to ~24% lighter at center
-          const edgeDarken = depth === 0 ? -0.10 : 0
+          const edgeDarken = depth === 0 ? -0.22 : 0
           const elevAdj = depthShift + edgeDarken
           const [ar, ag, ab] = parseHex(baseColor)
           baseColor = toHex(
