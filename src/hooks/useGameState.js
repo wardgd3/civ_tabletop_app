@@ -254,8 +254,11 @@ export function useGameState(gameId) {
       maxRange += 2
     }
 
+    const usedSoFar = unit.moves_used || 0
+    const remaining = maxRange - usedSoFar
+
     const dist = hexDistance(unit.grid_row, unit.grid_col, newRow, newCol)
-    if (dist > maxRange) throw new Error('Too far')
+    if (dist > remaining) throw new Error('Too far')
 
     const occupied = units.find(u => u.grid_row === newRow && u.grid_col === newCol && u.id !== unitId && (u.board || 'ground') === unitBoard)
     if (occupied) throw new Error('Cell is occupied')
@@ -269,9 +272,12 @@ export function useGameState(gameId) {
       }
     }
 
+    const newMovesUsed = usedSoFar + dist
+    const fullyMoved = newMovesUsed >= maxRange
+
     const { error } = await supabase
       .from('wg_units')
-      .update({ grid_row: newRow, grid_col: newCol, has_moved: true })
+      .update({ grid_row: newRow, grid_col: newCol, has_moved: fullyMoved, moves_used: newMovesUsed })
       .eq('id', unitId)
     if (error) throw error
 
@@ -331,6 +337,7 @@ export function useGameState(gameId) {
             board: targetBoard,
             has_moved: true,
             has_attacked: true,
+            moves_used: 99,
             is_alive: true,
           })
         }
@@ -737,6 +744,7 @@ export function useGameState(gameId) {
       board: 'ground',
       has_moved: true,
       has_attacked: true,
+      moves_used: 99,
       is_alive: true,
     })
     if (error) throw error
@@ -950,6 +958,7 @@ export function useGameState(gameId) {
       board: 'ground',
       has_moved: true,
       has_attacked: true,
+      moves_used: 99,
       is_alive: true,
       upgrades: { loadedUnits: transport.units || [] },
     })
@@ -981,6 +990,7 @@ export function useGameState(gameId) {
       board: transport.board || 'ground',
       has_moved: true,
       has_attacked: true,
+      moves_used: 99,
       is_alive: true,
     })
     if (error) throw error
@@ -1027,7 +1037,7 @@ export function useGameState(gameId) {
     if (nextTeamUnits.length > 0) {
       const { error } = await supabase
         .from('wg_units')
-        .update({ has_moved: false, has_attacked: false })
+        .update({ has_moved: false, has_attacked: false, moves_used: 0 })
         .in('id', nextTeamUnits.map(u => u.id))
       if (error) throw error
     }
