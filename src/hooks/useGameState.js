@@ -764,8 +764,9 @@ export function useGameState(gameId) {
     const upgrades = ship.upgrades || {}
 
     const isTransport = ut.name === 'Armor Transport'
+    const isSpaceBoard = (ship.board || 'ground') === 'space'
 
-    if (isTransport) {
+    if (isTransport && !isSpaceBoard) {
       const loadingBay = [...(upgrades.loadingBay || [])]
       const maxSlots = ship.wg_unit_types?.name === 'Base' ? 1 : 2
       if (loadingBay.length >= maxSlots) throw new Error('Loading bay full')
