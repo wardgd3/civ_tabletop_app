@@ -359,12 +359,14 @@ export default function GameBoard({
   const bayDeployRange = bayDeployInfo ? (() => {
     const cc = units.find(u => u.id === bayDeployInfo.shipId)
     if (!cc) return []
-    const neighbors = hexNeighborsBoard(cc.grid_row, cc.grid_col, rows, cols)
     const cells = []
-    for (const [nr, nc] of neighbors) {
-      if (getUnitAt(nr, nc)) continue
-      if (isImpassable(nr, nc)) continue
-      cells.push(`${nr}-${nc}`)
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const d = hexDistance(cc.grid_row, cc.grid_col, r, c)
+        if (d > 0 && d <= 3 && !getUnitAt(r, c) && !isImpassable(r, c)) {
+          cells.push(`${r}-${c}`)
+        }
+      }
     }
     return cells
   })() : []
