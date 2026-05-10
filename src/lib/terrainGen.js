@@ -398,11 +398,11 @@ function generateCoastalInlets(tiles, rows, cols, rand, noise) {
     landBorder = next
   }
 
-  // Apply water terrain - ocean for deep center tiles, coast for shallow edges
+  // Apply water terrain - ocean everywhere except tiles adjacent to land (coast)
   for (const k of waterSet) {
     const [r, c] = k.split('-').map(Number)
     const depth = waterDistFromLand.get(k) || 0
-    tileAt(r, c).terrain = depth >= 2 ? 'ocean' : 'coast'
+    tileAt(r, c).terrain = depth >= 1 ? 'ocean' : 'coast'
   }
 
   // Place coast tiles around the water edges that touch land
