@@ -376,8 +376,7 @@ function generateCoastalInlets(tiles, rows, cols, rand, noise) {
   for (const k of waterSet) {
     const [r, c] = k.split('-').map(Number)
     const touchesLand = hexNeighbors(r, c, rows, cols).some(([nr, nc]) => !waterSet.has(`${nr}-${nc}`))
-    const isEdge = r <= 0 || r >= rows - 1 || c <= 0 || c >= cols - 1
-    if (touchesLand || isEdge) {
+    if (touchesLand) {
       waterDistFromLand.set(k, 0)
       landBorder.push(k)
     }
