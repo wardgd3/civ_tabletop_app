@@ -198,7 +198,7 @@ export function useGameState(gameId) {
       if (!myCC && !myCCAnyBoard) throw new Error('Deploy a Command Center first')
       if (!myCC) throw new Error('Deploy a Command structure on this board first')
       const dist = distToNearest(row, col, myStructures)
-      if (dist > unitType.movement) throw new Error('Too far from Command Center or Base')
+      if (dist > 3) throw new Error('Too far from Command Center or Base')
     }
 
     const tile = boardTiles.find(t => t.grid_row === row && t.grid_col === col)
