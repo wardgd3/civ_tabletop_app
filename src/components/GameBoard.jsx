@@ -448,10 +448,19 @@ export default function GameBoard({
         baseDark = toHex(edr * (1 + elevShift), edg * (1 + elevShift), edb * (1 + elevShift))
       }
 
+      // Tundra mountain: darken shadow values by 15% in scattered clusters
+      if (!isSpace && tile.terrain === 'mountain' && game?.terrain_theme === 'crystal_tundra') {
+        const clusterNoise = tileHash(r * 3 + 11, c * 5 + 29)
+        if (clusterNoise > 0.55) {
+          const [dr3, dg3, db3] = parseHex(baseDark)
+          baseDark = toHex(dr3 * 0.85, dg3 * 0.85, db3 * 0.85)
+        }
+      }
+
       map.set(`${r}-${c}`, { color: baseColor, darkColor: baseDark })
     }
     return map
-  }, [tiles, tileMap, themeColors, activeBoard, rows, cols])
+  }, [tiles, tileMap, themeColors, activeBoard, rows, cols, game?.terrain_theme])
 
   function getTileColor(row, col, isVisible, isDiscovered) {
     const isSpace = activeBoard === 'space'
