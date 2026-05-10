@@ -143,7 +143,7 @@ const COMMAND_SHIP_COMPARTMENTS = [
   },
   {
     id: 'transport',
-    name: 'Transport',
+    name: 'Convoy Bay',
     description: 'Build convoy ships to transport ground units. 5 turns to reach ground.',
     icon: 'transport',
     color: '#50b0b0',
@@ -216,7 +216,7 @@ const COMMAND_CENTER_COMPARTMENTS = [
   },
   {
     id: 'transport',
-    name: 'Transport',
+    name: 'Convoy Bay',
     description: 'Receive and send convoys between Command Ship and Command Center.',
     icon: 'transport',
     color: '#50b0b0',
@@ -235,7 +235,7 @@ const COMMAND_CENTER_COMPARTMENTS = [
   {
     id: 'loading_bay',
     name: 'Loading Bay',
-    description: 'Dock convoys to load soldiers. Up to 2 convoys.',
+    description: 'Dock armored transports to load soldiers. Up to 2 transports.',
     icon: 'loading_bay',
     color: '#6080a0',
     special: 'loading_bay',
@@ -247,7 +247,7 @@ const BASE_COMPARTMENTS = [
   {
     id: 'loading_bay',
     name: 'Loading Bay',
-    description: 'Dock convoys to load soldiers. 1 convoy.',
+    description: 'Dock armored transports to load soldiers. 1 transport.',
     icon: 'loading_bay',
     color: '#6080a0',
     special: 'loading_bay',
@@ -817,8 +817,6 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
 }
 
 const VEHICLE_NAMES = new Set(['Armor Transport', 'Armored Cavalry', 'Modern Armor', 'Rocket Artillery', 'Heavy Unit', 'Missile Defense', 'Excavator'])
-const DISPLAY_NAMES = { 'Armor Transport': 'Convoy' }
-const displayName = (name) => DISPLAY_NAMES[name] || name
 const TRANSPORT_CAPACITY = 4
 
 function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, groundUnits, comp }) {
@@ -839,7 +837,7 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
   return (
     <div>
       <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-        Docked Convoys ({loadingBay.length}/{maxSlots})
+        Docked Transports ({loadingBay.length}/{maxSlots})
       </div>
       <div className="flex flex-col gap-1.5 mb-2">
         {Array.from({ length: maxSlots }, (_, i) => {
@@ -866,7 +864,7 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
-                  {displayName(transport.typeName)}
+                  {transport.typeName}
                 </span>
                 <span className="text-[9px] font-mono" style={{ color: '#8b949e' }}>
                   {transport.units?.length || 0}/{TRANSPORT_CAPACITY} soldiers
@@ -893,7 +891,7 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
       {selectedTransport !== null && loadingBay[selectedTransport] && (
         <div className="p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
           <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-            {displayName(loadingBay[selectedTransport].typeName)} — Load Soldiers
+            {loadingBay[selectedTransport].typeName} — Load Soldiers
           </div>
 
           {(loadingBay[selectedTransport].units || []).length > 0 && (
@@ -966,7 +964,7 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
               border: `1px solid ${comp.color}40`,
             }}
           >
-            Deploy Convoy
+            Deploy Transport
           </button>
         </div>
       )}
