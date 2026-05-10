@@ -1132,6 +1132,7 @@ export default function GameBoard({
 
               const isCC = showUnit && (unit?.wg_unit_types?.name === 'Command Center' || unit?.wg_unit_types?.name === 'Command Ship')
               const ccColor = isCC ? getPlayerColor(unit.owner_id) : null
+              const unitTeamColor = showUnit && !isCC ? getPlayerColor(unit.owner_id) : null
 
               const x = col * HEX_W + (row & 1 ? HEX_W / 2 : 0) + GAP / 2
               const y = row * ROW_H + GAP / 2
@@ -1149,11 +1150,11 @@ export default function GameBoard({
                     width: RENDER_W,
                     height: RENDER_H,
                     clipPath: hexClip,
-                    backgroundColor: ccColor || bg,
+                    backgroundColor: unitTeamColor || ccColor || bg,
                     pointerEvents: spaceHeld ? 'none' : 'auto',
                   }}
                 >
-                  {isCC && (
+                  {(isCC || unitTeamColor) && (
                     <div
                       className="absolute inset-0 flex items-center justify-center"
                       style={{
@@ -1204,10 +1205,6 @@ export default function GameBoard({
                       <div className="relative flex items-center justify-center z-10" style={{ width: tokenSize, height: tokenSize }}>
                         <div
                           className="absolute inset-0 rounded-full overflow-hidden"
-                          style={{
-                            border: `2px solid ${pColor}`,
-                            boxShadow: `0 0 6px ${pColor}80, 0 0 12px ${pColor}40`,
-                          }}
                         >
                           <img
                             src={getUnitIcon(unit.wg_unit_types)}
