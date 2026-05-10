@@ -1196,48 +1196,60 @@ export default function GameBoard({
                       />
                     )
                   })()}
-                  {showUnit && !isCC && (
-                    <div className="relative flex items-center justify-center z-10">
-                      <img
-                        src={getUnitIcon(unit.wg_unit_types)}
-                        alt={unit.wg_unit_types?.name}
-                        className="object-contain pointer-events-none"
-                        style={{
-                          width: RENDER_W - 8,
-                          height: RENDER_H - 10,
-                          filter: `drop-shadow(0 0 3px ${getPlayerColor(unit.owner_id)})`,
-                        }}
-                      />
+                  {showUnit && !isCC && (() => {
+                    const pColor = getPlayerColor(unit.owner_id)
+                    const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
+                    return (
                       <div
-                        className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded-full"
+                        className="absolute inset-0 flex items-center justify-center z-10"
                         style={{
-                          height: 2,
-                          width: `${(unit.current_hp / unit.wg_unit_types?.hp) * 100}%`,
-                          backgroundColor: unit.current_hp / unit.wg_unit_types?.hp > 0.5 ? '#4a8060' : '#804a4a',
-                          minWidth: 4,
-                          maxWidth: RENDER_W - 10,
+                          clipPath: hexClip,
+                          boxShadow: `inset 0 0 0 2px ${pColor}, 0 0 6px ${pColor}80, 0 0 12px ${pColor}40`,
                         }}
-                      />
-                      <div
-                        className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: getPlayerColor(unit.owner_id), border: '1px solid #12161d' }}
-                      />
-                      {(unit.upgrades?.level || 0) > 0 && (
-                        <div
-                          className="absolute -top-0.5 -left-0.5 flex items-center justify-center rounded-full"
+                      >
+                        <img
+                          src={getUnitIcon(unit.wg_unit_types)}
+                          alt={unit.wg_unit_types?.name}
+                          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
                           style={{
-                            width: 7, height: 7,
-                            backgroundColor: '#1a1a0d',
-                            border: '1px solid #cca43b',
-                            fontSize: 5, fontWeight: 'bold',
-                            color: '#cca43b', lineHeight: 1,
+                            clipPath: hexClip,
                           }}
-                        >
-                          {unit.upgrades.level}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        />
+                        <div
+                          className="absolute inset-0 pointer-events-none"
+                          style={{
+                            clipPath: hexClip,
+                            boxShadow: `inset 0 0 0 1.5px ${pColor}, inset 0 0 8px ${pColor}90`,
+                          }}
+                        />
+                        <div
+                          className="absolute left-1/2 -translate-x-1/2 rounded-full z-20"
+                          style={{
+                            bottom: 2,
+                            height: 2,
+                            width: `${hpRatio * 70}%`,
+                            backgroundColor: hpRatio > 0.5 ? '#4a8060' : '#804a4a',
+                            minWidth: 3,
+                            boxShadow: '0 0 2px #000',
+                          }}
+                        />
+                        {(unit.upgrades?.level || 0) > 0 && (
+                          <div
+                            className="absolute -top-0.5 -left-0.5 flex items-center justify-center rounded-full z-20"
+                            style={{
+                              width: 7, height: 7,
+                              backgroundColor: '#1a1a0d',
+                              border: '1px solid #cca43b',
+                              fontSize: 5, fontWeight: 'bold',
+                              color: '#cca43b', lineHeight: 1,
+                            }}
+                          >
+                            {unit.upgrades.level}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}
