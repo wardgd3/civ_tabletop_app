@@ -1285,15 +1285,17 @@ export default function GameBoard({
               const isDiscovered = discoveredTiles.has(fullKey)
               const showUnit = unit && (unit.owner_id === currentPlayer?.player_id || isVisible)
 
+              const tileBg = getTileColor(row, col, isVisible, isDiscovered)
               let bg
+              let moveOverlay = false
               if (isSelected) bg = '#203348'
               else if (isInBayDeployRange || isInTransportDeployRange || isInUnitFromTransportRange) bg = '#203320'
               else if (isInDeployRange) bg = '#203320'
-              else if (isInMoveRange) bg = 'rgba(180, 190, 200, 0.25)'
+              else if (isInMoveRange) { bg = tileBg; moveOverlay = true }
               else if (isInAttackRange) bg = '#2a181d'
               else if (isInBuildRange) bg = '#2a2a1a'
               else if (isInDestroyRange) bg = '#2a181d'
-              else bg = getTileColor(row, col, isVisible, isDiscovered)
+              else bg = tileBg
 
               const isCC = showUnit && (unit?.wg_unit_types?.name === 'Command Center' || unit?.wg_unit_types?.name === 'Command Ship')
               const ccAdjColor = ccAdjacentTiles.get(cellKey)
@@ -1319,6 +1321,9 @@ export default function GameBoard({
                     pointerEvents: spaceHeld ? 'none' : 'auto',
                   }}
                 >
+                  {moveOverlay && (
+                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(200, 200, 200, 0.15)', clipPath: hexClip }} />
+                  )}
                   {(isCC || unitTeamColor) && (
                     <div
                       className="absolute inset-0 flex items-center justify-center"
