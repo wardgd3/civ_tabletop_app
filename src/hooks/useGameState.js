@@ -760,6 +760,130 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function dockTransport(structId, transportUnitId) {
+    const struct = units.find(u => u.id === structId)
+    if (!struct) throw new Error('Structure not found')
+    const transport = units.find(u => u.id === transportUnitId)
+    if (!transport) throw new Error('Transport not found')
+
+    const dist = hexDistance(struct.grid_row, struct.grid_col, transport.grid_row, transport.grid_col)
+    if (dist > 1) throw new Error('Transport must be adjacent to structure')
+
+    const upgrades = struct.upgrades || {}
+    const loadingBay = [...(upgrades.loadingBay || [])]
+    const maxSlots = struct.wg_unit_types?.name === 'Base' ? 1 : 2
+    if (loadingBay.length >= maxSlots) throw new Error('Loading bay full')
+
+    loadingBay.push({
+      typeId: transport.unit_type_id,
+      typeName: transport.wg_unit_types?.name || 'Armored Transport',
+      hp: transport.current_hp,
+      units: [],
+    })
+
+    await supabase.from('wg_units').update({ is_alive: false }).eq('id', transportUnitId)
+    await supabase.from('wg_units').update({ upgrades: { ...upgrades, loadingBay } }).eq('id', structId)
+    await fetchAll()
+  }
+
+  async function loadSoldierToTransport(structId, transportIndex, soldierUnitId) {
+    const struct = units.find(u => u.id === structId)
+    if (!struct) throw new Error('Structure not found')
+    const soldier = units.find(u => u.id === soldierUnitId)
+    if (!soldier) throw new Error('Unit not found')
+
+    const upgrades = struct.upgrades || {}
+    const loadingBay = [...(upgrades.loadingBay || [])]
+    const transport = loadingBay[transportIndex]
+    if (!transport) throw new Error('Transport not found')
+    if ((transport.units || []).length >= 4) throw new Error('Transport full (max 4)')
+
+    transport.units = [...(transport.units || []), {
+      typeId: soldier.unit_type_id,
+      typeName: soldier.wg_unit_types?.name || 'Unknown',
+      hp: soldier.current_hp,
+    }]
+    loadingBay[transportIndex] = transport
+
+    await supabase.from('wg_units').update({ is_alive: false }).eq('id', soldierUnitId)
+    await supabase.from('wg_units').update({ upgrades: { ...upgrades, loadingBay } }).eq('id', structId)
+    await fetchAll()
+  }
+
+  async function loadBaySoldierToTransport(structId, transportIndex, bayIndex) {
+    const struct = units.find(u => u.id === structId)
+    if (!struct) throw new Error('Structure not found')
+
+    const upgrades = struct.upgrades || {}
+    const loadingBay = [...(upgrades.loadingBay || [])]
+    const transport = loadingBay[transportIndex]
+    if (!transport) throw new Error('Transport not found')
+    if ((transport.units || []).length >= 4) throw new Error('Transport full (max 4)')
+
+    const holdingBay = [...(upgrades.holdingBay || [])]
+    if (bayIndex < 0 || bayIndex >= holdingBay.length) throw new Error('Invalid bay index')
+
+    const removed = holdingBay.splice(bayIndex, 1)[0]
+    transport.units = [...(transport.units || []), removed]
+    loadingBay[transportIndex] = transport
+
+    await supabase.from('wg_units').update({ upgrades: { ...upgrades, loadingBay, holdingBay } }).eq('id', structId)
+    await fetchAll()
+  }
+
+  async function unloadSoldierFromTransport(structId, transportIndex, unitIndex) {
+    const struct = units.find(u => u.id === structId)
+    if (!struct) throw new Error('Structure not found')
+
+    const upgrades = struct.upgrades || {}
+    const loadingBay = [...(upgrades.loadingBay || [])]
+    const transport = loadingBay[transportIndex]
+    if (!transport) throw new Error('Transport not found')
+
+    const holdingBay = [...(upgrades.holdingBay || [])]
+    if (holdingBay.length >= 12) throw new Error('Holding bay full')
+
+    const removed = transport.units.splice(unitIndex, 1)[0]
+    holdingBay.push(removed)
+    loadingBay[transportIndex] = transport
+
+    await supabase.from('wg_units').update({ upgrades: { ...upgrades, loadingBay, holdingBay } }).eq('id', structId)
+    await fetchAll()
+  }
+
+  async function undockTransport(structId, transportIndex, row, col) {
+    const struct = units.find(u => u.id === structId)
+    if (!struct) throw new Error('Structure not found')
+
+    if (row === struct.grid_row && col === struct.grid_col) throw new Error('Cannot deploy on the structure tile')
+    const occupied = units.find(u => u.grid_row === row && u.grid_col === col && (u.board || 'ground') === 'ground')
+    if (occupied) throw new Error('Tile is occupied')
+
+    const upgrades = struct.upgrades || {}
+    const loadingBay = [...(upgrades.loadingBay || [])]
+    if (transportIndex < 0 || transportIndex >= loadingBay.length) throw new Error('Invalid transport index')
+
+    const transport = loadingBay.splice(transportIndex, 1)[0]
+
+    const { error } = await supabase.from('wg_units').insert({
+      game_id: gameId,
+      owner_id: userId,
+      unit_type_id: transport.typeId,
+      grid_row: row,
+      grid_col: col,
+      current_hp: transport.hp,
+      board: 'ground',
+      has_moved: true,
+      has_attacked: true,
+      is_alive: true,
+      upgrades: { loadedUnits: transport.units || [] },
+    })
+    if (error) throw error
+
+    await supabase.from('wg_units').update({ upgrades: { ...upgrades, loadingBay } }).eq('id', structId)
+    await fetchAll()
+  }
+
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
@@ -941,6 +1065,7 @@ export function useGameState(gameId) {
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
     excavate, upgradeShipCompartment, levelUpUnit,
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
+    dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport,
     persistDiscoveredTiles, productionPerTurn, economy,
     refresh: fetchAll,
   }

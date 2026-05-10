@@ -52,6 +52,14 @@ const ICONS = {
       <line x1="5" y1="9" x2="11" y2="9" />
     </svg>
   ),
+  loading_bay: (
+    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
+      <rect x="2" y="6" width="12" height="8" rx="1" />
+      <path d="M5 6 L5 3 L11 3 L11 6" />
+      <line x1="6" y1="10" x2="10" y2="10" />
+      <line x1="8" y1="8" x2="8" y2="12" />
+    </svg>
+  ),
   iron_dome: (
     <svg viewBox="0 0 16 16" style={ICON_STYLE}>
       <path d="M2 12 C2 6 8 2 8 2 C8 2 14 6 14 12" />
@@ -224,6 +232,27 @@ const COMMAND_CENTER_COMPARTMENTS = [
     special: 'holding_bay',
     slots: 12,
   },
+  {
+    id: 'loading_bay',
+    name: 'Loading Bay',
+    description: 'Dock armored transports to load soldiers. Up to 2 transports.',
+    icon: 'loading_bay',
+    color: '#6080a0',
+    special: 'loading_bay',
+    slots: 2,
+  },
+]
+
+const BASE_COMPARTMENTS = [
+  {
+    id: 'loading_bay',
+    name: 'Loading Bay',
+    description: 'Dock armored transports to load soldiers. 1 transport.',
+    icon: 'loading_bay',
+    color: '#6080a0',
+    special: 'loading_bay',
+    slots: 1,
+  },
 ]
 
 const CONVOY_COST = 15
@@ -234,6 +263,7 @@ const HOLDING_BAY_CAPACITY = 12
 export function getCompartments(unitName) {
   if (unitName === 'Command Ship') return COMMAND_SHIP_COMPARTMENTS
   if (unitName === 'Command Center') return COMMAND_CENTER_COMPARTMENTS
+  if (unitName === 'Base') return BASE_COMPARTMENTS
   return []
 }
 
@@ -786,10 +816,166 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
   )
 }
 
+const VEHICLE_NAMES = new Set(['Armored Transport', 'Tank', 'Artillery', 'APC'])
+const TRANSPORT_CAPACITY = 4
+
+function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, groundUnits, comp }) {
+  const [selectedTransport, setSelectedTransport] = useState(null)
+  const loadingBay = upgrades.loadingBay || []
+  const maxSlots = comp.slots
+
+  const soldierUnits = (groundUnits || []).filter(u =>
+    !STRUCTURE_NAMES.has(u.wg_unit_types?.name) && !VEHICLE_NAMES.has(u.wg_unit_types?.name)
+  )
+  const baySoldiers = (upgrades.holdingBay || []).filter(u =>
+    !STRUCTURE_NAMES.has(u.typeName) && !VEHICLE_NAMES.has(u.typeName)
+  )
+  const baySoldiersWithIdx = (upgrades.holdingBay || []).map((u, i) => ({ ...u, bayIdx: i })).filter(u =>
+    !STRUCTURE_NAMES.has(u.typeName) && !VEHICLE_NAMES.has(u.typeName)
+  )
+
+  return (
+    <div>
+      <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+        Docked Transports ({loadingBay.length}/{maxSlots})
+      </div>
+      <div className="flex flex-col gap-1.5 mb-2">
+        {Array.from({ length: maxSlots }, (_, i) => {
+          const transport = loadingBay[i]
+          const isSelected = selectedTransport === i
+          if (!transport) {
+            return (
+              <div key={i} className="p-2 rounded text-center"
+                style={{ backgroundColor: '#161b22', border: '1px solid #30363d' }}>
+                <div className="text-[10px]" style={{ color: '#4a5568' }}>Empty Slot</div>
+              </div>
+            )
+          }
+          return (
+            <button
+              key={i}
+              onClick={() => setSelectedTransport(isSelected ? null : i)}
+              className="p-2 rounded text-left transition-all cursor-pointer"
+              style={{
+                backgroundColor: isSelected ? comp.color + '20' : '#161b22',
+                border: `1px solid ${isSelected ? comp.color : '#30363d'}`,
+              }}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
+                  {transport.typeName}
+                </span>
+                <span className="text-[9px] font-mono" style={{ color: '#8b949e' }}>
+                  {transport.units?.length || 0}/{TRANSPORT_CAPACITY} soldiers
+                </span>
+              </div>
+              <div className="flex gap-0.5">
+                {Array.from({ length: TRANSPORT_CAPACITY }, (_, j) => {
+                  const loaded = transport.units?.[j]
+                  return (
+                    <div key={j} className="flex-1 h-3 rounded"
+                      style={{
+                        backgroundColor: loaded ? comp.color + '40' : '#21262d',
+                        border: `1px solid ${loaded ? comp.color + '80' : '#30363d'}`,
+                      }}
+                    />
+                  )
+                })}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      {selectedTransport !== null && loadingBay[selectedTransport] && (
+        <div className="p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+          <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+            {loadingBay[selectedTransport].typeName} — Load Soldiers
+          </div>
+
+          {(loadingBay[selectedTransport].units || []).length > 0 && (
+            <div className="mb-2">
+              <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Loaded:</div>
+              <div className="flex flex-col gap-0.5">
+                {loadingBay[selectedTransport].units.map((u, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-1 rounded"
+                    style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                    <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{u.typeName}</span>
+                    <button
+                      onClick={() => onUnloadSoldier(unit.id, selectedTransport, idx)}
+                      className="text-[8px] px-1.5 py-0.5 rounded cursor-pointer"
+                      style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+                    >
+                      Unload
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(loadingBay[selectedTransport].units || []).length < TRANSPORT_CAPACITY && (() => {
+            const hasAny = soldierUnits.length > 0 || baySoldiersWithIdx.length > 0
+            return (
+              <div className="mb-2">
+                <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Available soldiers:</div>
+                {!hasAny ? (
+                  <div className="text-[9px]" style={{ color: '#4a5568' }}>No soldiers available</div>
+                ) : (
+                  <div className="flex flex-col gap-0.5 max-h-32 overflow-y-auto">
+                    {baySoldiersWithIdx.map(bu => (
+                      <button
+                        key={`bay-${bu.bayIdx}`}
+                        onClick={() => onLoadBaySoldier(unit.id, selectedTransport, bu.bayIdx)}
+                        className="flex items-center justify-between p-1 rounded text-left cursor-pointer"
+                        style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{bu.typeName}</span>
+                          <span className="text-[7px] px-1 rounded" style={{ backgroundColor: '#a08040' + '30', color: '#a08040', border: '1px solid #a08040' + '50' }}>BAY</span>
+                        </div>
+                        <span className="text-[8px]" style={{ color: comp.color }}>Load</span>
+                      </button>
+                    ))}
+                    {soldierUnits.map(su => (
+                      <button
+                        key={su.id}
+                        onClick={() => onLoadSoldier(unit.id, selectedTransport, su.id)}
+                        className="flex items-center justify-between p-1 rounded text-left cursor-pointer"
+                        style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+                      >
+                        <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{su.wg_unit_types?.name}</span>
+                        <span className="text-[8px]" style={{ color: comp.color }}>Load</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
+          <button
+            onClick={() => { onUndock(unit.id, selectedTransport); setSelectedTransport(null) }}
+            className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+            style={{
+              backgroundColor: comp.color + '20',
+              color: comp.color,
+              border: `1px solid ${comp.color}40`,
+            }}
+          >
+            Deploy Transport
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function CommandShipPanel({
   unit, onClose, onUpgrade, onMove, isAdmin,
   onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay, onProduceUnit,
   onLoadCargo, onUnloadCargo,
+  onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock,
   groundUnits, unitTypes, teamGold, playerResources,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
@@ -807,7 +993,7 @@ export default function CommandShipPanel({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <img
-            src={isCommandShip ? '/assets/mothership.png' : '/assets/command center.png'}
+            src={isCommandShip ? '/assets/mothership.png' : unitName === 'Base' ? '/assets/base.png' : '/assets/command center.png'}
             alt={unitName}
             className="w-6 h-6 object-contain"
           />
@@ -825,21 +1011,23 @@ export default function CommandShipPanel({
         </button>
       </div>
 
-      <div className="flex gap-1 mb-3">
-        {(isAdmin || !unit.has_moved) && (
-          <button
-            onClick={onMove}
-            className="flex-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-            style={{ backgroundColor: '#1a3a5c', color: '#79c0ff', border: '1px solid #2a5a8c' }}
-          >
-            Move
-          </button>
-        )}
-      </div>
+      {unitName !== 'Base' && (
+        <div className="flex gap-1 mb-3">
+          {(isAdmin || !unit.has_moved) && (
+            <button
+              onClick={onMove}
+              className="flex-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+              style={{ backgroundColor: '#1a3a5c', color: '#79c0ff', border: '1px solid #2a5a8c' }}
+            >
+              Move
+            </button>
+          )}
+        </div>
+      )}
 
-      <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>
+      {compartments.length > 0 && <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>
         Compartments
-      </div>
+      </div>}
       <div className="grid grid-cols-2 gap-1.5">
         {compartments.map(c => {
           const isSelected = selectedComp === c.id
@@ -855,6 +1043,10 @@ export default function CommandShipPanel({
             statusText = `${bay.length}/${HOLDING_BAY_CAPACITY} units`
             const filledRatio = Math.ceil((bay.length / HOLDING_BAY_CAPACITY) * 4)
             statusSlots = Array.from({ length: 4 }, (_, i) => i < filledRatio ? 1 : 0)
+          } else if (c.special === 'loading_bay') {
+            const lb = upgrades.loadingBay || []
+            statusText = `${lb.length}/${c.slots} docked`
+            statusSlots = Array.from({ length: c.slots }, (_, i) => lb[i] ? 1 : 0)
           } else {
             const cSlots = getSlots(upgrades, c.id, c.slots)
             const filledCount = cSlots.filter(s => s > 0).length
@@ -936,6 +1128,17 @@ export default function CommandShipPanel({
               comp={comp}
               unitTypes={unitTypes}
               teamGold={teamGold}
+            />
+          ) : comp.special === 'loading_bay' ? (
+            <LoadingBayPanel
+              unit={unit}
+              upgrades={upgrades}
+              onLoadSoldier={onLoadSoldier}
+              onLoadBaySoldier={onLoadBaySoldier}
+              onUnloadSoldier={onUnloadSoldier}
+              onUndock={onUndock}
+              groundUnits={groundUnits || []}
+              comp={comp}
             />
           ) : (
             <>

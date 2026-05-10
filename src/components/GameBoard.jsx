@@ -53,6 +53,7 @@ export default function GameBoard({
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
   excavate, upgradeShipCompartment, levelUpUnit,
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
+  dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -71,6 +72,7 @@ export default function GameBoard({
   const [touchPanning, setTouchPanning] = useState(false)
   const [commandShipUnitId, setCommandShipUnitId] = useState(null)
   const [bayDeployInfo, setBayDeployInfo] = useState(null)
+  const [transportDeployInfo, setTransportDeployInfo] = useState(null)
   const boardRef = useRef(null)
   const panStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
   const touchPanRef = useRef(null)
@@ -366,6 +368,19 @@ export default function GameBoard({
     return cells
   })() : []
 
+  const transportDeployRange = transportDeployInfo ? (() => {
+    const struct = units.find(u => u.id === transportDeployInfo.structId)
+    if (!struct) return []
+    const neighbors = hexNeighborsBoard(struct.grid_row, struct.grid_col, rows, cols)
+    const cells = []
+    for (const [nr, nc] of neighbors) {
+      if (getUnitAt(nr, nc)) continue
+      if (isImpassable(nr, nc)) continue
+      cells.push(`${nr}-${nc}`)
+    }
+    return cells
+  })() : []
+
   function stopInertia() {
     if (inertiaRef.current) {
       cancelAnimationFrame(inertiaRef.current)
@@ -640,12 +655,26 @@ export default function GameBoard({
       return
     }
 
+    if (transportDeployInfo) {
+      if (!transportDeployRange.includes(cellKey)) {
+        setError('Select an adjacent unoccupied tile')
+        return
+      }
+      try {
+        await undockTransport(transportDeployInfo.structId, transportDeployInfo.transportIndex, row, col)
+        setTransportDeployInfo(null)
+      } catch (err) {
+        setError(err.message)
+      }
+      return
+    }
+
     const unit = getUnitAt(row, col)
     const isVisible = visibleTiles.has(cellKey)
     const showUnit = unit && (unit.owner_id === currentPlayer?.player_id || isVisible)
 
     if (showUnit) {
-      if ((unit.wg_unit_types?.name === 'Command Ship' || unit.wg_unit_types?.name === 'Command Center') && unit.owner_id === currentPlayer?.player_id) {
+      if ((unit.wg_unit_types?.name === 'Command Ship' || unit.wg_unit_types?.name === 'Command Center' || unit.wg_unit_types?.name === 'Base') && unit.owner_id === currentPlayer?.player_id) {
         setCommandShipUnitId(prev => prev === unit.id ? null : unit.id)
         setPanelOpen(true)
         return
@@ -907,6 +936,39 @@ export default function GameBoard({
                   Trade with Space Guild
                 </button>
               )}
+              {selectedUnit.owner_id === currentPlayer?.player_id && selectedUnit.wg_unit_types?.name === 'Armored Transport' && (() => {
+                const nearbyStruct = allUnits.filter(u =>
+                  u.owner_id === currentPlayer?.player_id &&
+                  (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Base') &&
+                  (u.board || 'ground') === (selectedUnit.board || 'ground') &&
+                  hexDistance(u.grid_row, u.grid_col, selectedUnit.grid_row, selectedUnit.grid_col) <= 1
+                )
+                if (nearbyStruct.length === 0) return null
+                return nearbyStruct.map(struct => {
+                  const structUpgrades = struct.upgrades || {}
+                  const lb = structUpgrades.loadingBay || []
+                  const maxSlots = struct.wg_unit_types?.name === 'Base' ? 1 : 2
+                  const isFull = lb.length >= maxSlots
+                  return (
+                    <button
+                      key={struct.id}
+                      onClick={async () => {
+                        try {
+                          await dockTransport(struct.id, selectedUnit.id)
+                          setSelectedUnitId(null)
+                          setCommandShipUnitId(struct.id)
+                          setPanelOpen(true)
+                        } catch (err) { setError(err.message) }
+                      }}
+                      disabled={isFull}
+                      className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
+                      style={{ backgroundColor: '#1a2a3a', color: '#6080a0', border: '1px solid #304a6a' }}
+                    >
+                      Enter {struct.wg_unit_types?.name} Loading Bay
+                    </button>
+                  )
+                })
+              })()}
               {selectedUnit.owner_id === currentPlayer?.player_id && (() => {
                 const unitLevel = selectedUnit.upgrades?.level || 0
                 const maxLevel = 5
@@ -1018,6 +1080,18 @@ export default function GameBoard({
             onUnloadCargo={async (structId, convoyIdx) => {
               try { await unloadCargoFromConvoy(structId, convoyIdx) } catch (err) { setError(err.message) }
             }}
+            onLoadSoldier={async (structId, transportIdx, soldierUnitId) => {
+              try { await loadSoldierToTransport(structId, transportIdx, soldierUnitId) } catch (err) { setError(err.message) }
+            }}
+            onLoadBaySoldier={async (structId, transportIdx, bayIdx) => {
+              try { await loadBaySoldierToTransport(structId, transportIdx, bayIdx) } catch (err) { setError(err.message) }
+            }}
+            onUnloadSoldier={async (structId, transportIdx, unitIdx) => {
+              try { await unloadSoldierFromTransport(structId, transportIdx, unitIdx) } catch (err) { setError(err.message) }
+            }}
+            onUndock={(structId, transportIdx) => {
+              setTransportDeployInfo({ structId, transportIndex: transportIdx })
+            }}
             groundUnits={allUnits.filter(u =>
               (u.board || 'ground') === 'ground' &&
               u.owner_id === csUnit.owner_id &&
@@ -1120,6 +1194,7 @@ export default function GameBoard({
               const isInBuildRange = buildRange.includes(cellKey)
               const isInDestroyRange = destroyRange.includes(cellKey)
               const isInBayDeployRange = bayDeployRange.includes(cellKey)
+              const isInTransportDeployRange = transportDeployRange.includes(cellKey)
               const isSelected = selectedUnit && selectedUnit.grid_row === row && selectedUnit.grid_col === col
 
               const board = activeBoard || 'ground'
@@ -1129,7 +1204,7 @@ export default function GameBoard({
 
               let bg
               if (isSelected) bg = '#203348'
-              else if (isInBayDeployRange) bg = '#203320'
+              else if (isInBayDeployRange || isInTransportDeployRange) bg = '#203320'
               else if (isInDeployRange) bg = '#203320'
               else if (isInMoveRange) bg = '#182533'
               else if (isInAttackRange) bg = '#2a181d'
