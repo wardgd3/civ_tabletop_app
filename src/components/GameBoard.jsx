@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import CommandShipPanel from './CommandShipPanel'
-import { TERRAIN, RESOURCES, SPACE_RESOURCES, LUXURY_RESOURCES } from '../lib/terrainGen'
+import { TERRAIN, TERRAIN_THEMES, RESOURCES, SPACE_RESOURCES, LUXURY_RESOURCES } from '../lib/terrainGen'
 
 const HEX_SIZE = 16
 const HEX_W = Math.round(Math.sqrt(3) * HEX_SIZE)
@@ -178,6 +178,12 @@ export default function GameBoard({
     if (newKeys.length > 0) persistDiscoveredTiles(newKeys)
   }, [visibleTiles, discoveredTiles, persistDiscoveredTiles, activeBoard])
 
+  const themeColors = useMemo(() => {
+    const themeId = game.terrain_theme || 'default'
+    const theme = TERRAIN_THEMES[themeId]
+    return theme?.colors || null
+  }, [game.terrain_theme])
+
   function getTileColor(row, col, isVisible, isDiscovered) {
     const isSpace = activeBoard === 'space'
     const fogColor = isSpace ? '#0d1117' : '#1a2029'
@@ -190,8 +196,9 @@ export default function GameBoard({
       if (isDiscovered) return '#5a5040'
       return fogColor
     }
-    if (isVisible) return terrain.color
-    if (isDiscovered) return terrain.darkColor
+    const themed = themeColors && themeColors[tile.terrain]
+    if (isVisible) return themed ? themed.color : terrain.color
+    if (isDiscovered) return themed ? themed.darkColor : terrain.darkColor
     return fogColor
   }
 
@@ -230,7 +237,7 @@ export default function GameBoard({
   }
 
   function getMoveRange(unit) {
-    if (!unit?.wg_unit_types) return []
+    if (!unit?.wg_unit_types) return new Set()
     const unitName = unit.wg_unit_types.name
     const baseRange = unit.wg_unit_types.movement
     const sourceTile = tileMap.get(`${unit.grid_row}-${unit.grid_col}`)

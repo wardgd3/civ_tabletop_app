@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGames } from '../hooks/useGames'
 import { useFriends } from '../hooks/useFriends'
+import { TERRAIN_THEMES } from '../lib/terrainGen'
 
 const MAP_SIZES = [
   { id: 'small',    label: 'Small',       rows: 24, cols: 36 },
@@ -24,6 +25,8 @@ export default function GameLobby() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [showAdminSize, setShowAdminSize] = useState(false)
   const [adminMapSize, setAdminMapSize] = useState('standard')
+  const [terrainTheme, setTerrainTheme] = useState('default')
+  const [adminTerrainTheme, setAdminTerrainTheme] = useState('default')
   const menuRef = useRef(null)
 
   useEffect(() => {
@@ -40,9 +43,10 @@ export default function GameLobby() {
     if (!gameName.trim()) return
     setCreating(true)
     try {
-      await createGame(gameName.trim())
+      await createGame(gameName.trim(), 32, 48, 2, terrainTheme)
       setGameName('')
       setShowCreate(false)
+      setTerrainTheme('default')
     } catch (err) {
       alert(err.message)
     } finally {
@@ -94,11 +98,29 @@ export default function GameLobby() {
               </button>
             ))}
           </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#c080c0' }}>World Theme</div>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.values(TERRAIN_THEMES).map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setAdminTerrainTheme(t.id)}
+                  className="px-2.5 py-1.5 text-xs rounded transition-colors"
+                  style={adminTerrainTheme === t.id
+                    ? { backgroundColor: '#3d2a3d', color: '#c080c0', border: '1px solid #5a3a5a' }
+                    : { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+                >
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             onClick={async () => {
               try {
                 const size = MAP_SIZES.find(s => s.id === adminMapSize) || MAP_SIZES[1]
-                const g = await createAdminGame(size.rows, size.cols)
+                const g = await createAdminGame(size.rows, size.cols, adminTerrainTheme)
                 setShowAdminSize(false)
                 navigate(`/game/${g.id}`)
               } catch (err) {
@@ -114,24 +136,44 @@ export default function GameLobby() {
       )}
 
       {showCreate && (
-        <form onSubmit={handleCreate} className="flex gap-2">
-          <input
-            type="text"
-            value={gameName}
-            onChange={e => setGameName(e.target.value)}
-            placeholder="Game name..."
-            className="flex-1 px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/50"
-            style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#c9d1d9' }}
-          />
-          <button
-            type="submit"
-            disabled={creating}
-            className="px-4 py-2 text-sm font-medium rounded transition-colors disabled:opacity-50"
-            style={{ backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }}
-          >
-            Create
-          </button>
-        </form>
+        <div className="p-3 rounded space-y-2" style={{ backgroundColor: '#161b22', border: '1px solid #30363d' }}>
+          <form onSubmit={handleCreate} className="flex gap-2">
+            <input
+              type="text"
+              value={gameName}
+              onChange={e => setGameName(e.target.value)}
+              placeholder="Game name..."
+              className="flex-1 px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/50"
+              style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#c9d1d9' }}
+            />
+            <button
+              type="submit"
+              disabled={creating}
+              className="px-4 py-2 text-sm font-medium rounded transition-colors disabled:opacity-50"
+              style={{ backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }}
+            >
+              Create
+            </button>
+          </form>
+          <div>
+            <div className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#8b949e' }}>World Theme</div>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.values(TERRAIN_THEMES).map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTerrainTheme(t.id)}
+                  className="px-2.5 py-1.5 text-xs rounded transition-colors"
+                  style={terrainTheme === t.id
+                    ? { backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }
+                    : { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+                >
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {invites.length > 0 && (

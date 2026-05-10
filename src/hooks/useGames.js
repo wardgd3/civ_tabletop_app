@@ -55,7 +55,7 @@ export function useGames() {
     fetchGames()
   }, [fetchGames])
 
-  async function createGame(name, gridRows = 32, gridCols = 48, maxPlayers = 2) {
+  async function createGame(name, gridRows = 32, gridCols = 48, maxPlayers = 2, terrainTheme = 'default') {
     const { data: { session: freshSession } } = await supabase.auth.getSession()
     if (!freshSession) throw new Error('Session expired — please sign in again')
 
@@ -63,7 +63,7 @@ export function useGames() {
 
     const { data, error } = await supabase
       .from('wg_games')
-      .insert({ name, host_id: userId, grid_rows: gridRows, grid_cols: gridCols, max_players: maxPlayers, terrain_seed: terrainSeed })
+      .insert({ name, host_id: userId, grid_rows: gridRows, grid_cols: gridCols, max_players: maxPlayers, terrain_seed: terrainSeed, terrain_theme: terrainTheme })
       .select()
       .single()
 
@@ -111,7 +111,7 @@ export function useGames() {
     return data
   }
 
-  async function createAdminGame(gridRows = 32, gridCols = 48) {
+  async function createAdminGame(gridRows = 32, gridCols = 48, terrainTheme = 'default') {
     const { data: { session: freshSession } } = await supabase.auth.getSession()
     if (!freshSession) throw new Error('Session expired — please sign in again')
 
@@ -126,6 +126,7 @@ export function useGames() {
         grid_cols: gridCols,
         max_players: 2,
         terrain_seed: terrainSeed,
+        terrain_theme: terrainTheme,
         is_admin: true,
         status: 'active',
         turn_number: 1,
