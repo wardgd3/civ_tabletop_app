@@ -294,7 +294,7 @@ export default function GameBoard({
     return cells
   }
 
-  const moveRange = mode === 'move' && selectedUnit ? getMoveRange(selectedUnit) : []
+  const moveRange = selectedUnit && (isAdmin || !selectedUnit.has_moved) ? getMoveRange(selectedUnit) : []
   const attackRange = mode === 'attack' && selectedUnit ? getAttackRange(selectedUnit) : []
   const buildRange = mode === 'build' && selectedUnit ? getBuildRange(selectedUnit) : []
   const destroyRange = mode === 'destroy' && selectedUnit ? getDestroyRange(selectedUnit) : []
@@ -722,10 +722,28 @@ export default function GameBoard({
     const isVisible = visibleTiles.has(cellKey)
     const showUnit = unit && (unit.owner_id === currentPlayer?.player_id || isVisible)
 
+    if (selectedUnit && moveRange.includes(cellKey) && !showUnit) {
+      try {
+        await moveUnit(selectedUnit.id, row, col)
+        setSelectedUnitId(null)
+        setCommandShipUnitId(null)
+        setMode('select')
+      } catch (err) {
+        setError(err.message)
+      }
+      return
+    }
+
     if (showUnit) {
       if ((unit.wg_unit_types?.name === 'Command Ship' || unit.wg_unit_types?.name === 'Command Center' || unit.wg_unit_types?.name === 'Base') && unit.owner_id === currentPlayer?.player_id) {
         setCommandShipUnitId(prev => prev === unit.id ? null : unit.id)
         setPanelOpen(true)
+        return
+      }
+      if (unit.owner_id === currentPlayer?.player_id && isMyTurn) {
+        setSelectedUnitId(unit.id)
+        setMode('select')
+        setInspectedUnitId(null)
         return
       }
       setInspectedUnitId(prev => prev === unit.id ? null : unit.id)
@@ -744,11 +762,6 @@ export default function GameBoard({
         await deployUnit(selectedUnitType, row, col)
         setMode('select')
         setSelectedUnitType(null)
-      } else if (mode === 'move' && selectedUnit) {
-        await moveUnit(selectedUnit.id, row, col)
-        setSelectedUnitId(null)
-        setCommandShipUnitId(null)
-        setMode('select')
       } else if (mode === 'attack' && selectedUnit) {
         if (unit && unit.owner_id !== currentPlayer?.player_id) {
           await attackUnit(selectedUnit.id, unit.id)
@@ -913,17 +926,6 @@ export default function GameBoard({
               <div className="flex items-center justify-between mt-2">
                 <span className="font-mono" style={{ color: '#6e7681' }}>ATK {selectedUnit.wg_unit_types?.attack} | DEF {selectedUnit.wg_unit_types?.defense}</span>
                 <div className="flex gap-1">
-                  {(isAdmin || !selectedUnit.has_moved) && (
-                    <button
-                      onClick={() => setMode('move')}
-                      className="px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-                      style={mode === 'move'
-                        ? { backgroundColor: '#1a3a5c', color: '#79c0ff', border: '1px solid #2a5a8c' }
-                        : { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
-                    >
-                      Move
-                    </button>
-                  )}
                   {selectedUnit.wg_unit_types?.name === 'Engineer' ? (
                     <>
                       {(isAdmin || !selectedUnit.has_attacked) && (
@@ -1126,7 +1128,7 @@ export default function GameBoard({
             onClose={() => setCommandShipUnitId(null)}
             onMove={() => {
               setSelectedUnitId(csUnit.id)
-              setMode('move')
+              setMode('select')
             }}
             onUpgrade={async (unitId, compartment, slotIndex, tierLevel) => {
               try { await upgradeShipCompartment(unitId, compartment, slotIndex, tierLevel) } catch (err) { setError(err.message) }
@@ -1287,7 +1289,7 @@ export default function GameBoard({
               if (isSelected) bg = '#203348'
               else if (isInBayDeployRange || isInTransportDeployRange || isInUnitFromTransportRange) bg = '#203320'
               else if (isInDeployRange) bg = '#203320'
-              else if (isInMoveRange) bg = '#182533'
+              else if (isInMoveRange) bg = 'rgba(180, 190, 200, 0.25)'
               else if (isInAttackRange) bg = '#2a181d'
               else if (isInBuildRange) bg = '#2a2a1a'
               else if (isInDestroyRange) bg = '#2a181d'
