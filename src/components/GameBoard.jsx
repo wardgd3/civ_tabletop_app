@@ -1705,6 +1705,9 @@ export default function GameBoard({
                   {isMountainShadow && (isVisible || isDiscovered) && (
                     <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
                   )}
+                  {isMountainShadow && (isVisible || isDiscovered) && (
+                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
+                  )}
                   {(isCC || unitTeamColor) && (
                     <div
                       className="absolute inset-0 flex items-center justify-center"
