@@ -964,7 +964,7 @@ export default function GameBoard({
                       className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
                       style={{ backgroundColor: '#1a2a3a', color: '#6080a0', border: '1px solid #304a6a' }}
                     >
-                      Enter {struct.wg_unit_types?.name} Loading Bay
+                      Enter Loading Bay
                     </button>
                   )
                 })
