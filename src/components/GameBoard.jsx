@@ -1490,18 +1490,7 @@ export default function GameBoard({
                         </div>
                         <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>HP {hu.current_hp}/{hu.wg_unit_types.hp}</div>
                         {hu.upgrades?.loadedUnits?.length > 0 && (
-                          <div className="mt-1 pt-1" style={{ borderTop: '1px solid #2a3140' }}>
-                            <div className="text-[9px] uppercase tracking-widest font-semibold mb-0.5" style={{ color: '#4a5568' }}>Loaded ({hu.upgrades.loadedUnits.length})</div>
-                            {hu.upgrades.loadedUnits.map((lu, li) => {
-                              const luType = allUnitTypes.find(ut => ut.id === lu.typeId)
-                              return (
-                                <div key={li} className="flex items-center gap-1 py-0.5">
-                                  <img src={getUnitIcon(luType)} alt={lu.typeName} className="w-3.5 h-3.5 object-contain" />
-                                  <span className="text-[10px]" style={{ color: '#8b949e' }}>{lu.typeName}</span>
-                                </div>
-                              )
-                            })}
-                          </div>
+                          <div className="text-[10px] font-mono mt-1" style={{ color: '#8b949e' }}>{hu.upgrades.loadedUnits.length} unit{hu.upgrades.loadedUnits.length !== 1 ? 's' : ''} loaded</div>
                         )}
                       </div>
                     )}
