@@ -18,6 +18,22 @@ function hexDistance(r1, c1, r2, c2) {
   return Math.max(Math.abs(q1 - q2), Math.abs(r1 - r2), Math.abs(s1 - s2))
 }
 
+function tileHash(r, c) {
+  let h = (r * 374761 + c * 668265) | 0
+  h = ((h >> 16) ^ h) * 0x45d9f3b | 0
+  h = ((h >> 16) ^ h) * 0x45d9f3b | 0
+  return ((h >> 16) ^ h) & 0x7fffffff
+}
+
+function parseHex(hex) {
+  const h = hex.replace('#', '')
+  return [parseInt(h.substring(0, 2), 16), parseInt(h.substring(2, 4), 16), parseInt(h.substring(4, 6), 16)]
+}
+
+function toHex(r, g, b) {
+  return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')
+}
+
 const TERRAIN_BY_ID = Object.fromEntries(Object.values(TERRAIN).map(t => [t.id, t]))
 const RESOURCE_BY_ID = Object.fromEntries([
   ...Object.values(RESOURCES).map(r => [r.id, r]),
@@ -222,9 +238,17 @@ export default function GameBoard({
       return fogColor
     }
     const themed = themeColors && themeColors[tile.terrain]
-    if (isVisible) return themed ? themed.color : terrain.color
-    if (isDiscovered) return themed ? themed.darkColor : terrain.darkColor
-    return fogColor
+    let baseColor
+    if (isVisible) baseColor = themed ? themed.color : terrain.color
+    else if (isDiscovered) baseColor = themed ? themed.darkColor : terrain.darkColor
+    else return fogColor
+    if (tile.terrain === 'mountain') {
+      const h = tileHash(row, col)
+      const jitter = ((h % 100) / 100 - 0.5) * 0.1
+      const [r, g, b] = parseHex(baseColor)
+      return toHex(r + r * jitter, g + g * jitter * 0.8, b + b * jitter * 0.6)
+    }
+    return baseColor
   }
 
   function getTerrainInfo(row, col) {
@@ -1411,13 +1435,13 @@ export default function GameBoard({
                     <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
                   )}
                   {isMountainPeak && (isVisible || isDiscovered) && (
-                    <div className="absolute inset-0 z-[1]" style={{ background: 'linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.4) 50%)', clipPath: hexClip }} />
+                    <div className="absolute inset-0 z-[1]" style={{ background: 'linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.7) 50%)', clipPath: hexClip }} />
                   )}
                   {isMountainInner && (isVisible || isDiscovered) && (
-                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', clipPath: hexClip }} />
+                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', clipPath: hexClip }} />
                   )}
                   {isMountainShadow && (isVisible || isDiscovered) && (
-                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)', clipPath: hexClip }} />
+                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
                   )}
                   {(isCC || unitTeamColor) && (
                     <div
