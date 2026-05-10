@@ -398,7 +398,7 @@ export default function GameBoard({
   const ccAdjacentTiles = useMemo(() => {
     const map = new Map()
     for (const u of units) {
-      if (u.wg_unit_types?.name !== 'Command Center') continue
+      if (u.wg_unit_types?.name !== 'Command Center' && u.wg_unit_types?.name !== 'Command Ship') continue
       const pColor = getPlayerColor(u.owner_id)
       const isVis = u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`)
       if (!isVis) continue
@@ -1291,7 +1291,7 @@ export default function GameBoard({
 
               const isCC = showUnit && (unit?.wg_unit_types?.name === 'Command Center' || unit?.wg_unit_types?.name === 'Command Ship')
               const ccAdjColor = ccAdjacentTiles.get(cellKey)
-              const unitTeamColor = showUnit && unit.wg_unit_types?.name !== 'Command Center' ? getPlayerColor(unit.owner_id) : ccAdjColor || null
+              const unitTeamColor = showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' ? getPlayerColor(unit.owner_id) : ccAdjColor || null
 
               const x = col * HEX_W + (row & 1 ? HEX_W / 2 : 0) + GAP / 2
               const y = row * ROW_H + GAP / 2
@@ -1356,7 +1356,7 @@ export default function GameBoard({
                       />
                     )
                   })()}
-                  {showUnit && unit.wg_unit_types?.name !== 'Command Center' && (() => {
+                  {showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' && (() => {
                     const pColor = getPlayerColor(unit.owner_id)
                     const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
                     const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * 0.86
@@ -1402,7 +1402,7 @@ export default function GameBoard({
                 </div>
               )
             })}
-            {units.filter(u => u.wg_unit_types?.name === 'Command Center' && (u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`))).map(cc => {
+            {units.filter(u => (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship') && (u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`))).map(cc => {
               const ccX = cc.grid_col * HEX_W + (cc.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
               const ccY = cc.grid_row * ROW_H + RENDER_H / 2
               const ccSize = HEX_W * 2.04
@@ -1422,7 +1422,7 @@ export default function GameBoard({
                   <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `2px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
                     <img
                       src={getUnitIcon(cc.wg_unit_types)}
-                      alt="Command Center"
+                      alt={cc.wg_unit_types?.name}
                       className="w-full h-full object-cover"
                     />
                   </div>
