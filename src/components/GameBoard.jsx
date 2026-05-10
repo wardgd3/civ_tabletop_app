@@ -230,7 +230,7 @@ export default function GameBoard({
   }
 
   function getMoveRange(unit) {
-    if (!unit?.wg_unit_types) return []
+    if (!unit?.wg_unit_types) return new Set()
     const unitName = unit.wg_unit_types.name
     const baseRange = unit.wg_unit_types.movement
     const sourceTile = tileMap.get(`${unit.grid_row}-${unit.grid_col}`)
