@@ -292,7 +292,7 @@ function generateCoastalInlets(tiles, rows, cols, rand, noise) {
     const [sr, sc] = edgeTiles[startIdx]
 
     // Pathfind inward using Dijkstra with wander
-    const inletDepth = Math.floor(Math.min(rows, cols) * (0.15 + rand() * 0.2))
+    const inletDepth = Math.floor(Math.min(rows, cols) * (0.08 + rand() * 0.1))
     // Target is a point roughly inletDepth tiles inward from the edge
     let tr, tc
     if (edge.side === 'top') { tr = sr + inletDepth; tc = sc + Math.floor((rand() - 0.5) * cols * 0.3) }
@@ -347,7 +347,7 @@ function generateCoastalInlets(tiles, rows, cols, rand, noise) {
       const [r, c] = path[j]
       const t = j / path.length
       // Wide at start (edge), tapers toward end
-      const width = Math.max(1, Math.floor((1 - t * t) * 5))
+      const width = Math.max(1, Math.floor(Math.sqrt(1 - t) * 6))
 
       waterSet.add(`${r}-${c}`)
       // BFS outward from path tile up to width
