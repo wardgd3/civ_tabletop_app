@@ -569,27 +569,104 @@ export function useGameState(gameId) {
     const convoys = [...(upgrades.convoys || [])]
     const convoy = convoys[convoyIndex]
     if (!convoy || convoy.inTransit) throw new Error('Already in transit')
-    if (!convoy.units || convoy.units.length === 0) throw new Error('No units loaded')
 
     const isCommandShip = ship.wg_unit_types?.name === 'Command Ship'
     const destType = isCommandShip ? 'Command Center' : 'Command Ship'
     const dest = units.find(u => u.owner_id === ship.owner_id && u.wg_unit_types?.name === destType)
     if (!dest) throw new Error(`No ${destType} found to receive convoy`)
 
-    const inTransitConvoy = { units: [...convoy.units], inTransit: true, turnsLeft: 5, sourceId: shipId, sourceConvoyIndex: convoyIndex }
+    convoys.splice(convoyIndex, 1)
+    await supabase.from('wg_units').update({ upgrades: { ...upgrades, convoys } }).eq('id', shipId)
 
-    convoy.inTransit = true
-    convoy.turnsLeft = 5
-    convoys[convoyIndex] = convoy
-    const newUpgrades = { ...upgrades, convoys }
-    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
-
-    const destUpgrades = dest.upgrades || {}
+    const { data: freshDest } = await supabase.from('wg_units').select('upgrades').eq('id', dest.id).single()
+    const destUpgrades = freshDest?.upgrades || {}
     const destConvoys = [...(destUpgrades.convoys || [])]
-    destConvoys.push(inTransitConvoy)
-    const newDestUpgrades = { ...destUpgrades, convoys: destConvoys }
-    await supabase.from('wg_units').update({ upgrades: newDestUpgrades }).eq('id', dest.id)
+    destConvoys.push({
+      units: [...(convoy.units || [])],
+      cargo: { ...(convoy.cargo || {}) },
+      inTransit: true,
+      turnsLeft: 5,
+    })
+    await supabase.from('wg_units').update({ upgrades: { ...destUpgrades, convoys: destConvoys } }).eq('id', dest.id)
 
+    await fetchAll()
+  }
+
+  async function loadCargoToConvoy(structId, convoyIndex, { gold = 0, resources = {} }) {
+    const struct = units.find(u => u.id === structId)
+    if (!struct) throw new Error('Structure not found')
+
+    const upgrades = struct.upgrades || {}
+    const convoys = [...(upgrades.convoys || [])]
+    const convoy = convoys[convoyIndex]
+    if (!convoy || convoy.inTransit) throw new Error('Cannot load cargo')
+
+    if (gold > 0) {
+      if (!isAdmin && teamGold < gold) throw new Error('Not enough gold')
+      if (!isAdmin) {
+        let remaining = gold
+        for (const tp of teamPlayers) {
+          if (remaining <= 0) break
+          const deduct = Math.min(tp.gold || 0, remaining)
+          if (deduct > 0) {
+            await supabase.from('wg_game_players').update({ gold: tp.gold - deduct }).eq('id', tp.id)
+            remaining -= deduct
+          }
+        }
+      }
+    }
+
+    if (Object.keys(resources).length > 0) {
+      const playerRes = { ...(currentPlayer.resources || {}) }
+      for (const [key, amount] of Object.entries(resources)) {
+        if ((playerRes[key] || 0) < amount) throw new Error(`Not enough ${key}`)
+        playerRes[key] = (playerRes[key] || 0) - amount
+      }
+      await supabase.from('wg_game_players').update({ resources: playerRes }).eq('id', currentPlayer.id)
+    }
+
+    const cargo = convoy.cargo || { gold: 0, resources: {} }
+    cargo.gold = (cargo.gold || 0) + gold
+    if (!cargo.resources) cargo.resources = {}
+    for (const [key, amount] of Object.entries(resources)) {
+      cargo.resources[key] = (cargo.resources[key] || 0) + amount
+    }
+    convoy.cargo = cargo
+    convoys[convoyIndex] = convoy
+
+    await supabase.from('wg_units').update({ upgrades: { ...upgrades, convoys } }).eq('id', structId)
+    await fetchAll()
+  }
+
+  async function unloadCargoFromConvoy(structId, convoyIndex) {
+    const struct = units.find(u => u.id === structId)
+    if (!struct) throw new Error('Structure not found')
+
+    const upgrades = struct.upgrades || {}
+    const convoys = [...(upgrades.convoys || [])]
+    const convoy = convoys[convoyIndex]
+    if (!convoy || convoy.inTransit) throw new Error('Cannot unload')
+
+    const cargo = convoy.cargo || { gold: 0, resources: {} }
+
+    if (cargo.gold > 0) {
+      const perPlayer = Math.ceil(cargo.gold / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) + perPlayer }).eq('id', tp.id)
+      }
+    }
+
+    if (cargo.resources && Object.keys(cargo.resources).length > 0) {
+      const playerRes = { ...(currentPlayer.resources || {}) }
+      for (const [key, amount] of Object.entries(cargo.resources)) {
+        playerRes[key] = (playerRes[key] || 0) + amount
+      }
+      await supabase.from('wg_game_players').update({ resources: playerRes }).eq('id', currentPlayer.id)
+    }
+
+    convoy.cargo = { gold: 0, resources: {} }
+    convoys[convoyIndex] = convoy
+    await supabase.from('wg_units').update({ upgrades: { ...upgrades, convoys } }).eq('id', structId)
     await fetchAll()
   }
 
@@ -730,9 +807,10 @@ export function useGameState(gameId) {
     const commandStructures = nextTeamUnits.filter(u =>
       u.wg_unit_types?.name === 'Command Ship' || u.wg_unit_types?.name === 'Command Center'
     )
-    const sourceConvoysToReset = []
+    let cargoGoldToAdd = 0
     for (const struct of commandStructures) {
-      const structUpgrades = struct.upgrades || {}
+      const { data: freshStruct } = await supabase.from('wg_units').select('upgrades').eq('id', struct.id).single()
+      const structUpgrades = freshStruct?.upgrades || {}
       const convoys = structUpgrades.convoys
       if (!convoys || !Array.isArray(convoys)) continue
 
@@ -750,9 +828,19 @@ export function useGameState(gameId) {
           for (const u of (convoy.units || [])) {
             if (holdingBay.length < 12) holdingBay.push(u)
           }
-          if (convoy.sourceId && convoy.sourceConvoyIndex !== undefined) {
-            sourceConvoysToReset.push({ sourceId: convoy.sourceId, idx: convoy.sourceConvoyIndex })
+          const cargo = convoy.cargo || {}
+          if (cargo.gold) cargoGoldToAdd += cargo.gold
+          if (cargo.resources && Object.keys(cargo.resources).length > 0) {
+            const structOwner = nextTeamPlayers.find(p => p.player_id === struct.owner_id)
+            if (structOwner) {
+              const res = { ...(structOwner.resources || {}) }
+              for (const [key, amount] of Object.entries(cargo.resources)) {
+                res[key] = (res[key] || 0) + amount
+              }
+              await supabase.from('wg_game_players').update({ resources: res }).eq('id', structOwner.id)
+            }
           }
+          updatedConvoys.push({ units: [], cargo: { gold: 0, resources: {} }, inTransit: false, turnsLeft: 0 })
         } else {
           changed = true
           updatedConvoys.push({ ...convoy, turnsLeft: newTurns })
@@ -763,21 +851,6 @@ export function useGameState(gameId) {
         await supabase.from('wg_units').update({
           upgrades: { ...structUpgrades, convoys: updatedConvoys, holdingBay }
         }).eq('id', struct.id)
-      }
-    }
-
-    for (const { sourceId, idx } of sourceConvoysToReset) {
-      const sourceUnit = nextTeamUnits.find(u => u.id === sourceId) || units.find(u => u.id === sourceId)
-      if (!sourceUnit) continue
-      const { data: freshSource } = await supabase.from('wg_units').select('upgrades').eq('id', sourceId).single()
-      if (!freshSource) continue
-      const srcUpgrades = freshSource.upgrades || {}
-      const srcConvoys = [...(srcUpgrades.convoys || [])]
-      if (srcConvoys[idx]) {
-        srcConvoys[idx] = { units: [], inTransit: false, turnsLeft: 0 }
-        await supabase.from('wg_units').update({
-          upgrades: { ...srcUpgrades, convoys: srcConvoys }
-        }).eq('id', sourceId)
       }
     }
 
@@ -814,7 +887,7 @@ export function useGameState(gameId) {
     const excavationIncome = totalExcavations + luxuryIncome
 
     const currentTeamGold = freshNextTeam.reduce((s, p) => s + (p.gold || 0), 0)
-    const newTeamGold = Math.max(0, currentTeamGold + production + excavationIncome - unitUpkeep)
+    const newTeamGold = Math.max(0, currentTeamGold + production + excavationIncome - unitUpkeep) + cargoGoldToAdd
 
     let coalToDeduct = activeFactories
     for (const np of freshNextTeam) {
@@ -867,7 +940,7 @@ export function useGameState(gameId) {
     currentPlayer, isMyTurn, isAdmin,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
     excavate, upgradeShipCompartment, levelUpUnit,
-    buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay,
+    buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     persistDiscoveredTiles, productionPerTurn, economy,
     refresh: fetchAll,
   }

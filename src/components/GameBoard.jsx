@@ -52,7 +52,7 @@ export default function GameBoard({
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
   excavate, upgradeShipCompartment, levelUpUnit,
-  buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay,
+  buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -1012,6 +1012,12 @@ export default function GameBoard({
             onProduceUnit={async (shipId, unitTypeId, unitTypeName) => {
               try { await produceUnitToBay(shipId, unitTypeId, unitTypeName) } catch (err) { setError(err.message) }
             }}
+            onLoadCargo={async (structId, convoyIdx, cargo) => {
+              try { await loadCargoToConvoy(structId, convoyIdx, cargo) } catch (err) { setError(err.message) }
+            }}
+            onUnloadCargo={async (structId, convoyIdx) => {
+              try { await unloadCargoFromConvoy(structId, convoyIdx) } catch (err) { setError(err.message) }
+            }}
             groundUnits={allUnits.filter(u =>
               (u.board || 'ground') === 'ground' &&
               u.owner_id === csUnit.owner_id &&
@@ -1023,6 +1029,7 @@ export default function GameBoard({
             )}
             unitTypes={allUnitTypes || unitTypes}
             teamGold={economy?.teamGold ?? currentPlayer?.gold ?? 0}
+            playerResources={currentPlayer?.resources || {}}
           />
         )
       })()}

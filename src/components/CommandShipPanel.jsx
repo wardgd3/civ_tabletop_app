@@ -209,7 +209,7 @@ const COMMAND_CENTER_COMPARTMENTS = [
   {
     id: 'transport',
     name: 'Transport',
-    description: 'Receive convoy shipments from the Command Ship.',
+    description: 'Receive and send convoys between Command Ship and Command Center.',
     icon: 'transport',
     color: '#50b0b0',
     special: 'transport',
@@ -252,18 +252,240 @@ function getSlots(upgrades, compartmentId, slotCount) {
   return slots
 }
 
-function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, groundUnits, comp, isAdmin }) {
+function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isCC, teamGold, playerResources }) {
+  const [goldAmount, setGoldAmount] = useState('')
+  const sendLabel = isCC ? 'Send to Space' : 'Send to Ground'
+  const cargo = convoy.cargo || { gold: 0, resources: {} }
+  const hasAnyCargo = (cargo.gold || 0) > 0 || Object.values(cargo.resources || {}).some(v => v > 0)
+  const hasAnyLoad = (convoy.units || []).length > 0 || hasAnyCargo
+
+  const availableResources = Object.entries(playerResources || {}).filter(
+    ([key, amount]) => amount > 0 && key !== 'excavations'
+  )
+
+  return (
+    <div className="p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+      <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+        Convoy {convoyIndex + 1} — Units
+      </div>
+
+      {(convoy.units || []).length > 0 && (
+        <div className="mb-2">
+          <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Loaded:</div>
+          <div className="flex flex-col gap-0.5">
+            {convoy.units.map((u, idx) => (
+              <div key={idx} className="flex items-center justify-between p-1 rounded"
+                style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{u.typeName}</span>
+                <button
+                  onClick={() => onUnloadToHoldingBay(unit.id, convoyIndex, idx)}
+                  className="text-[8px] px-1.5 py-0.5 rounded cursor-pointer"
+                  style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+                >
+                  Unload
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(convoy.units || []).length < CONVOY_CAPACITY && (() => {
+        const bayUnits = upgrades.holdingBay || []
+        const hasAny = groundUnits.length > 0 || bayUnits.length > 0
+        return (
+          <div className="mb-2">
+            <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Available units:</div>
+            {!hasAny ? (
+              <div className="text-[9px]" style={{ color: '#4a5568' }}>No units available to load</div>
+            ) : (
+              <div className="flex flex-col gap-0.5 max-h-32 overflow-y-auto">
+                {bayUnits.map((bu, idx) => (
+                  <button
+                    key={`bay-${idx}`}
+                    onClick={() => onLoadFromBay(unit.id, convoyIndex, idx)}
+                    className="flex items-center justify-between p-1 rounded text-left cursor-pointer"
+                    style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{bu.typeName}</span>
+                      <span className="text-[7px] px-1 rounded" style={{ backgroundColor: '#a08040' + '30', color: '#a08040', border: '1px solid #a08040' + '50' }}>BAY</span>
+                    </div>
+                    <span className="text-[8px]" style={{ color: comp.color }}>Load</span>
+                  </button>
+                ))}
+                {groundUnits.map(gu => (
+                  <button
+                    key={gu.id}
+                    onClick={() => onLoadUnit(unit.id, convoyIndex, gu.id)}
+                    className="flex items-center justify-between p-1 rounded text-left cursor-pointer"
+                    style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+                  >
+                    <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{gu.wg_unit_types?.name}</span>
+                    <span className="text-[8px]" style={{ color: comp.color }}>Load</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5 mt-2" style={{ color: '#4a5568' }}>
+        Cargo
+      </div>
+
+      {((cargo.gold || 0) > 0 || Object.keys(cargo.resources || {}).length > 0) && (
+        <div className="mb-2">
+          <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Loaded cargo:</div>
+          <div className="flex flex-col gap-0.5">
+            {(cargo.gold || 0) > 0 && (
+              <div className="flex items-center justify-between p-1 rounded"
+                style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                <span className="text-[9px]" style={{ color: '#cca43b' }}>Gold: {cargo.gold}</span>
+              </div>
+            )}
+            {Object.entries(cargo.resources || {}).filter(([, v]) => v > 0).map(([key, amount]) => (
+              <div key={key} className="flex items-center justify-between p-1 rounded"
+                style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{key}: {amount}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => onUnloadCargo(unit.id, convoyIndex)}
+            className="w-full mt-1 py-1 text-[9px] font-semibold uppercase tracking-wide rounded cursor-pointer"
+            style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+          >
+            Unload All Cargo
+          </button>
+        </div>
+      )}
+
+      <div className="flex gap-1 mb-1">
+        <input
+          type="number"
+          min="1"
+          max={teamGold}
+          value={goldAmount}
+          onChange={e => setGoldAmount(e.target.value)}
+          placeholder="Gold amt"
+          className="flex-1 px-1.5 py-1 text-[9px] rounded"
+          style={{ backgroundColor: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
+        />
+        <button
+          onClick={() => {
+            const amt = parseInt(goldAmount)
+            if (amt > 0) { onLoadCargo(unit.id, convoyIndex, { gold: amt }); setGoldAmount('') }
+          }}
+          disabled={!goldAmount || parseInt(goldAmount) <= 0 || parseInt(goldAmount) > teamGold}
+          className="px-2 py-1 text-[8px] font-semibold uppercase rounded cursor-pointer disabled:opacity-30"
+          style={{ backgroundColor: '#cca43b20', color: '#cca43b', border: '1px solid #cca43b40' }}
+        >
+          + Gold
+        </button>
+      </div>
+
+      {availableResources.length > 0 && (
+        <div className="flex flex-wrap gap-0.5 mb-2">
+          {availableResources.map(([key, amount]) => (
+            <button
+              key={key}
+              onClick={() => onLoadCargo(unit.id, convoyIndex, { resources: { [key]: amount } })}
+              className="px-1.5 py-0.5 text-[8px] rounded cursor-pointer"
+              style={{ backgroundColor: '#161b22', border: '1px solid #2a3140', color: '#c9d1d9' }}
+            >
+              {key} ({amount})
+            </button>
+          ))}
+        </div>
+      )}
+
+      <button
+        onClick={() => onSendConvoy(unit.id, convoyIndex)}
+        className="w-full mt-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+        style={{
+          backgroundColor: hasAnyLoad ? '#d29922' + '20' : '#21262d',
+          color: hasAnyLoad ? '#d29922' : '#8b949e',
+          border: `1px solid ${hasAnyLoad ? '#d29922' + '40' : '#30363d'}`,
+        }}
+      >
+        {hasAnyLoad ? `${sendLabel} (${CONVOY_TRANSIT_TURNS} turns)` : `Return Empty (${CONVOY_TRANSIT_TURNS} turns)`}
+      </button>
+    </div>
+  )
+}
+
+function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isAdmin, teamGold, playerResources }) {
   const [selectedConvoy, setSelectedConvoy] = useState(null)
   const convoys = upgrades.convoys || []
   const maxConvoys = comp.slots
   const isCC = unit.wg_unit_types?.name === 'Command Center'
-  const inTransitConvoys = convoys.filter(c => c.inTransit)
+  const availableConvoys = convoys.map((c, i) => ({ ...c, idx: i })).filter(c => !c.inTransit)
+  const inTransitConvoys = convoys.map((c, i) => ({ ...c, idx: i })).filter(c => c.inTransit)
 
   if (isCC) {
     return (
       <div>
-        <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-          Incoming Convoys ({inTransitConvoys.length})
+        {availableConvoys.length > 0 && (
+          <>
+            <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+              Available Convoys ({availableConvoys.length})
+            </div>
+            <div className="flex flex-col gap-1.5 mb-2">
+              {availableConvoys.map(convoy => {
+                const isSelected = selectedConvoy === convoy.idx
+                return (
+                  <button
+                    key={convoy.idx}
+                    onClick={() => setSelectedConvoy(isSelected ? null : convoy.idx)}
+                    className="p-2 rounded text-left transition-all cursor-pointer"
+                    style={{
+                      backgroundColor: isSelected ? comp.color + '20' : '#161b22',
+                      border: `1px solid ${isSelected ? comp.color : '#30363d'}`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
+                        Convoy
+                      </span>
+                      <span className="text-[9px] font-mono" style={{ color: '#8b949e' }}>
+                        {convoy.units?.length || 0}/{CONVOY_CAPACITY} loaded
+                      </span>
+                    </div>
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: CONVOY_CAPACITY }, (_, j) => {
+                        const loadedUnit = convoy.units?.[j]
+                        return (
+                          <div key={j} className="flex-1 h-3 rounded"
+                            style={{
+                              backgroundColor: loadedUnit ? comp.color + '40' : '#21262d',
+                              border: `1px solid ${loadedUnit ? comp.color + '80' : '#30363d'}`,
+                            }}
+                          />
+                        )
+                      })}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )}
+
+        {selectedConvoy !== null && convoys[selectedConvoy] && !convoys[selectedConvoy].inTransit && (
+          <ConvoyDetail
+            unit={unit} convoy={convoys[selectedConvoy]} convoyIndex={selectedConvoy}
+            upgrades={upgrades} onLoadUnit={onLoadUnit} onLoadFromBay={onLoadFromBay}
+            onUnloadToHoldingBay={onUnloadToHoldingBay} onSendConvoy={onSendConvoy}
+            onLoadCargo={onLoadCargo} onUnloadCargo={onUnloadCargo}
+            groundUnits={groundUnits} comp={comp} isCC={true}
+            teamGold={teamGold} playerResources={playerResources}
+          />
+        )}
+
+        <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5 mt-2" style={{ color: '#4a5568' }}>
+          Incoming ({inTransitConvoys.length})
         </div>
         {inTransitConvoys.length === 0 ? (
           <div className="text-[9px] p-2 rounded text-center" style={{ backgroundColor: '#161b22', border: '1px solid #30363d', color: '#4a5568' }}>
@@ -271,16 +493,11 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
-            {inTransitConvoys.map((convoy, i) => (
-              <div
-                key={i}
-                className="p-2 rounded"
-                style={{ backgroundColor: '#161b22', border: '1px solid #d29922' + '60' }}
-              >
+            {inTransitConvoys.map(convoy => (
+              <div key={convoy.idx} className="p-2 rounded"
+                style={{ backgroundColor: '#161b22', border: '1px solid #d29922' + '60' }}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
-                    Convoy {i + 1}
-                  </span>
+                  <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>Convoy</span>
                   <span className="text-[9px] font-mono" style={{ color: '#d29922' }}>
                     ARRIVING — {convoy.turnsLeft} turns
                   </span>
@@ -289,9 +506,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
                   {Array.from({ length: CONVOY_CAPACITY }, (_, j) => {
                     const loadedUnit = convoy.units?.[j]
                     return (
-                      <div
-                        key={j}
-                        className="flex-1 h-3 rounded"
+                      <div key={j} className="flex-1 h-3 rounded"
                         style={{
                           backgroundColor: loadedUnit ? comp.color + '40' : '#21262d',
                           border: `1px solid ${loadedUnit ? comp.color + '80' : '#30363d'}`,
@@ -300,16 +515,24 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
                     )
                   })}
                 </div>
-                <div className="flex flex-col gap-0.5">
-                  {(convoy.units || []).map((u, idx) => (
-                    <div key={idx} className="flex items-center p-1 rounded"
-                      style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
-                      <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{u.typeName}</span>
-                    </div>
-                  ))}
-                </div>
+                {(convoy.units || []).length > 0 && (
+                  <div className="flex flex-col gap-0.5">
+                    {convoy.units.map((u, idx) => (
+                      <div key={idx} className="flex items-center p-1 rounded"
+                        style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
+                        <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{u.typeName}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
+          </div>
+        )}
+
+        {availableConvoys.length === 0 && inTransitConvoys.length === 0 && (
+          <div className="text-[9px] p-2 rounded text-center" style={{ backgroundColor: '#161b22', border: '1px solid #30363d', color: '#4a5568' }}>
+            No convoys — build and send from Command Ship
           </div>
         )}
       </div>
@@ -319,7 +542,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
   return (
     <div>
       <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-        Convoy Bays ({convoys.length}/{maxConvoys})
+        Convoy Bays ({convoys.filter(c => !c.inTransit).length}/{maxConvoys})
       </div>
       <div className="flex flex-col gap-1.5 mb-2">
         {Array.from({ length: maxConvoys }, (_, i) => {
@@ -402,88 +625,15 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
         })}
       </div>
 
-      {selectedConvoy !== null && convoys[selectedConvoy] && (
-        <div className="p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
-          <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-            Convoy {selectedConvoy + 1} — Load Units
-          </div>
-
-          {(convoys[selectedConvoy].units || []).length > 0 && (
-            <div className="mb-2">
-              <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Loaded:</div>
-              <div className="flex flex-col gap-0.5">
-                {convoys[selectedConvoy].units.map((u, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-1 rounded"
-                    style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
-                    <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{u.typeName}</span>
-                    <button
-                      onClick={() => onUnloadToHoldingBay(unit.id, selectedConvoy, idx)}
-                      className="text-[8px] px-1.5 py-0.5 rounded cursor-pointer"
-                      style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
-                    >
-                      Unload
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(convoys[selectedConvoy].units || []).length < CONVOY_CAPACITY && (() => {
-            const bayUnits = upgrades.holdingBay || []
-            const hasAny = groundUnits.length > 0 || bayUnits.length > 0
-            return (
-              <div>
-                <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Available units:</div>
-                {!hasAny ? (
-                  <div className="text-[9px]" style={{ color: '#4a5568' }}>No units available to load</div>
-                ) : (
-                  <div className="flex flex-col gap-0.5 max-h-32 overflow-y-auto">
-                    {bayUnits.map((bu, idx) => (
-                      <button
-                        key={`bay-${idx}`}
-                        onClick={() => onLoadFromBay(unit.id, selectedConvoy, idx)}
-                        className="flex items-center justify-between p-1 rounded text-left cursor-pointer"
-                        style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
-                      >
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{bu.typeName}</span>
-                          <span className="text-[7px] px-1 rounded" style={{ backgroundColor: '#a08040' + '30', color: '#a08040', border: '1px solid #a08040' + '50' }}>BAY</span>
-                        </div>
-                        <span className="text-[8px]" style={{ color: comp.color }}>Load</span>
-                      </button>
-                    ))}
-                    {groundUnits.map(gu => (
-                      <button
-                        key={gu.id}
-                        onClick={() => onLoadUnit(unit.id, selectedConvoy, gu.id)}
-                        className="flex items-center justify-between p-1 rounded text-left cursor-pointer"
-                        style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
-                      >
-                        <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{gu.wg_unit_types?.name}</span>
-                        <span className="text-[8px]" style={{ color: comp.color }}>Load</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })()}
-
-          {(convoys[selectedConvoy].units || []).length > 0 && (
-            <button
-              onClick={() => onSendConvoy(unit.id, selectedConvoy)}
-              className="w-full mt-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-              style={{
-                backgroundColor: '#d29922' + '20',
-                color: '#d29922',
-                border: `1px solid #d29922` + '40',
-              }}
-            >
-              Send to Ground ({CONVOY_TRANSIT_TURNS} turns)
-            </button>
-          )}
-        </div>
+      {selectedConvoy !== null && convoys[selectedConvoy] && !convoys[selectedConvoy].inTransit && (
+        <ConvoyDetail
+          unit={unit} convoy={convoys[selectedConvoy]} convoyIndex={selectedConvoy}
+          upgrades={upgrades} onLoadUnit={onLoadUnit} onLoadFromBay={onLoadFromBay}
+          onUnloadToHoldingBay={onUnloadToHoldingBay} onSendConvoy={onSendConvoy}
+          onLoadCargo={onLoadCargo} onUnloadCargo={onUnloadCargo}
+          groundUnits={groundUnits} comp={comp} isCC={false}
+          teamGold={teamGold} playerResources={playerResources}
+        />
       )}
     </div>
   )
@@ -639,7 +789,8 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
 export default function CommandShipPanel({
   unit, onClose, onUpgrade, onMove, isAdmin,
   onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay, onProduceUnit,
-  groundUnits, unitTypes, teamGold,
+  onLoadCargo, onUnloadCargo,
+  groundUnits, unitTypes, teamGold, playerResources,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
@@ -768,9 +919,13 @@ export default function CommandShipPanel({
               onLoadFromBay={onLoadFromBay}
               onUnloadToHoldingBay={onUnloadToHoldingBay}
               onSendConvoy={onSendConvoy}
+              onLoadCargo={onLoadCargo}
+              onUnloadCargo={onUnloadCargo}
               groundUnits={groundUnits || []}
               comp={comp}
               isAdmin={isAdmin}
+              teamGold={teamGold}
+              playerResources={playerResources}
             />
           ) : comp.special === 'holding_bay' ? (
             <HoldingBayPanel

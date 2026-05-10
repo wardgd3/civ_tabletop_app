@@ -135,6 +135,8 @@ export default function Game() {
           sendConvoy={gameState.sendConvoy}
           deployFromBay={gameState.deployFromBay}
           produceUnitToBay={gameState.produceUnitToBay}
+          loadCargoToConvoy={gameState.loadCargoToConvoy}
+          unloadCargoFromConvoy={gameState.unloadCargoFromConvoy}
           isAdmin={gameState.isAdmin}
           productionPerTurn={gameState.productionPerTurn}
           economy={gameState.economy}
