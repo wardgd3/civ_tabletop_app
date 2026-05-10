@@ -1000,14 +1000,14 @@ function generateNebulaFlow(tiles, rows, cols, rand, noise) {
 
     const distRatio = fd / Math.max(cloudThreshold, 1)
 
-    if (distRatio < 0.15) {
+    if (distRatio < 0.2) {
       hotspotSet.add(k)
       brightSet.add(k)
       coreSet.add(k)
-    } else if (distRatio < 0.35) {
+    } else if (distRatio < 0.45) {
       brightSet.add(k)
       coreSet.add(k)
-    } else if (distRatio < 0.6) {
+    } else if (distRatio < 0.75) {
       coreSet.add(k)
     }
     nebulaSet.add(k)
