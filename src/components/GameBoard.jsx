@@ -643,29 +643,29 @@ export default function GameBoard({
 
     if (bayDeployInfo) {
       if (!bayDeployRange.includes(cellKey)) {
-        setError('Select an adjacent unoccupied tile')
+        setBayDeployInfo(null)
         return
       }
       try {
         await deployFromBay(bayDeployInfo.shipId, bayDeployInfo.bayIndex, row, col)
-        setBayDeployInfo(null)
       } catch (err) {
         setError(err.message)
       }
+      setBayDeployInfo(null)
       return
     }
 
     if (transportDeployInfo) {
       if (!transportDeployRange.includes(cellKey)) {
-        setError('Select an adjacent unoccupied tile')
+        setTransportDeployInfo(null)
         return
       }
       try {
         await undockTransport(transportDeployInfo.structId, transportDeployInfo.transportIndex, row, col)
-        setTransportDeployInfo(null)
       } catch (err) {
         setError(err.message)
       }
+      setTransportDeployInfo(null)
       return
     }
 
