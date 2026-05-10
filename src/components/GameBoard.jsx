@@ -936,7 +936,7 @@ export default function GameBoard({
                   Trade with Space Guild
                 </button>
               )}
-              {selectedUnit.owner_id === currentPlayer?.player_id && selectedUnit.wg_unit_types?.name === 'Armored Transport' && (() => {
+              {selectedUnit.owner_id === currentPlayer?.player_id && selectedUnit.wg_unit_types?.name === 'Armor Transport' && (() => {
                 const nearbyStruct = allUnits.filter(u =>
                   u.owner_id === currentPlayer?.player_id &&
                   (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Base') &&

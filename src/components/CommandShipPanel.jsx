@@ -816,7 +816,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
   )
 }
 
-const VEHICLE_NAMES = new Set(['Armored Transport', 'Tank', 'Artillery', 'APC'])
+const VEHICLE_NAMES = new Set(['Armor Transport', 'Armored Cavalry', 'Modern Armor', 'Rocket Artillery', 'Heavy Unit', 'Missile Defense', 'Excavator'])
 const TRANSPORT_CAPACITY = 4
 
 function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, groundUnits, comp }) {
