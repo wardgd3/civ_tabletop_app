@@ -1405,7 +1405,7 @@ export default function GameBoard({
             {units.filter(u => u.wg_unit_types?.name === 'Command Center' && (u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`))).map(cc => {
               const ccX = cc.grid_col * HEX_W + (cc.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
               const ccY = cc.grid_row * ROW_H + RENDER_H / 2
-              const ccSize = HEX_W * 2.4
+              const ccSize = HEX_W * 2.04
               const hpRatio = cc.current_hp / cc.wg_unit_types?.hp
               const pColor = getPlayerColor(cc.owner_id)
               return (
