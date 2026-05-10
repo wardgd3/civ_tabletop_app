@@ -1,8 +1,8 @@
 import { createNoise } from './simplex'
 
 export const TERRAIN = {
-  OCEAN:           { id: 'ocean',           name: 'Ocean',           color: '#1e4470', darkColor: '#122a45' },
-  COAST:           { id: 'coast',           name: 'Coast',           color: '#285a85', darkColor: '#183a55' },
+  OCEAN:           { id: 'ocean',           name: 'Ocean',           color: '#18365a', darkColor: '#0e2237' },
+  COAST:           { id: 'coast',           name: 'Coast',           color: '#20486a', darkColor: '#132e44' },
   DESERT:          { id: 'desert',          name: 'Desert',          color: '#6b5c30', darkColor: '#3a3220' },
   PLAINS:          { id: 'plains',          name: 'Plains',          color: '#425a32', darkColor: '#283520' },
   GRASSLAND:       { id: 'grassland',       name: 'Grassland',       color: '#335530', darkColor: '#203520' },
@@ -12,18 +12,18 @@ export const TERRAIN = {
   MOUNTAIN:        { id: 'mountain',        name: 'Mountain',        color: '#3d3830', darkColor: '#28241e' },
   FOREST:          { id: 'forest',          name: 'Forest',          color: '#264826', darkColor: '#1a301a' },
   JUNGLE:          { id: 'jungle',          name: 'Jungle',          color: '#1e4a1e', darkColor: '#163016' },
-  LAKE:            { id: 'lake',            name: 'Lake',            color: '#1e4470', darkColor: '#122a45' },
-  RIVER:           { id: 'river',           name: 'River',           color: '#1e4470', darkColor: '#122a45' },
+  LAKE:            { id: 'lake',            name: 'Lake',            color: '#18365a', darkColor: '#0e2237' },
+  RIVER:           { id: 'river',           name: 'River',           color: '#18365a', darkColor: '#0e2237' },
   SAND:            { id: 'sand',            name: 'Sand',            color: '#807550', darkColor: '#554d34' },
-  VOID:            { id: 'void',            name: 'Void',            color: '#0d1117', darkColor: '#0d1117' },
+  VOID:            { id: 'void',            name: 'Void',            color: '#0a0e12', darkColor: '#0a0e12' },
   NEBULA:          { id: 'nebula',          name: 'Nebula',          color: '#130c28', darkColor: '#0a0618' },
-  NEBULA_CORE:     { id: 'nebula_core',     name: 'Nebula Core',     color: '#2c1236', darkColor: '#180a24' },
-  NEBULA_BRIGHT:   { id: 'nebula_bright',   name: 'Nebula Core',     color: '#441e4e', darkColor: '#281034' },
+  NEBULA_CORE:     { id: 'nebula_core',     name: 'Nebula Core',     color: '#371744', darkColor: '#1e0d2d' },
+  NEBULA_BRIGHT:   { id: 'nebula_bright',   name: 'Nebula Core',     color: '#552662', darkColor: '#321441' },
   ASTEROID:        { id: 'asteroid',        name: 'Asteroid',        color: '#3a3228', darkColor: '#252018' },
   LARGE_ASTEROID:  { id: 'large_asteroid',  name: 'Large Asteroid',  color: '#4a4238', darkColor: '#302a20' },
-  STAR:            { id: 'star',            name: 'Star',            color: '#d4b840', darkColor: '#8a7828' },
-  DUST:            { id: 'dust',            name: 'Dust Cloud',      color: '#121620', darkColor: '#0d1117' },
-  SPACE:           { id: 'space',           name: 'Space',           color: '#0d1117', darkColor: '#0d1117' },
+  STAR:            { id: 'star',            name: 'Star',            color: '#e8e0c8', darkColor: '#a09880' },
+  DUST:            { id: 'dust',            name: 'Dust Cloud',      color: '#0e121a', darkColor: '#0a0e12' },
+  SPACE:           { id: 'space',           name: 'Space',           color: '#0a0e12', darkColor: '#0a0e12' },
 }
 
 export const TERRAIN_THEMES = {
@@ -88,8 +88,8 @@ export const TERRAIN_THEMES = {
   crystal_tundra: {
     id: 'crystal_tundra', name: 'Crystal Tundra',
     colors: {
-      ocean:     { color: '#0a4a5a', darkColor: '#062c36' },
-      coast:     { color: '#0a6070', darkColor: '#063a44' },
+      ocean:     { color: '#083b48', darkColor: '#05232b' },
+      coast:     { color: '#084d5a', darkColor: '#052e36' },
       desert:    { color: '#6b5c30', darkColor: '#3a3220' },
       plains:    { color: '#3a7080', darkColor: '#24444e' },
       grassland: { color: '#3a7080', darkColor: '#24444e' },
@@ -99,8 +99,8 @@ export const TERRAIN_THEMES = {
       mountain:  { color: '#8ab0b8', darkColor: '#546a70' },
       forest:    { color: '#264826', darkColor: '#1a301a' },
       jungle:    { color: '#1e4a1e', darkColor: '#163016' },
-      lake:      { color: '#0a4a5a', darkColor: '#062c36' },
-      river:     { color: '#0a4a5a', darkColor: '#062c36' },
+      lake:      { color: '#083b48', darkColor: '#05232b' },
+      river:     { color: '#083b48', darkColor: '#05232b' },
       sand:      { color: '#70a8b8', darkColor: '#44666e' },
     },
   },
@@ -128,18 +128,18 @@ export const TERRAIN_THEMES = {
     colors: {
       ocean:     { color: '#1a1040', darkColor: '#100a28' },
       coast:     { color: '#221450', darkColor: '#140c30' },
-      desert:    { color: '#3a3050', darkColor: '#241e30' },
-      plains:    { color: '#1e1a30', darkColor: '#14101e' },
-      grassland: { color: '#28203a', darkColor: '#181424' },
-      tundra:    { color: '#4a5060', darkColor: '#303540' },
-      snow:      { color: '#a0a0b8', darkColor: '#606070' },
-      hills:     { color: '#181420', darkColor: '#0e0c14' },
-      mountain:  { color: '#808090', darkColor: '#4e4e58' },
-      forest:    { color: '#264826', darkColor: '#1a301a' },
-      jungle:    { color: '#1e4a1e', darkColor: '#163016' },
+      desert:    { color: '#483c64', darkColor: '#2d263c' },
+      plains:    { color: '#26213c', darkColor: '#191426' },
+      grassland: { color: '#322849', darkColor: '#1e192d' },
+      tundra:    { color: '#51586a', darkColor: '#353a46' },
+      snow:      { color: '#b0b0ca', darkColor: '#6a6a7b' },
+      hills:     { color: '#1e1928', darkColor: '#120f19' },
+      mountain:  { color: '#a0a0b4', darkColor: '#62626e' },
+      forest:    { color: '#305a30', darkColor: '#213c21' },
+      jungle:    { color: '#265d26', darkColor: '#1c3c1c' },
       lake:      { color: '#1a1040', darkColor: '#100a28' },
       river:     { color: '#1a1040', darkColor: '#100a28' },
-      sand:      { color: '#3a3050', darkColor: '#241e30' },
+      sand:      { color: '#483c64', darkColor: '#2d263c' },
     },
   },
 }
@@ -160,9 +160,9 @@ export const LUXURY_RESOURCES = {
 }
 
 export const SPACE_RESOURCES = {
-  TRITIUM:       { id: 'tritium',       name: 'Tritium',       icon: 'tritium.png',       chance: 0.09, largeChance: 0.45 },
-  ALUMINUM:      { id: 'aluminum',      name: 'Aluminum',      icon: 'aluminum.png',      chance: 0.18, largeChance: 0.27 },
-  QUASICRYSTAL:  { id: 'quasicrystal',  name: 'Quasicrystal',  icon: 'quasicrystals.png', chance: 0.015, largeChance: 0.10 },
+  TRITIUM:       { id: 'tritium',       name: 'Tritium',       icon: 'tritium.png',       chance: 0.045, largeChance: 0.225 },
+  ALUMINUM:      { id: 'aluminum',      name: 'Aluminum',      icon: 'aluminum.png',      chance: 0.09, largeChance: 0.135 },
+  QUASICRYSTAL:  { id: 'quasicrystal',  name: 'Quasicrystal',  icon: 'quasicrystals.png', chance: 0.0075, largeChance: 0.05 },
 }
 
 function seededRandom(seed) {
@@ -502,17 +502,18 @@ function generateMainRiver(tiles, rows, cols, elevMap, rand) {
         riverTiles.add(`${nr}-${nc}`)
       }
 
-      // Add a second ring tile beyond each side (4-5 wide base)
-      const outerNeighbors = hexNeighbors(nr, nc, rows, cols)
-      for (const [onr, onc] of outerNeighbors) {
-        if (riverTiles.has(`${onr}-${onc}`)) continue
-        const dot = (onr - r) * perpR + (onc - c) * perpC
-        // Only expand further out on the same side
-        if ((side === bestSame && dot > 0) || (side === bestOpp && dot < 0)) {
-          tileAt(onr, onc).terrain = 'river'
-          tileAt(onr, onc).hasRiver = true
-          riverTiles.add(`${onr}-${onc}`)
-          break
+      if (cols > 48) {
+        // Add a second ring tile beyond each side (4-5 wide base) for large+ maps only
+        const outerNeighbors = hexNeighbors(nr, nc, rows, cols)
+        for (const [onr, onc] of outerNeighbors) {
+          if (riverTiles.has(`${onr}-${onc}`)) continue
+          const dot = (onr - r) * perpR + (onc - c) * perpC
+          if ((side === bestSame && dot > 0) || (side === bestOpp && dot < 0)) {
+            tileAt(onr, onc).terrain = 'river'
+            tileAt(onr, onc).hasRiver = true
+            riverTiles.add(`${onr}-${onc}`)
+            break
+          }
         }
       }
     }
@@ -946,6 +947,29 @@ export function generateSpaceTerrain(rows, cols, seed) {
     const t = tileAt(sr, sc)
     if (t.terrain === 'asteroid' || t.terrain === 'large_asteroid') continue
     t.terrain = 'star'
+  }
+
+  const hugeCount = cols > 48 ? 2 : 1
+  for (let i = 0; i < hugeCount; i++) {
+    const hr = 6 + Math.floor(rand() * (rows - 12))
+    const hc = 6 + Math.floor(rand() * (cols - 12))
+    const size = 25 + Math.floor(rand() * 15)
+    const cluster = [[hr, hc]]
+    const used = new Set([`${hr}-${hc}`])
+
+    for (let step = 0; step < size * 2 && cluster.length < size; step++) {
+      const [sr, sc] = cluster[Math.floor(rand() * cluster.length)]
+      const neighbors = hexNeighbors(sr, sc, rows, cols)
+      const candidates = neighbors.filter(([nr, nc]) => !used.has(`${nr}-${nc}`))
+      if (candidates.length === 0) continue
+      const [nr, nc] = candidates[Math.floor(rand() * candidates.length)]
+      used.add(`${nr}-${nc}`)
+      cluster.push([nr, nc])
+    }
+
+    for (const [ar, ac] of cluster) {
+      tileAt(ar, ac).terrain = 'large_asteroid'
+    }
   }
 
   placeSpaceResources(tiles, rand)
