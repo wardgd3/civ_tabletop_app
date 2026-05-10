@@ -243,6 +243,7 @@ export function generateTerrain(rows, cols, seed) {
     }
   }
 
+  generateCoastalInlets(tiles, rows, cols, rand, noise)
   const mainRiver = generateMainRiver(tiles, rows, cols, elevMap, rand)
   generateMountainRanges(tiles, rows, cols, rand, mainRiver)
   generateRivers(tiles, rows, cols, elevMap, rand)
@@ -252,6 +253,143 @@ export function generateTerrain(rows, cols, seed) {
   placeResources(tiles, rows, cols, rand)
 
   return tiles
+}
+
+function generateCoastalInlets(tiles, rows, cols, rand, noise) {
+  const tileAt = (r, c) => tiles[r * cols + c]
+  const key = (r, c) => r * cols + c
+  const inletCount = 2 + Math.floor(rand() * 2)
+
+  // Collect edge positions grouped by side
+  const edges = [
+    { side: 'top', tiles: [] },
+    { side: 'bottom', tiles: [] },
+    { side: 'left', tiles: [] },
+    { side: 'right', tiles: [] },
+  ]
+  for (let c = 0; c < cols; c++) {
+    edges[0].tiles.push([0, c])
+    edges[1].tiles.push([rows - 1, c])
+  }
+  for (let r = 0; r < rows; r++) {
+    edges[2].tiles.push([r, 0])
+    edges[3].tiles.push([r, cols - 1])
+  }
+
+  // Shuffle edges and pick distinct sides
+  for (let i = edges.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [edges[i], edges[j]] = [edges[j], edges[i]]
+  }
+
+  const waterSet = new Set()
+
+  for (let i = 0; i < Math.min(inletCount, edges.length); i++) {
+    const edge = edges[i]
+    const edgeTiles = edge.tiles
+    // Pick a start point along this edge
+    const startIdx = Math.floor(edgeTiles.length * (0.2 + rand() * 0.6))
+    const [sr, sc] = edgeTiles[startIdx]
+
+    // Pathfind inward using Dijkstra with wander
+    const inletDepth = Math.floor(Math.min(rows, cols) * (0.15 + rand() * 0.2))
+    // Target is a point roughly inletDepth tiles inward from the edge
+    let tr, tc
+    if (edge.side === 'top') { tr = sr + inletDepth; tc = sc + Math.floor((rand() - 0.5) * cols * 0.3) }
+    else if (edge.side === 'bottom') { tr = sr - inletDepth; tc = sc + Math.floor((rand() - 0.5) * cols * 0.3) }
+    else if (edge.side === 'left') { tr = sr + Math.floor((rand() - 0.5) * rows * 0.3); tc = sc + inletDepth }
+    else { tr = sr + Math.floor((rand() - 0.5) * rows * 0.3); tc = sc - inletDepth }
+    tr = Math.max(2, Math.min(rows - 3, tr))
+    tc = Math.max(2, Math.min(cols - 3, tc))
+
+    const noiseScale = 0.12
+    const wanderStrength = 5
+    const INF = 1e9
+    const dist = new Float64Array(rows * cols).fill(INF)
+    const prev = new Int32Array(rows * cols).fill(-1)
+    dist[key(sr, sc)] = 0
+
+    const heap = [[0, sr, sc]]
+    while (heap.length > 0) {
+      heap.sort((a, b) => a[0] - b[0])
+      const [d, cr, cc] = heap.shift()
+      if (cr === tr && cc === tc) break
+      if (d > dist[key(cr, cc)]) continue
+
+      for (const [nr, nc] of hexNeighbors(cr, cc, rows, cols)) {
+        let cost = 1
+        const seed1 = Math.sin(nr * 5.1 + nc * 8.7) * 43758.5453
+        const wander = (Math.sin(seed1 + nr * noiseScale + nc * noiseScale * 2.3) + 1) * wanderStrength
+        cost += wander
+        const nd = d + cost
+        if (nd < dist[key(nr, nc)]) {
+          dist[key(nr, nc)] = nd
+          prev[key(nr, nc)] = key(cr, cc)
+          heap.push([nd, nr, nc])
+        }
+      }
+    }
+
+    if (dist[key(tr, tc)] >= INF) continue
+
+    const path = []
+    let cur = key(tr, tc)
+    while (cur !== -1) {
+      const r = Math.floor(cur / cols)
+      const c = cur % cols
+      path.push([r, c])
+      cur = prev[cur]
+    }
+    path.reverse()
+
+    // Paint water along path, wide at edge tapering to narrow at tip
+    for (let j = 0; j < path.length; j++) {
+      const [r, c] = path[j]
+      const t = j / path.length
+      // Wide at start (edge), tapers toward end
+      const width = Math.max(1, Math.floor((1 - t * t) * 5))
+
+      waterSet.add(`${r}-${c}`)
+      // BFS outward from path tile up to width
+      let ring = [[r, c]]
+      const visited = new Set([`${r}-${c}`])
+      for (let w = 0; w < width; w++) {
+        const nextRing = []
+        for (const [fr, fc] of ring) {
+          for (const [nr, nc] of hexNeighbors(fr, fc, rows, cols)) {
+            const nk = `${nr}-${nc}`
+            if (!visited.has(nk)) {
+              visited.add(nk)
+              waterSet.add(nk)
+              nextRing.push([nr, nc])
+            }
+          }
+        }
+        ring = nextRing
+      }
+    }
+  }
+
+  // Apply water terrain - ocean at edges, coast further in
+  for (const k of waterSet) {
+    const [r, c] = k.split('-').map(Number)
+    const isEdge = r <= 1 || r >= rows - 2 || c <= 1 || c >= cols - 2
+    tileAt(r, c).terrain = isEdge ? 'ocean' : 'coast'
+  }
+
+  // Place coast tiles around the water edges that touch land
+  for (const k of waterSet) {
+    const [r, c] = k.split('-').map(Number)
+    for (const [nr, nc] of hexNeighbors(r, c, rows, cols)) {
+      const nk = `${nr}-${nc}`
+      if (!waterSet.has(nk)) {
+        const t = tileAt(nr, nc).terrain
+        if (t !== 'ocean' && t !== 'coast' && t !== 'river' && t !== 'lake') {
+          tileAt(nr, nc).terrain = 'coast'
+        }
+      }
+    }
+  }
 }
 
 function generateMountainRanges(tiles, rows, cols, rand, mainRiver) {
@@ -1020,7 +1158,7 @@ function generateNebulaFlow(tiles, rows, cols, rand, noise) {
 
     const distRatio = fd / Math.max(cloudThreshold, 1)
 
-    if (distRatio < 0.2) {
+    if (distRatio < 0.2 && cloudThreshold >= 6) {
       hotspotSet.add(k)
       brightSet.add(k)
       coreSet.add(k)
@@ -1031,6 +1169,31 @@ function generateNebulaFlow(tiles, rows, cols, rand, noise) {
       coreSet.add(k)
     }
     nebulaSet.add(k)
+  }
+
+  // Remove hotspot tiles that aren't part of a cluster of at least 4
+  const hotspotClusters = []
+  const hotspotVisited = new Set()
+  for (const k of hotspotSet) {
+    if (hotspotVisited.has(k)) continue
+    const cluster = [k]
+    hotspotVisited.add(k)
+    for (let i = 0; i < cluster.length; i++) {
+      const [cr, cc] = cluster[i].split('-').map(Number)
+      for (const [nr, nc] of hexNeighbors(cr, cc, rows, cols)) {
+        const nk = `${nr}-${nc}`
+        if (hotspotSet.has(nk) && !hotspotVisited.has(nk)) {
+          hotspotVisited.add(nk)
+          cluster.push(nk)
+        }
+      }
+    }
+    hotspotClusters.push(cluster)
+  }
+  for (const cluster of hotspotClusters) {
+    if (cluster.length < 4) {
+      for (const k of cluster) hotspotSet.delete(k)
+    }
   }
 
   // Add 2 rings of dark nebula around the existing shape
@@ -1104,6 +1267,63 @@ export function generateSpaceTerrain(rows, cols, seed) {
   // Generate nebula as a flowing path from one edge to the opposite (like a river)
   generateNebulaFlow(tiles, rows, cols, rand, noise)
 
+  // Scatter smaller background nebula blobs
+  const bgNebulaCount = 3 + Math.floor(rand() * 3)
+  for (let i = 0; i < bgNebulaCount; i++) {
+    const cr = 3 + Math.floor(rand() * (rows - 6))
+    const cc = 3 + Math.floor(rand() * (cols - 6))
+    if (tileAt(cr, cc).terrain !== 'void') continue
+    const size = 8 + Math.floor(rand() * 14)
+    const cluster = [[cr, cc]]
+    const used = new Set([`${cr}-${cc}`])
+
+    for (let step = 0; step < size * 3 && cluster.length < size; step++) {
+      const [sr, sc] = cluster[Math.floor(rand() * cluster.length)]
+      const neighbors = hexNeighbors(sr, sc, rows, cols)
+      const candidates = neighbors.filter(([nr, nc]) => {
+        const nk = `${nr}-${nc}`
+        return !used.has(nk) && tileAt(nr, nc).terrain === 'void'
+      })
+      if (candidates.length === 0) continue
+      const [nr, nc] = candidates[Math.floor(rand() * candidates.length)]
+      used.add(`${nr}-${nc}`)
+      cluster.push([nr, nc])
+    }
+
+    if (cluster.length < 5) continue
+
+    // BFS from center to get distance for layering
+    const distMap = new Map()
+    distMap.set(`${cr}-${cc}`, 0)
+    let front = [[cr, cc, 0]]
+    while (front.length > 0) {
+      const next = []
+      for (const [fr, fc, fd] of front) {
+        for (const [nr, nc] of hexNeighbors(fr, fc, rows, cols)) {
+          const nk = `${nr}-${nc}`
+          if (used.has(nk) && !distMap.has(nk)) {
+            distMap.set(nk, fd + 1)
+            next.push([nr, nc, fd + 1])
+          }
+        }
+      }
+      front = next
+    }
+
+    const maxDist = Math.max(...distMap.values(), 1)
+    for (const [ar, ac] of cluster) {
+      const d = distMap.get(`${ar}-${ac}`) || 0
+      const ratio = d / maxDist
+      if (ratio < 0.3 && rand() < 0.4) {
+        tileAt(ar, ac).terrain = 'nebula_bright'
+      } else if (ratio < 0.6) {
+        tileAt(ar, ac).terrain = 'nebula_core'
+      } else {
+        tileAt(ar, ac).terrain = 'nebula'
+      }
+    }
+  }
+
   // Place 3-4 large asteroid clusters
   const clusterCount = 3 + (rand() < 0.5 ? 1 : 0)
   for (let i = 0; i < clusterCount; i++) {
@@ -1133,15 +1353,7 @@ export function generateSpaceTerrain(rows, cols, seed) {
     }
   }
 
-  // Place 4-8 stars scattered across the map
-  const starCount = 4 + Math.floor(rand() * 5)
-  for (let i = 0; i < starCount; i++) {
-    const sr = 3 + Math.floor(rand() * (rows - 6))
-    const sc = 3 + Math.floor(rand() * (cols - 6))
-    const t = tileAt(sr, sc)
-    if (t.terrain === 'asteroid' || t.terrain === 'large_asteroid') continue
-    t.terrain = 'star'
-  }
+
 
   const hugeCount = cols > 48 ? 2 : 1
   for (let i = 0; i < hugeCount; i++) {
