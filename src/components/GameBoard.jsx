@@ -1091,6 +1091,8 @@ export default function GameBoard({
             }}
             onUndock={(structId, transportIdx) => {
               setTransportDeployInfo({ structId, transportIndex: transportIdx })
+              setCommandShipUnitId(null)
+              setPanelOpen(false)
             }}
             groundUnits={allUnits.filter(u =>
               (u.board || 'ground') === 'ground' &&
