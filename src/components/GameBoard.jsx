@@ -395,6 +395,22 @@ export default function GameBoard({
     return cells
   })() : []
 
+  const ccAdjacentTiles = useMemo(() => {
+    const map = new Map()
+    for (const u of units) {
+      if (u.wg_unit_types?.name !== 'Command Center') continue
+      const pColor = getPlayerColor(u.owner_id)
+      const isVis = u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`)
+      if (!isVis) continue
+      const neighbors = hexNeighborsBoard(u.grid_row, u.grid_col, rows, cols)
+      for (const [nr, nc] of neighbors) {
+        map.set(`${nr}-${nc}`, pColor)
+      }
+      map.set(`${u.grid_row}-${u.grid_col}`, pColor)
+    }
+    return map
+  }, [units, currentPlayer, visibleTiles, rows, cols])
+
   function stopInertia() {
     if (inertiaRef.current) {
       cancelAnimationFrame(inertiaRef.current)
@@ -1274,7 +1290,8 @@ export default function GameBoard({
               else bg = getTileColor(row, col, isVisible, isDiscovered)
 
               const isCC = showUnit && (unit?.wg_unit_types?.name === 'Command Center' || unit?.wg_unit_types?.name === 'Command Ship')
-              const unitTeamColor = showUnit ? getPlayerColor(unit.owner_id) : null
+              const ccAdjColor = ccAdjacentTiles.get(cellKey)
+              const unitTeamColor = showUnit && unit.wg_unit_types?.name !== 'Command Center' ? getPlayerColor(unit.owner_id) : ccAdjColor || null
 
               const x = col * HEX_W + (row & 1 ? HEX_W / 2 : 0) + GAP / 2
               const y = row * ROW_H + GAP / 2
@@ -1339,7 +1356,7 @@ export default function GameBoard({
                       />
                     )
                   })()}
-                  {showUnit && (() => {
+                  {showUnit && unit.wg_unit_types?.name !== 'Command Center' && (() => {
                     const pColor = getPlayerColor(unit.owner_id)
                     const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
                     const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * 0.86
@@ -1382,6 +1399,44 @@ export default function GameBoard({
                       </div>
                     )
                   })()}
+                </div>
+              )
+            })}
+            {units.filter(u => u.wg_unit_types?.name === 'Command Center' && (u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`))).map(cc => {
+              const ccX = cc.grid_col * HEX_W + (cc.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
+              const ccY = cc.grid_row * ROW_H + RENDER_H / 2
+              const ccSize = HEX_W * 2.4
+              const hpRatio = cc.current_hp / cc.wg_unit_types?.hp
+              const pColor = getPlayerColor(cc.owner_id)
+              return (
+                <div
+                  key={`cc-overlay-${cc.id}`}
+                  className="absolute pointer-events-none z-10"
+                  style={{
+                    left: ccX - ccSize / 2,
+                    top: ccY - ccSize / 2,
+                    width: ccSize,
+                    height: ccSize,
+                  }}
+                >
+                  <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `2px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
+                    <img
+                      src={getUnitIcon(cc.wg_unit_types)}
+                      alt="Command Center"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 rounded-full z-20"
+                    style={{
+                      bottom: 4,
+                      height: 3,
+                      width: `${hpRatio * 50}%`,
+                      backgroundColor: hpRatio > 0.5 ? '#4a8060' : '#804a4a',
+                      minWidth: 4,
+                      boxShadow: '0 0 2px #000',
+                    }}
+                  />
                 </div>
               )
             })}
