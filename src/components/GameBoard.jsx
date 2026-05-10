@@ -30,6 +30,133 @@ function getUnitIcon(unitType) {
   return `/assets/${encodeURIComponent(unitType.icon)}`
 }
 
+const TOKEN_ICONS = {
+  'Infantry': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="6" r="3" />
+      <line x1="12" y1="9" x2="12" y2="17" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+      <line x1="12" y1="17" x2="8" y2="22" />
+      <line x1="12" y1="17" x2="16" y2="22" />
+    </svg>
+  ),
+  'Scout': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="6" />
+      <line x1="16" y1="16" x2="21" y2="21" />
+    </svg>
+  ),
+  'Heavy Unit': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 18 L6 10 L12 6 L18 10 L18 18 Z" />
+      <line x1="12" y1="6" x2="12" y2="18" />
+      <line x1="6" y1="14" x2="18" y2="14" />
+    </svg>
+  ),
+  'Modern Armor': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="10" width="16" height="8" rx="2" />
+      <rect x="8" y="6" width="8" height="6" rx="1" />
+      <line x1="16" y1="9" x2="22" y2="7" />
+    </svg>
+  ),
+  'Armored Cavalry': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="11" width="14" height="7" rx="2" />
+      <line x1="5" y1="14" x2="19" y2="14" />
+      <circle cx="8" cy="18" r="1.5" />
+      <circle cx="16" cy="18" r="1.5" />
+      <line x1="15" y1="11" x2="19" y2="7" />
+    </svg>
+  ),
+  'Rocket Artillery': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="14" width="16" height="5" rx="1" />
+      <line x1="8" y1="14" x2="6" y2="6" />
+      <line x1="12" y1="14" x2="10" y2="6" />
+      <line x1="16" y1="14" x2="14" y2="6" />
+    </svg>
+  ),
+  'Engineer': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 4 L18 8 L16 10 L12 6 Z" />
+      <line x1="12" y1="6" x2="6" y2="12" />
+      <path d="M6 12 L4 18 L6 20 L12 14" />
+    </svg>
+  ),
+  'Medic': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <line x1="12" y1="8" x2="12" y2="16" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+    </svg>
+  ),
+  'Bomber Unit': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 4 L14 10 L22 12 L14 14 L12 20 L10 14 L2 12 L10 10 Z" />
+    </svg>
+  ),
+  'Missile Defense': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3 L14 8 L13 9 L13 16 L15 19 L12 20 L9 19 L11 16 L11 9 L10 8 Z" />
+      <path d="M6 20 L12 14 L18 20" />
+    </svg>
+  ),
+  'Armor Transport': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="10" width="18" height="8" rx="2" />
+      <rect x="7" y="6" width="10" height="6" rx="1" />
+      <circle cx="7" cy="18" r="1.5" />
+      <circle cx="17" cy="18" r="1.5" />
+    </svg>
+  ),
+  'Excavator': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="14" width="12" height="6" rx="1" />
+      <path d="M15 14 L15 8 L20 4 L22 6 L18 12 L18 14" />
+      <circle cx="6" cy="20" r="1.5" />
+      <circle cx="12" cy="20" r="1.5" />
+    </svg>
+  ),
+  'Base': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 20 L4 10 L12 4 L20 10 L20 20 Z" />
+      <rect x="9" y="14" width="6" height="6" />
+    </svg>
+  ),
+  'Factory': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 20 L3 12 L8 14 L8 10 L13 12 L13 8 L18 10 L18 4 L21 4 L21 20 Z" />
+    </svg>
+  ),
+  'Mining Station': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 4 L12 8" />
+      <path d="M12 16 L12 20" />
+      <path d="M4 12 L8 12" />
+      <path d="M16 12 L20 12" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  'Orbital Strike': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12,2 15,9 22,9 16,14 18,21 12,17 6,21 8,14 2,9 9,9" />
+    </svg>
+  ),
+  'Convoy Ship': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 16 L4 10 L12 6 L20 10 L20 16" />
+      <line x1="2" y1="16" x2="22" y2="16" />
+      <rect x="8" y="10" width="8" height="6" />
+    </svg>
+  ),
+}
+
+function getTokenIcon(unitTypeName) {
+  return TOKEN_ICONS[unitTypeName] || TOKEN_ICONS['Infantry']
+}
+
 const GROUND_IMPASSABLE = new Set(['ocean', 'mountain', 'lake', 'river'])
 const SPACE_IMPASSABLE = new Set(['asteroid', 'large_asteroid', 'star'])
 const MINING_PASSABLE = new Set(['asteroid', 'large_asteroid'])
@@ -1196,48 +1323,50 @@ export default function GameBoard({
                       />
                     )
                   })()}
-                  {showUnit && !isCC && (
-                    <div className="relative flex items-center justify-center z-10">
-                      <img
-                        src={getUnitIcon(unit.wg_unit_types)}
-                        alt={unit.wg_unit_types?.name}
-                        className="object-contain pointer-events-none"
-                        style={{
-                          width: RENDER_W - 8,
-                          height: RENDER_H - 10,
-                          filter: `drop-shadow(0 0 3px ${getPlayerColor(unit.owner_id)})`,
-                        }}
-                      />
-                      <div
-                        className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded-full"
-                        style={{
-                          height: 2,
-                          width: `${(unit.current_hp / unit.wg_unit_types?.hp) * 100}%`,
-                          backgroundColor: unit.current_hp / unit.wg_unit_types?.hp > 0.5 ? '#4a8060' : '#804a4a',
-                          minWidth: 4,
-                          maxWidth: RENDER_W - 10,
-                        }}
-                      />
-                      <div
-                        className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: getPlayerColor(unit.owner_id), border: '1px solid #12161d' }}
-                      />
-                      {(unit.upgrades?.level || 0) > 0 && (
+                  {showUnit && !isCC && (() => {
+                    const pColor = getPlayerColor(unit.owner_id)
+                    const tokenSize = Math.min(RENDER_W, RENDER_H) - 4
+                    const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
+                    return (
+                      <div className="relative flex items-center justify-center z-10" style={{ width: tokenSize, height: tokenSize }}>
                         <div
-                          className="absolute -top-0.5 -left-0.5 flex items-center justify-center rounded-full"
+                          className="absolute inset-0 rounded-full"
                           style={{
-                            width: 7, height: 7,
-                            backgroundColor: '#1a1a0d',
-                            border: '1px solid #cca43b',
-                            fontSize: 5, fontWeight: 'bold',
-                            color: '#cca43b', lineHeight: 1,
+                            backgroundColor: pColor + '30',
+                            border: `2px solid ${pColor}`,
+                            boxShadow: `0 0 4px ${pColor}60`,
                           }}
-                        >
-                          {unit.upgrades.level}
+                        />
+                        <div style={{ width: tokenSize * 0.5, height: tokenSize * 0.5, color: '#e0e0e0' }}>
+                          {getTokenIcon(unit.wg_unit_types?.name)}
                         </div>
-                      )}
-                    </div>
-                  )}
+                        <div
+                          className="absolute left-1/2 -translate-x-1/2 rounded-full"
+                          style={{
+                            bottom: 1,
+                            height: 2,
+                            width: `${hpRatio * 60}%`,
+                            backgroundColor: hpRatio > 0.5 ? '#4a8060' : '#804a4a',
+                            minWidth: 3,
+                          }}
+                        />
+                        {(unit.upgrades?.level || 0) > 0 && (
+                          <div
+                            className="absolute -top-0.5 -left-0.5 flex items-center justify-center rounded-full"
+                            style={{
+                              width: 7, height: 7,
+                              backgroundColor: '#1a1a0d',
+                              border: '1px solid #cca43b',
+                              fontSize: 5, fontWeight: 'bold',
+                              color: '#cca43b', lineHeight: 1,
+                            }}
+                          >
+                            {unit.upgrades.level}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}
