@@ -884,6 +884,36 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function deployFromTransport(transportId, row, col) {
+    const transport = units.find(u => u.id === transportId)
+    if (!transport) throw new Error('Transport not found')
+    const loaded = transport.upgrades?.loadedUnits || []
+    if (loaded.length === 0) throw new Error('No units loaded')
+
+    const occupied = units.find(u => u.grid_row === row && u.grid_col === col && (u.board || 'ground') === (transport.board || 'ground'))
+    if (occupied) throw new Error('Tile is occupied')
+
+    const soldier = loaded[0]
+    const remaining = loaded.slice(1)
+
+    const { error } = await supabase.from('wg_units').insert({
+      game_id: gameId,
+      owner_id: userId,
+      unit_type_id: soldier.typeId,
+      grid_row: row,
+      grid_col: col,
+      current_hp: soldier.hp,
+      board: transport.board || 'ground',
+      has_moved: true,
+      has_attacked: true,
+      is_alive: true,
+    })
+    if (error) throw error
+
+    await supabase.from('wg_units').update({ upgrades: { ...transport.upgrades, loadedUnits: remaining } }).eq('id', transportId)
+    await fetchAll()
+  }
+
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
@@ -1065,7 +1095,7 @@ export function useGameState(gameId) {
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
     excavate, upgradeShipCompartment, levelUpUnit,
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
-    dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport,
+    dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport,
     persistDiscoveredTiles, productionPerTurn, economy,
     refresh: fetchAll,
   }

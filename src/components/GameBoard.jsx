@@ -53,7 +53,7 @@ export default function GameBoard({
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
   excavate, upgradeShipCompartment, levelUpUnit,
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
-  dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport,
+  dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -73,6 +73,7 @@ export default function GameBoard({
   const [commandShipUnitId, setCommandShipUnitId] = useState(null)
   const [bayDeployInfo, setBayDeployInfo] = useState(null)
   const [transportDeployInfo, setTransportDeployInfo] = useState(null)
+  const [unitDeployFromTransportInfo, setUnitDeployFromTransportInfo] = useState(null)
   const boardRef = useRef(null)
   const panStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
   const touchPanRef = useRef(null)
@@ -381,6 +382,19 @@ export default function GameBoard({
     return cells
   })() : []
 
+  const unitFromTransportDeployRange = unitDeployFromTransportInfo ? (() => {
+    const transport = units.find(u => u.id === unitDeployFromTransportInfo.transportId)
+    if (!transport) return []
+    const neighbors = hexNeighborsBoard(transport.grid_row, transport.grid_col, rows, cols)
+    const cells = []
+    for (const [nr, nc] of neighbors) {
+      if (getUnitAt(nr, nc)) continue
+      if (isImpassable(nr, nc)) continue
+      cells.push(`${nr}-${nc}`)
+    }
+    return cells
+  })() : []
+
   function stopInertia() {
     if (inertiaRef.current) {
       cancelAnimationFrame(inertiaRef.current)
@@ -640,6 +654,21 @@ export default function GameBoard({
     setTappedTile(prev => (prev?.row === row && prev?.col === col) ? null : { row, col })
 
     const cellKey = `${row}-${col}`
+
+    if (unitDeployFromTransportInfo) {
+      if (!unitFromTransportDeployRange.includes(cellKey)) {
+        setUnitDeployFromTransportInfo(null)
+        return
+      }
+      try {
+        await deployFromTransport(unitDeployFromTransportInfo.transportId, row, col)
+      } catch (err) {
+        setError(err.message)
+      }
+      setUnitDeployFromTransportInfo(null)
+      setSelectedUnitId(null)
+      return
+    }
 
     if (bayDeployInfo) {
       if (!bayDeployRange.includes(cellKey)) {
@@ -969,6 +998,35 @@ export default function GameBoard({
                   )
                 })
               })()}
+              {selectedUnit.wg_unit_types?.name === 'Armor Transport' && selectedUnit.upgrades?.loadedUnits?.length > 0 && (
+                <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
+                  <div className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
+                    Loaded Units ({selectedUnit.upgrades.loadedUnits.length}/4)
+                  </div>
+                  {selectedUnit.upgrades.loadedUnits.map((lu, li) => {
+                    const luType = allUnitTypes.find(ut => ut.id === lu.typeId)
+                    return (
+                      <div key={li} className="flex items-center gap-2 py-0.5">
+                        <img src={getUnitIcon(luType)} alt={lu.typeName} className="w-5 h-5 object-contain" />
+                        <span className="text-xs" style={{ color: '#c9d1d9' }}>{lu.typeName}</span>
+                        <span className="text-[10px] font-mono ml-auto" style={{ color: '#8b949e' }}>HP {lu.hp}</span>
+                      </div>
+                    )
+                  })}
+                  {selectedUnit.owner_id === currentPlayer?.player_id && (
+                    <button
+                      onClick={() => {
+                        setUnitDeployFromTransportInfo({ transportId: selectedUnit.id })
+                        setSelectedUnitId(null)
+                      }}
+                      className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                      style={{ backgroundColor: '#1a3a2a', color: '#7ee787', border: '1px solid #2a5a3a' }}
+                    >
+                      Deploy Unit
+                    </button>
+                  )}
+                </div>
+              )}
               {selectedUnit.owner_id === currentPlayer?.player_id && (() => {
                 const unitLevel = selectedUnit.upgrades?.level || 0
                 const maxLevel = 5
@@ -1197,6 +1255,7 @@ export default function GameBoard({
               const isInDestroyRange = destroyRange.includes(cellKey)
               const isInBayDeployRange = bayDeployRange.includes(cellKey)
               const isInTransportDeployRange = transportDeployRange.includes(cellKey)
+              const isInUnitFromTransportRange = unitFromTransportDeployRange.includes(cellKey)
               const isSelected = selectedUnit && selectedUnit.grid_row === row && selectedUnit.grid_col === col
 
               const board = activeBoard || 'ground'
@@ -1206,7 +1265,7 @@ export default function GameBoard({
 
               let bg
               if (isSelected) bg = '#203348'
-              else if (isInBayDeployRange || isInTransportDeployRange) bg = '#203320'
+              else if (isInBayDeployRange || isInTransportDeployRange || isInUnitFromTransportRange) bg = '#203320'
               else if (isInDeployRange) bg = '#203320'
               else if (isInMoveRange) bg = '#182533'
               else if (isInAttackRange) bg = '#2a181d'
@@ -1369,6 +1428,20 @@ export default function GameBoard({
                           )}
                         </div>
                         <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>HP {hu.current_hp}/{hu.wg_unit_types.hp}</div>
+                        {hu.upgrades?.loadedUnits?.length > 0 && (
+                          <div className="mt-1 pt-1" style={{ borderTop: '1px solid #2a3140' }}>
+                            <div className="text-[9px] uppercase tracking-widest font-semibold mb-0.5" style={{ color: '#4a5568' }}>Loaded ({hu.upgrades.loadedUnits.length})</div>
+                            {hu.upgrades.loadedUnits.map((lu, li) => {
+                              const luType = allUnitTypes.find(ut => ut.id === lu.typeId)
+                              return (
+                                <div key={li} className="flex items-center gap-1 py-0.5">
+                                  <img src={getUnitIcon(luType)} alt={lu.typeName} className="w-3.5 h-3.5 object-contain" />
+                                  <span className="text-[10px]" style={{ color: '#8b949e' }}>{lu.typeName}</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
                     {info?.resourceId === 'space_guild' && (
@@ -1427,6 +1500,15 @@ export default function GameBoard({
               <span>{(allPlayers || players).find(p => p.player_id === inspectedUnit.owner_id)?.wg_profiles?.display_name}</span>
               <span className="font-mono">X{inspectedUnit.grid_row}/Y{inspectedUnit.grid_col}</span>
             </div>
+            {inspectedUnit.upgrades?.loadedUnits?.length > 0 && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>Loaded:</span>
+                {inspectedUnit.upgrades.loadedUnits.map((lu, li) => {
+                  const luType = allUnitTypes.find(ut => ut.id === lu.typeId)
+                  return <img key={li} src={getUnitIcon(luType)} alt={lu.typeName} title={lu.typeName} className="w-4 h-4 object-contain" />
+                })}
+              </div>
+            )}
           </div>
           <button
             onClick={() => setInspectedUnitId(null)}
