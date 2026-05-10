@@ -493,7 +493,9 @@ const STRUCTURE_NAMES = new Set(['Command Center', 'Command Ship', 'Base', 'Fact
 
 function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp, unitTypes, teamGold }) {
   const [selectedSlot, setSelectedSlot] = useState(null)
+  const [showProduceMenu, setShowProduceMenu] = useState(false)
   const holdingBay = upgrades.holdingBay || []
+  const isFull = holdingBay.length >= HOLDING_BAY_CAPACITY
 
   const producibleTypes = (unitTypes || []).filter(ut =>
     (ut.board || 'ground') === 'ground' && !STRUCTURE_NAMES.has(ut.name)
@@ -518,8 +520,13 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
               return (
                 <button
                   key={slotIdx}
-                  onClick={() => setSelectedSlot(isSelected ? null : slotIdx)}
-                  className="rounded p-1 text-center transition-all cursor-pointer aspect-square flex flex-col items-center justify-center"
+                  onClick={() => {
+                    if (!isEmpty) {
+                      setSelectedSlot(isSelected ? null : slotIdx)
+                      setShowProduceMenu(false)
+                    }
+                  }}
+                  className="rounded p-1 text-center transition-all aspect-square flex flex-col items-center justify-center"
                   style={{
                     backgroundColor: isSelected
                       ? comp.color + '20'
@@ -527,10 +534,11 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
                     border: `1px solid ${isSelected
                       ? comp.color
                       : isEmpty ? '#30363d' : comp.color + '50'}`,
+                    cursor: isEmpty ? 'default' : 'pointer',
                   }}
                 >
                   {isEmpty ? (
-                    <span className="text-[10px]" style={{ color: '#4a5568' }}>+</span>
+                    <span className="text-[10px]" style={{ color: '#30363d' }}>&ndash;</span>
                   ) : (
                     <div className="text-[7px] font-semibold leading-tight" style={{ color: '#c9d1d9' }}>
                       {storedUnit.typeName}
@@ -543,75 +551,83 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
         ))}
       </div>
 
-      {selectedSlot !== null && (
-        <div className="p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
-          {allSlots[selectedSlot] ? (
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
-                  {allSlots[selectedSlot].typeName}
-                </span>
-              </div>
-              <button
-                onClick={() => { onDeployFromBay(unit.id, selectedSlot); setSelectedSlot(null) }}
-                className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-                style={{
-                  backgroundColor: comp.color + '20',
-                  color: comp.color,
-                  border: `1px solid ${comp.color}40`,
-                }}
-              >
-                Deploy to Ground
-              </button>
-            </div>
+      {selectedSlot !== null && allSlots[selectedSlot] && (
+        <div className="p-2 rounded mb-2" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
+              {allSlots[selectedSlot].typeName}
+            </span>
+          </div>
+          <button
+            onClick={() => { onDeployFromBay(unit.id, selectedSlot); setSelectedSlot(null) }}
+            className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+            style={{
+              backgroundColor: comp.color + '20',
+              color: comp.color,
+              border: `1px solid ${comp.color}40`,
+            }}
+          >
+            Deploy to Ground
+          </button>
+        </div>
+      )}
+
+      <button
+        onClick={() => { setShowProduceMenu(!showProduceMenu); setSelectedSlot(null) }}
+        disabled={isFull}
+        className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
+        style={{
+          backgroundColor: showProduceMenu ? comp.color + '20' : '#21262d',
+          color: showProduceMenu ? comp.color : '#8b949e',
+          border: `1px solid ${showProduceMenu ? comp.color : '#30363d'}`,
+        }}
+      >
+        {isFull ? 'Bay Full' : showProduceMenu ? 'Close Menu' : 'Produce Unit'}
+      </button>
+
+      {showProduceMenu && !isFull && (
+        <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+          <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+            Produce Unit — <span className="font-mono" style={{ color: '#8b949e' }}>⚒{teamGold}</span>
+          </div>
+          {producibleTypes.length === 0 ? (
+            <div className="text-[9px]" style={{ color: '#4a5568' }}>No unit types available</div>
           ) : (
-            <div>
-              <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-                Produce Unit
-              </div>
-              {producibleTypes.length === 0 ? (
-                <div className="text-[9px]" style={{ color: '#4a5568' }}>No unit types available</div>
-              ) : (
-                <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
-                  {producibleTypes.map(ut => {
-                    const canAfford = teamGold >= ut.cost
-                    return (
-                      <button
-                        key={ut.id}
-                        onClick={() => {
-                          if (canAfford) {
-                            onProduceUnit(unit.id, ut.id, ut.name)
-                            setSelectedSlot(null)
-                          }
-                        }}
-                        disabled={!canAfford}
-                        className="flex items-center justify-between p-1.5 rounded text-left transition-all"
-                        style={{
-                          backgroundColor: '#161b22',
-                          border: '1px solid #2a3140',
-                          opacity: canAfford ? 1 : 0.4,
-                          cursor: canAfford ? 'pointer' : 'default',
-                        }}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {ut.icon && (
-                            <img src={`/assets/${ut.icon}`} alt={ut.name} className="w-4 h-4 object-contain" />
-                          )}
-                          <div>
-                            <div className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{ut.name}</div>
-                            <div className="text-[8px]" style={{ color: '#6e7681' }}>
-                              ATK {ut.attack} DEF {ut.defense} HP {ut.hp}
-                            </div>
-                          </div>
+            <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
+              {producibleTypes.map(ut => {
+                const canAfford = teamGold >= ut.cost
+                return (
+                  <button
+                    key={ut.id}
+                    onClick={() => {
+                      if (canAfford) onProduceUnit(unit.id, ut.id, ut.name)
+                    }}
+                    disabled={!canAfford}
+                    className="flex items-center justify-between p-1.5 rounded text-left transition-all"
+                    style={{
+                      backgroundColor: '#161b22',
+                      border: '1px solid #2a3140',
+                      opacity: canAfford ? 1 : 0.4,
+                      cursor: canAfford ? 'pointer' : 'default',
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      {ut.icon && (
+                        <img src={`/assets/${ut.icon}`} alt={ut.name} className="w-4 h-4 object-contain" />
+                      )}
+                      <div>
+                        <div className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{ut.name}</div>
+                        <div className="text-[8px]" style={{ color: '#6e7681' }}>
+                          ATK {ut.attack} DEF {ut.defense} HP {ut.hp}
                         </div>
-                        <span className="text-[9px] font-mono" style={{ color: canAfford ? '#cca43b' : '#e05050' }}>
-                          {ut.cost}g
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-mono" style={{ color: canAfford ? '#cca43b' : '#e05050' }}>
+                      {ut.cost}g
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>
