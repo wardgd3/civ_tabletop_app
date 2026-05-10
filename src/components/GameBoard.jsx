@@ -189,7 +189,7 @@ export default function GameBoard({
         const n = tileMap.get(`${ar}-${ac}`)
         return n && n.terrain === 'mountain'
       })
-      if (hasMountainAbove) interior.add(`${r}-${c}`)
+      if (hasMountainAbove && tileHash(r, c) > 0.4) interior.add(`${r}-${c}`)
     }
     return { mountainShadowTiles: shadow, mountainInterior: interior }
   }, [tiles, tileMap, rows, cols])
@@ -1595,10 +1595,10 @@ export default function GameBoard({
                     <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
                   )}
                   {isMountainPeak && (isVisible || isDiscovered) && (
-                    <div className="absolute inset-0 z-[1]" style={{ background: 'linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.7) 50%)', clipPath: hexClip }} />
+                    <div className="absolute inset-0 z-[1]" style={{ background: 'linear-gradient(to bottom, transparent 50%, rgba(20, 15, 10, 0.5) 50%)', clipPath: hexClip }} />
                   )}
                   {isMountainInner && (isVisible || isDiscovered) && (
-                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', clipPath: hexClip }} />
+                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(20, 15, 10, 0.5)', clipPath: hexClip }} />
                   )}
                   {isMountainShadow && (isVisible || isDiscovered) && (
                     <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
