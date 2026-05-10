@@ -1322,7 +1322,7 @@ export default function GameBoard({
                   }}
                 >
                   {moveOverlay && (
-                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(200, 200, 200, 0.15)', clipPath: hexClip }} />
+                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
                   )}
                   {(isCC || unitTeamColor) && (
                     <div
