@@ -1614,8 +1614,11 @@ export default function GameBoard({
             playerResources={currentPlayer?.resources || {}}
             teamGold={economy?.teamGold ?? currentPlayer?.gold ?? 0}
             availableUnitTypes={(allUnitTypes || unitTypes).filter(ut =>
-              (ut.board || 'ground') === 'space' &&
-              ut.name !== 'Command Ship'
+              (ut.board || 'ground') === 'ground' &&
+              ut.name !== 'Command Center' &&
+              ut.name !== 'Base' &&
+              ut.name !== 'Factory' &&
+              ut.name !== 'Mining Station'
             )}
           />
         )
