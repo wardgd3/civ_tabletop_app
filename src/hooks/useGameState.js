@@ -573,6 +573,110 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function sendConvoyToGuild(shipId, convoyIndex) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+    if (ship.wg_unit_types?.name !== 'Command Ship') throw new Error('Only Command Ships can trade with the Space Guild')
+
+    const upgrades = ship.upgrades || {}
+    const convoys = [...(upgrades.convoys || [])]
+    const convoy = convoys[convoyIndex]
+    if (!convoy || convoy.inTransit) throw new Error('Convoy not available')
+
+    convoys.splice(convoyIndex, 1)
+
+    const guildConvoy = {
+      units: [...(convoy.units || [])],
+      cargo: { ...(convoy.cargo || {}) },
+      inTransit: true,
+      turnsLeft: 5,
+    }
+
+    const existingGuild = upgrades.guildConvoy || null
+    if (existingGuild && existingGuild.inTransit) throw new Error('A convoy is already en route to the Space Guild')
+
+    const newUpgrades = { ...upgrades, convoys, guildConvoy }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
+  async function sellAtGuild(shipId, sellUnits, sellResources) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+
+    const upgrades = ship.upgrades || {}
+    const gc = upgrades.guildConvoy
+    if (!gc || gc.inTransit) throw new Error('No convoy docked at the Space Guild')
+
+    let goldEarned = 0
+    const remainingUnits = [...(gc.units || [])]
+    const cargo = { ...(gc.cargo || {}), resources: { ...(gc.cargo?.resources || {}) } }
+
+    if (sellUnits && sellUnits.length > 0) {
+      for (const idx of [...sellUnits].sort((a, b) => b - a)) {
+        if (idx >= 0 && idx < remainingUnits.length) {
+          const u = remainingUnits.splice(idx, 1)[0]
+          goldEarned += u.cost || 10
+        }
+      }
+    }
+
+    const RESOURCE_VALUES = {
+      coal: 3, iron: 5, uranium: 8, aluminum: 4, tritium: 10,
+      ruby: 15, sapphire: 15, diamond: 20, amethyst: 12, quasicrystals: 25,
+    }
+
+    if (sellResources) {
+      for (const [key, amount] of Object.entries(sellResources)) {
+        const available = cargo.resources[key] || 0
+        const sellAmt = Math.min(amount, available)
+        if (sellAmt > 0) {
+          goldEarned += sellAmt * (RESOURCE_VALUES[key] || 5)
+          cargo.resources[key] = available - sellAmt
+          if (cargo.resources[key] <= 0) delete cargo.resources[key]
+        }
+      }
+    }
+
+    const newGuildConvoy = { ...gc, units: remainingUnits, cargo, inTransit: false }
+
+    const isEmpty = remainingUnits.length === 0 &&
+      (cargo.gold || 0) === 0 &&
+      Object.values(cargo.resources || {}).every(v => v <= 0)
+
+    await supabase.from('wg_units').update({
+      upgrades: { ...upgrades, guildConvoy: isEmpty ? null : newGuildConvoy }
+    }).eq('id', shipId)
+
+    if (goldEarned > 0 && !isAdmin) {
+      const perPlayer = Math.ceil(goldEarned / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) + perPlayer }).eq('id', tp.id)
+      }
+    }
+
+    await fetchAll()
+    return goldEarned
+  }
+
+  async function returnConvoyFromGuild(shipId) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+
+    const upgrades = ship.upgrades || {}
+    const gc = upgrades.guildConvoy
+    if (!gc || gc.inTransit) throw new Error('No convoy docked at the Space Guild')
+
+    const convoys = [...(upgrades.convoys || [])]
+    if (convoys.length >= 2) throw new Error('Convoy bays full')
+
+    convoys.push({ units: gc.units || [], cargo: gc.cargo || {}, inTransit: false })
+    await supabase.from('wg_units').update({
+      upgrades: { ...upgrades, convoys, guildConvoy: null }
+    }).eq('id', shipId)
+    await fetchAll()
+  }
+
   async function buildConvoy(unitId) {
     const unit = units.find(u => u.id === unitId)
     if (!unit) throw new Error('Unit not found')
@@ -1134,6 +1238,18 @@ export function useGameState(gameId) {
         }
       }
 
+      const gc = structUpgrades.guildConvoy
+      if (gc && gc.inTransit) {
+        const newTurns = gc.turnsLeft - 1
+        if (newTurns <= 0) {
+          structUpgrades.guildConvoy = { ...gc, inTransit: false, turnsLeft: 0 }
+          changed = true
+        } else {
+          structUpgrades.guildConvoy = { ...gc, turnsLeft: newTurns }
+          changed = true
+        }
+      }
+
       if (changed) {
         await supabase.from('wg_units').update({
           upgrades: { ...structUpgrades, convoys: updatedConvoys, holdingBay, loadingBay: structUpgrades.loadingBay }
@@ -1226,7 +1342,7 @@ export function useGameState(gameId) {
     game, players, units, unitTypes, tiles, discoveredTiles, loading,
     currentPlayer, isMyTurn, isAdmin,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-    excavate, upgradeShipCompartment, levelUpUnit, buyMissile,
+    excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, returnConvoyFromGuild,
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport,
     persistDiscoveredTiles, productionPerTurn, economy,

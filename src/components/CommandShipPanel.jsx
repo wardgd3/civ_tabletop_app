@@ -131,14 +131,14 @@ const COMMAND_SHIP_COMPARTMENTS = [
   {
     id: 'missiles',
     name: 'Missile Systems',
-    description: 'Guided missile platforms. Each slot is a launcher.',
+    description: 'Upgrade to unlock new missile types. Lv1: Tactical, Lv2: Cruise, Lv3: IPBM.',
     icon: 'missiles',
     color: '#c060e0',
-    slots: 3,
+    slots: 1,
     tiers: [
-      { name: 'Tactical Missiles', desc: 'Short-range guided missiles' },
-      { name: 'Cruise Missiles', desc: 'Long-range precision strike' },
-      { name: 'IPBM', desc: 'Interplanetary ballistic missiles' },
+      { name: 'Tactical Missiles', desc: 'Unlocks short-range guided missiles' },
+      { name: 'Cruise Missiles', desc: 'Unlocks long-range precision strike' },
+      { name: 'IPBM', desc: 'Unlocks interplanetary ballistic missiles' },
     ],
   },
   {
@@ -1249,10 +1249,11 @@ export default function CommandShipPanel({
 
               {comp.id === 'missiles' && (() => {
                 const munitions = upgrades.munitions || { tactical: 0, cruise: 0, ipbm: 0 }
+                const missileLevel = slots[0] || 0
                 const MISSILE_TYPES = [
-                  { key: 'tactical', name: 'Tactical', color: '#8b949e', cost: 5 },
-                  { key: 'cruise', name: 'Cruise', color: '#3fb950', cost: 10 },
-                  { key: 'ipbm', name: 'IPBM', color: '#d29922', cost: 20 },
+                  { key: 'tactical', name: 'Tactical', color: '#8b949e', cost: 5, reqLevel: 1 },
+                  { key: 'cruise', name: 'Cruise', color: '#3fb950', cost: 10, reqLevel: 2 },
+                  { key: 'ipbm', name: 'IPBM', color: '#d29922', cost: 20, reqLevel: 3 },
                 ]
                 return (
                   <div className="mt-3">
@@ -1261,12 +1262,15 @@ export default function CommandShipPanel({
                     </div>
                     <div className="flex flex-col gap-1.5 mb-2">
                       {MISSILE_TYPES.map(m => {
+                        const locked = missileLevel < m.reqLevel
                         const count = munitions[m.key] || 0
                         return (
-                          <div key={m.key}>
+                          <div key={m.key} style={{ opacity: locked ? 0.35 : 1 }}>
                             <div className="flex items-center justify-between mb-0.5">
-                              <span className="text-[9px] font-semibold" style={{ color: m.color }}>{m.name}</span>
-                              <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>{count}/10</span>
+                              <span className="text-[9px] font-semibold" style={{ color: locked ? '#4a5568' : m.color }}>
+                                {m.name}{locked ? ` (Lv${m.reqLevel})` : ''}
+                              </span>
+                              <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>{locked ? '—' : `${count}/10`}</span>
                             </div>
                             <div className="flex gap-[3px]">
                               {Array.from({ length: 10 }, (_, i) => (
@@ -1275,9 +1279,9 @@ export default function CommandShipPanel({
                                   className="flex-1 rounded-sm"
                                   style={{
                                     height: 8,
-                                    backgroundColor: i < count ? m.color : '#1c2128',
-                                    border: `1px solid ${i < count ? m.color + '80' : '#2a3140'}`,
-                                    opacity: i < count ? 1 : 0.5,
+                                    backgroundColor: !locked && i < count ? m.color : '#1c2128',
+                                    border: `1px solid ${!locked && i < count ? m.color + '80' : '#2a3140'}`,
+                                    opacity: !locked && i < count ? 1 : 0.5,
                                   }}
                                 />
                               ))}
@@ -1291,26 +1295,32 @@ export default function CommandShipPanel({
                     </div>
                     <div className="flex gap-1.5">
                       {MISSILE_TYPES.map(m => {
+                        const locked = missileLevel < m.reqLevel
                         const count = munitions[m.key] || 0
                         const isFull = count >= 10
+                        const disabled = locked || isFull
                         return (
                           <button
                             key={m.key}
-                            onClick={() => !isFull && onBuyMissile(unit.id, m.key)}
-                            disabled={isFull}
+                            onClick={() => !disabled && onBuyMissile(unit.id, m.key)}
+                            disabled={disabled}
                             className="flex-1 rounded p-1.5 text-center transition-all"
                             style={{
-                              backgroundColor: isFull ? '#161b22' : m.color + '15',
-                              border: `1px solid ${isFull ? '#2a3140' : m.color + '60'}`,
-                              cursor: isFull ? 'default' : 'pointer',
-                              opacity: isFull ? 0.4 : 1,
+                              backgroundColor: disabled ? '#161b22' : m.color + '15',
+                              border: `1px solid ${disabled ? '#2a3140' : m.color + '60'}`,
+                              cursor: disabled ? 'default' : 'pointer',
+                              opacity: disabled ? 0.4 : 1,
                             }}
                           >
-                            <div className="text-[9px] font-semibold" style={{ color: m.color }}>{m.name}</div>
-                            <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                              <span className="text-[10px]">🪙</span>
-                              <span className="text-[9px] font-mono" style={{ color: '#cca43b' }}>{m.cost}</span>
+                            <div className="text-[9px] font-semibold" style={{ color: locked ? '#4a5568' : m.color }}>
+                              {locked ? '🔒' : m.name}
                             </div>
+                            {!locked && (
+                              <div className="flex items-center justify-center gap-0.5 mt-0.5">
+                                <span className="text-[10px]">🪙</span>
+                                <span className="text-[9px] font-mono" style={{ color: '#cca43b' }}>{m.cost}</span>
+                              </div>
+                            )}
                           </button>
                         )
                       })}

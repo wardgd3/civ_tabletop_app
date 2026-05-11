@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import CommandShipPanel from './CommandShipPanel'
+import SpaceGuildPanel from './SpaceGuildPanel'
 import TeamChat from './TeamChat'
 import { TERRAIN, TERRAIN_THEMES, RESOURCES, SPACE_RESOURCES, LUXURY_RESOURCES } from '../lib/terrainGen'
 
@@ -95,7 +96,7 @@ export default function GameBoard({
   game, players, units, allUnits, unitTypes, allUnitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-  excavate, upgradeShipCompartment, levelUpUnit, buyMissile,
+  excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, returnConvoyFromGuild,
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport,
   isFullscreen, onExitFullscreen,
@@ -120,6 +121,7 @@ export default function GameBoard({
   const [unitDeployFromTransportInfo, setUnitDeployFromTransportInfo] = useState(null)
   const [shipModelPicker, setShipModelPicker] = useState(null)
   const [chatOpen, setChatOpen] = useState(false)
+  const [spaceGuildOpen, setSpaceGuildOpen] = useState(false)
   const [clickedTile, setClickedTile] = useState(null)
   const boardRef = useRef(null)
   const boardInnerRef = useRef(null)
@@ -1134,6 +1136,12 @@ export default function GameBoard({
       setInspectedUnitId(null)
     }
 
+    if (spaceGuildTile && row === spaceGuildTile.grid_row && col === spaceGuildTile.grid_col) {
+      setSpaceGuildOpen(prev => !prev)
+      setPanelOpen(true)
+      return
+    }
+
     if (!isMyTurn) return
 
     try {
@@ -1577,6 +1585,31 @@ export default function GameBoard({
             unitTypes={allUnitTypes || unitTypes}
             teamGold={economy?.teamGold ?? currentPlayer?.gold ?? 0}
             playerResources={currentPlayer?.resources || {}}
+          />
+        )
+      })()}
+
+      {spaceGuildOpen && (() => {
+        const myShip = allUnits.find(u =>
+          u.owner_id === currentPlayer?.player_id &&
+          u.wg_unit_types?.name === 'Command Ship' &&
+          u.is_alive
+        )
+        return (
+          <SpaceGuildPanel
+            commandShip={myShip || null}
+            onClose={() => setSpaceGuildOpen(false)}
+            onSendToGuild={async (shipId, convoyIdx) => {
+              try { await sendConvoyToGuild(shipId, convoyIdx) } catch (err) { setError(err.message) }
+            }}
+            onSellAtGuild={async (shipId, sellUnits, sellResources) => {
+              try { return await sellAtGuild(shipId, sellUnits, sellResources) } catch (err) { setError(err.message) }
+            }}
+            onReturnFromGuild={async (shipId) => {
+              try { await returnConvoyFromGuild(shipId) } catch (err) { setError(err.message) }
+            }}
+            playerResources={currentPlayer?.resources || {}}
+            teamGold={economy?.teamGold ?? currentPlayer?.gold ?? 0}
           />
         )
       })()}
