@@ -128,6 +128,7 @@ export default function Game() {
           excavate={gameState.excavate}
           upgradeShipCompartment={gameState.upgradeShipCompartment}
           levelUpUnit={gameState.levelUpUnit}
+          buyMissile={gameState.buyMissile}
           buildConvoy={gameState.buildConvoy}
           loadUnitToConvoy={gameState.loadUnitToConvoy}
           loadFromBayToConvoy={gameState.loadFromBayToConvoy}

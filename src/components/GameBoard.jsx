@@ -91,7 +91,7 @@ export default function GameBoard({
   game, players, units, allUnits, unitTypes, allUnitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-  excavate, upgradeShipCompartment, levelUpUnit,
+  excavate, upgradeShipCompartment, levelUpUnit, buyMissile,
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport,
   isFullscreen, onExitFullscreen,
@@ -1509,6 +1509,9 @@ export default function GameBoard({
             }}
             onUpgrade={async (unitId, compartment, slotIndex, tierLevel) => {
               try { await upgradeShipCompartment(unitId, compartment, slotIndex, tierLevel) } catch (err) { setError(err.message) }
+            }}
+            onBuyMissile={async (unitId, missileType) => {
+              try { await buyMissile(unitId, missileType) } catch (err) { setError(err.message) }
             }}
             onBuildConvoy={async (unitId) => {
               try { await buildConvoy(unitId) } catch (err) { setError(err.message) }

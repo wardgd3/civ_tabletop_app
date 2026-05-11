@@ -369,6 +369,7 @@ function generateMountainRanges(tiles, rows, cols, rand, mainRiver) {
   for (let i = 0; i < rangeCount; i++) {
     buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, riverFlowsHorizontal)
   }
+  buildDiagonalMountainRange(tiles, rows, cols, rand, allMountains, riverSet)
 }
 
 function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, _riverFlowsHorizontal) {
@@ -481,6 +482,131 @@ function buildMountainRange(tiles, rows, cols, rand, allMountains, riverSet, _ri
     const perpC = dr
     const neighbors = hexNeighbors(mr, mc, rows, cols)
     const side = Math.sin(j * 0.05 + mr * 1.3) > 0 ? 1 : -1
+
+    let best = null, bestScore = -1e9
+    for (const [nr, nc] of neighbors) {
+      if (allMountains.has(`${nr}-${nc}`)) continue
+      const t = tileAt(nr, nc).terrain
+      if (WATER_SET.has(t)) continue
+      const nearWater = hexNeighbors(nr, nc, rows, cols).some(([wr, wc]) => WATER_SET.has(tileAt(wr, wc).terrain))
+      if (nearWater) continue
+      const dot = ((nr - mr) * perpR + (nc - mc) * perpC) * side
+      if (dot > bestScore) { bestScore = dot; best = [nr, nc] }
+    }
+    if (best) {
+      const [wr, wc] = best
+      tileAt(wr, wc).terrain = 'mountain'
+      allMountains.add(`${wr}-${wc}`)
+    }
+  }
+}
+
+function buildDiagonalMountainRange(tiles, rows, cols, rand, allMountains, riverSet) {
+  const tileAt = (r, c) => tiles[r * cols + c]
+
+  const spanRows = Math.floor(rows * (0.35 + rand() * 0.2))
+  const startRow = Math.floor(rows * (0.1 + rand() * 0.3))
+  const endRow = Math.min(rows - 2, startRow + spanRows)
+  const startCol = Math.floor(cols * (0.2 + rand() * 0.6))
+
+  const sr = startRow
+  const sc = startCol
+
+  const isGoal = (r, _c) => r >= endRow
+
+  const key = (r, c) => r * cols + c
+  const INF = 1e9
+  const dist = new Float64Array(rows * cols).fill(INF)
+  const prev = new Int32Array(rows * cols).fill(-1)
+  dist[key(sr, sc)] = 0
+
+  let goalKey = -1
+  const heap = [[0, sr, sc]]
+  while (heap.length > 0) {
+    heap.sort((a, b) => a[0] - b[0])
+    const [d, cr, cc] = heap.shift()
+    if (isGoal(cr, cc)) { goalKey = key(cr, cc); break }
+    if (d > dist[key(cr, cc)]) continue
+
+    for (const [nr, nc] of hexNeighbors(cr, cc, rows, cols)) {
+      const t = tileAt(nr, nc).terrain
+      let cost = 1
+      const WATER = ['river', 'lake', 'ocean', 'coast']
+      if (WATER.includes(t)) cost = 50
+      const adjWater = hexNeighbors(nr, nc, rows, cols).some(([wr, wc]) => WATER.includes(tileAt(wr, wc).terrain))
+      if (adjWater) cost += 20
+      if (allMountains.has(`${nr}-${nc}`)) cost += 15
+
+      const downwardBias = nr > cr ? 0 : 3
+      const seed1 = Math.sin(nr * 7.1 + nc * 3.3) * 31415.9
+      const wander = (Math.sin(seed1 + nr * 0.3 + nc * 0.6) + 1) * 5
+      cost += wander + downwardBias
+
+      const nd = d + cost
+      if (nd < dist[key(nr, nc)]) {
+        dist[key(nr, nc)] = nd
+        prev[key(nr, nc)] = key(cr, cc)
+        heap.push([nd, nr, nc])
+      }
+    }
+  }
+
+  if (goalKey === -1) return
+
+  const path = []
+  let cur = goalKey
+  while (cur !== -1) {
+    const r = Math.floor(cur / cols)
+    const c = cur % cols
+    path.push([r, c])
+    cur = prev[cur]
+  }
+  path.reverse()
+
+  const gapCount = 2 + Math.floor(rand() * 2)
+  const gapIndices = new Set()
+  for (let g = 0; g < gapCount; g++) {
+    const gapCenter = Math.floor(path.length * (0.1 + rand() * 0.8))
+    const gapSize = 1 + Math.floor(rand() * 2)
+    for (let offset = -gapSize; offset <= gapSize; offset++) {
+      const idx = gapCenter + offset
+      if (idx >= 0 && idx < path.length) gapIndices.add(idx)
+    }
+  }
+
+  const distToGap = new Array(path.length).fill(Infinity)
+  for (const gi of gapIndices) {
+    for (let i = 0; i < path.length; i++) {
+      distToGap[i] = Math.min(distToGap[i], Math.abs(i - gi))
+    }
+  }
+
+  const WATER_SET = new Set(['river', 'lake', 'ocean', 'coast'])
+  for (let i = 0; i < path.length; i++) {
+    if (gapIndices.has(i)) continue
+    const [r, c] = path[i]
+    const t = tileAt(r, c).terrain
+    if (WATER_SET.has(t)) continue
+    const adjWater = hexNeighbors(r, c, rows, cols).some(([wr, wc]) => WATER_SET.has(tileAt(wr, wc).terrain))
+    if (adjWater) continue
+    tileAt(r, c).terrain = 'mountain'
+    allMountains.add(`${r}-${c}`)
+  }
+
+  for (let j = 0; j < path.length; j++) {
+    if (gapIndices.has(j)) continue
+    const [mr, mc] = path[j]
+    const gapDist = distToGap[j]
+    if (gapDist <= 2) continue
+
+    const neighbors = hexNeighbors(mr, mc, rows, cols)
+    const prevPt = j > 0 ? path[j - 1] : path[j]
+    const nextPt = j < path.length - 1 ? path[j + 1] : path[j]
+    const dr = nextPt[0] - prevPt[0]
+    const dc = nextPt[1] - prevPt[1]
+    const perpR = -dc
+    const perpC = dr
+    const side = Math.sin(j * 0.08 + mr * 1.7) > 0 ? 1 : -1
 
     let best = null, bestScore = -1e9
     for (const [nr, nc] of neighbors) {

@@ -534,6 +534,41 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function buyMissile(unitId, missileType) {
+    const unit = units.find(u => u.id === unitId)
+    if (!unit) throw new Error('Unit not found')
+
+    const MISSILE_COSTS = { tactical: 5, cruise: 10, ipbm: 20 }
+    const cost = MISSILE_COSTS[missileType]
+    if (!cost) throw new Error('Invalid missile type')
+
+    const upgrades = unit.upgrades || {}
+    const munitions = { ...(upgrades.munitions || { tactical: 0, cruise: 0, ipbm: 0 }) }
+    if ((munitions[missileType] || 0) >= 10) throw new Error('Munitions full for this type')
+
+    if (!isAdmin && teamGold < cost) throw new Error('Not enough gold')
+
+    if (!isAdmin) {
+      const perPlayer = Math.ceil(cost / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase
+          .from('wg_game_players')
+          .update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) })
+          .eq('id', tp.id)
+      }
+    }
+
+    munitions[missileType] = (munitions[missileType] || 0) + 1
+    const newUpgrades = { ...upgrades, munitions }
+    const { error } = await supabase
+      .from('wg_units')
+      .update({ upgrades: newUpgrades })
+      .eq('id', unitId)
+    if (error) throw error
+
+    await fetchAll()
+  }
+
   async function buildConvoy(unitId) {
     const unit = units.find(u => u.id === unitId)
     if (!unit) throw new Error('Unit not found')
@@ -1187,7 +1222,7 @@ export function useGameState(gameId) {
     game, players, units, unitTypes, tiles, discoveredTiles, loading,
     currentPlayer, isMyTurn, isAdmin,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-    excavate, upgradeShipCompartment, levelUpUnit,
+    excavate, upgradeShipCompartment, levelUpUnit, buyMissile,
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport,
     persistDiscoveredTiles, productionPerTurn, economy,
