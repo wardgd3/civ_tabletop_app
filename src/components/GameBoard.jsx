@@ -96,7 +96,7 @@ export default function GameBoard({
   game, players, units, allUnits, unitTypes, allUnitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-  excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, returnConvoyFromGuild,
+  excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport,
   isFullscreen, onExitFullscreen,
@@ -1122,11 +1122,16 @@ export default function GameBoard({
     if (showUnit) {
       if ((unit.wg_unit_types?.name === 'Command Ship' || unit.wg_unit_types?.name === 'Command Center' || unit.wg_unit_types?.name === 'Base') && unit.owner_id === currentPlayer?.player_id) {
         setCommandShipUnitId(prev => prev === unit.id ? null : unit.id)
+        setSelectedUnitId(null)
+        setSpaceGuildOpen(false)
+        setInspectedUnitId(null)
         setPanelOpen(true)
         return
       }
       if (unit.owner_id === currentPlayer?.player_id && isMyTurn) {
         setSelectedUnitId(unit.id)
+        setCommandShipUnitId(null)
+        setSpaceGuildOpen(false)
         setMode('select')
         setInspectedUnitId(null)
         return
@@ -1138,6 +1143,9 @@ export default function GameBoard({
 
     if (spaceGuildTile && row === spaceGuildTile.grid_row && col === spaceGuildTile.grid_col) {
       setSpaceGuildOpen(prev => !prev)
+      setSelectedUnitId(null)
+      setCommandShipUnitId(null)
+      setInspectedUnitId(null)
       setPanelOpen(true)
       return
     }
@@ -1193,6 +1201,8 @@ export default function GameBoard({
       } else {
         if (unit && unit.owner_id === currentPlayer?.player_id) {
           setSelectedUnitId(unit.id)
+          setCommandShipUnitId(null)
+          setSpaceGuildOpen(false)
           setMode('select')
           setPanelOpen(true)
         } else {
@@ -1403,6 +1413,7 @@ export default function GameBoard({
                         try {
                           await dockTransport(struct.id, selectedUnit.id)
                           setSelectedUnitId(null)
+                          setSpaceGuildOpen(false)
                           setCommandShipUnitId(struct.id)
                           setPanelOpen(true)
                         } catch (err) { setError(err.message) }
@@ -1608,11 +1619,22 @@ export default function GameBoard({
             onBuyUnit={async (shipId, gcIdx, unitTypeId) => {
               try { await buyUnitAtGuild(shipId, gcIdx, unitTypeId) } catch (err) { setError(err.message) }
             }}
+            onBuyMunition={async (shipId, gcIdx, missileType) => {
+              try { await buyMunitionAtGuild(shipId, gcIdx, missileType) } catch (err) { setError(err.message) }
+            }}
             onReturnFromGuild={async (shipId, gcIdx) => {
               try { await returnConvoyFromGuild(shipId, gcIdx) } catch (err) { setError(err.message) }
             }}
             playerResources={currentPlayer?.resources || {}}
             teamGold={economy?.teamGold ?? currentPlayer?.gold ?? 0}
+            commandShipUpgrades={(() => {
+              const myShip = allUnits.find(u =>
+                u.owner_id === currentPlayer?.player_id &&
+                u.wg_unit_types?.name === 'Command Ship' &&
+                u.is_alive
+              )
+              return myShip?.upgrades || {}
+            })()}
             availableUnitTypes={(allUnitTypes || unitTypes).filter(ut =>
               (ut.board || 'ground') === 'ground' &&
               ut.name !== 'Command Center' &&

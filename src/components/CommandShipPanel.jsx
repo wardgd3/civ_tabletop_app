@@ -136,9 +136,9 @@ const COMMAND_SHIP_COMPARTMENTS = [
     color: '#c060e0',
     slots: 1,
     tiers: [
-      { name: 'Tactical Missiles', desc: 'Unlocks short-range guided missiles' },
-      { name: 'Cruise Missiles', desc: 'Unlocks long-range precision strike' },
-      { name: 'IPBM', desc: 'Unlocks interplanetary ballistic missiles' },
+      { name: 'Tactical Missile System', desc: 'Unlocks short-range guided missiles' },
+      { name: 'Cruise Missile System', desc: 'Unlocks long-range precision strike' },
+      { name: 'IPBM System', desc: 'Unlocks interplanetary ballistic missiles' },
     ],
   },
   {
@@ -357,6 +357,33 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
                 ))}
               </div>
             )}
+          </div>
+        )
+      })()}
+
+      {(() => {
+        const munitions = convoy.munitions || { tactical: 0, cruise: 0, ipbm: 0 }
+        const hasMunitions = Object.values(munitions).some(v => v > 0)
+        if (!hasMunitions) return null
+        const MISSILE_TYPES = [
+          { key: 'tactical', name: 'Tactical', color: '#8b949e' },
+          { key: 'cruise', name: 'Cruise', color: '#3fb950' },
+          { key: 'ipbm', name: 'IPBM', color: '#d29922' },
+        ]
+        return (
+          <div className="mb-2">
+            <div className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
+              Munitions
+            </div>
+            <div className="flex flex-col gap-1">
+              {MISSILE_TYPES.filter(m => (munitions[m.key] || 0) > 0).map(m => (
+                <div key={m.key} className="flex items-center justify-between p-1 rounded"
+                  style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                  <span className="text-[9px] font-semibold" style={{ color: m.color }}>{m.name}</span>
+                  <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>{munitions[m.key]}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )
       })()}
@@ -1287,41 +1314,6 @@ export default function CommandShipPanel({
                               ))}
                             </div>
                           </div>
-                        )
-                      })}
-                    </div>
-                    <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-                      Buy Munitions
-                    </div>
-                    <div className="flex gap-1.5">
-                      {MISSILE_TYPES.map(m => {
-                        const locked = missileLevel < m.reqLevel
-                        const count = munitions[m.key] || 0
-                        const isFull = count >= 10
-                        const disabled = locked || isFull
-                        return (
-                          <button
-                            key={m.key}
-                            onClick={() => !disabled && onBuyMissile(unit.id, m.key)}
-                            disabled={disabled}
-                            className="flex-1 rounded p-1.5 text-center transition-all"
-                            style={{
-                              backgroundColor: disabled ? '#161b22' : m.color + '15',
-                              border: `1px solid ${disabled ? '#2a3140' : m.color + '60'}`,
-                              cursor: disabled ? 'default' : 'pointer',
-                              opacity: disabled ? 0.4 : 1,
-                            }}
-                          >
-                            <div className="text-[9px] font-semibold" style={{ color: locked ? '#4a5568' : m.color }}>
-                              {locked ? '🔒' : m.name}
-                            </div>
-                            {!locked && (
-                              <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                <span className="text-[10px]">🪙</span>
-                                <span className="text-[9px] font-mono" style={{ color: '#cca43b' }}>{m.cost}</span>
-                              </div>
-                            )}
-                          </button>
                         )
                       })}
                     </div>

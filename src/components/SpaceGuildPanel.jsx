@@ -6,8 +6,8 @@ const RESOURCE_VALUES = {
 }
 
 export default function SpaceGuildPanel({
-  commandShip, onClose, onSendToGuild, onSellAtGuild, onReturnFromGuild, onBuyUnit,
-  playerResources, teamGold, availableUnitTypes,
+  commandShip, onClose, onSendToGuild, onSellAtGuild, onReturnFromGuild, onBuyUnit, onBuyMunition,
+  playerResources, teamGold, availableUnitTypes, commandShipUpgrades,
 }) {
   const [sellResult, setSellResult] = useState(null)
 
@@ -135,6 +135,29 @@ export default function SpaceGuildPanel({
               </div>
             )}
 
+            {(() => {
+              const munitions = gc.munitions || {}
+              const hasMunitions = Object.values(munitions).some(v => v > 0)
+              if (!hasMunitions) return null
+              const MISSILE_TYPES = [
+                { key: 'tactical', name: 'Tactical', color: '#8b949e' },
+                { key: 'cruise', name: 'Cruise', color: '#3fb950' },
+                { key: 'ipbm', name: 'IPBM', color: '#d29922' },
+              ]
+              return (
+                <div className="mb-2">
+                  <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Munitions:</div>
+                  {MISSILE_TYPES.filter(m => (munitions[m.key] || 0) > 0).map(m => (
+                    <div key={m.key} className="flex items-center justify-between p-1 rounded mb-0.5"
+                      style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                      <span className="text-[9px] font-semibold" style={{ color: m.color }}>{m.name}</span>
+                      <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>x{munitions[m.key]}</span>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+
             {(gc.cargo?.gold || 0) > 0 && (
               <div className="p-1 rounded mb-2" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
                 <span className="text-[9px]" style={{ color: '#cca43b' }}>Gold in cargo: {gc.cargo.gold}</span>
@@ -248,6 +271,60 @@ export default function SpaceGuildPanel({
           </div>
         </>
       )}
+
+      {guildConvoys.some(gc => !gc.inTransit) && (() => {
+        const missileLevel = (commandShipUpgrades || {}).missiles
+        const mlSlots = Array.isArray(missileLevel) ? missileLevel : []
+        const effectiveLevel = mlSlots.reduce((max, v) => Math.max(max, v || 0), 0)
+        const MISSILE_TYPES = [
+          { key: 'tactical', name: 'Tactical', color: '#8b949e', cost: 5, reqLevel: 1 },
+          { key: 'cruise', name: 'Cruise', color: '#3fb950', cost: 10, reqLevel: 2 },
+          { key: 'ipbm', name: 'IPBM', color: '#d29922', cost: 20, reqLevel: 3 },
+        ]
+        const available = MISSILE_TYPES.filter(m => effectiveLevel >= m.reqLevel)
+        if (available.length === 0) return null
+        const dockedIdx = guildConvoys.findIndex(gc => !gc.inTransit)
+        return (
+          <>
+            <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5 mt-3" style={{ color: '#4a5568' }}>
+              Purchase Munitions
+            </div>
+            <div className="text-[9px] mb-1.5" style={{ color: '#6e7681' }}>
+              Munitions are loaded into the convoy and deposited on return.
+            </div>
+            <div className="flex gap-1.5 mb-2">
+              {MISSILE_TYPES.map(m => {
+                const locked = effectiveLevel < m.reqLevel
+                const canAfford = teamGold >= m.cost
+                const disabled = locked || !canAfford
+                return (
+                  <button
+                    key={m.key}
+                    onClick={() => !disabled && dockedIdx >= 0 && onBuyMunition(commandShip.id, dockedIdx, m.key)}
+                    disabled={disabled}
+                    className="flex-1 rounded p-1.5 text-center transition-all"
+                    style={{
+                      backgroundColor: disabled ? '#161b22' : m.color + '15',
+                      border: `1px solid ${disabled ? '#2a3140' : m.color + '60'}`,
+                      cursor: disabled ? 'default' : 'pointer',
+                      opacity: disabled ? 0.4 : 1,
+                    }}
+                  >
+                    <div className="text-[9px] font-semibold" style={{ color: locked ? '#4a5568' : m.color }}>
+                      {locked ? 'Locked' : m.name}
+                    </div>
+                    {!locked && (
+                      <div className="flex items-center justify-center gap-0.5 mt-0.5">
+                        <span className="text-[9px] font-mono" style={{ color: '#cca43b' }}>{m.cost}g</span>
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )
+      })()}
 
       <div className="text-[9px] uppercase tracking-widest font-semibold mb-1 mt-2" style={{ color: '#4a5568' }}>
         Price List
