@@ -44,6 +44,8 @@ export function useGameState(gameId) {
   const [loading, setLoading] = useState(true)
   const fetchRef = useRef(0)
   const debounceRef = useRef(null)
+  const fetchingRef = useRef(false)
+  const pendingFetchRef = useRef(false)
   const npcSpawnedRef = useRef(false)
 
   const currentPlayer = players.find(p => p.player_id === userId)
@@ -142,7 +144,22 @@ export function useGameState(gameId) {
 
   const debouncedFetch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => fetchAll(), 300)
+    debounceRef.current = setTimeout(async () => {
+      if (fetchingRef.current) {
+        pendingFetchRef.current = true
+        return
+      }
+      fetchingRef.current = true
+      try {
+        await fetchAll()
+      } finally {
+        fetchingRef.current = false
+        if (pendingFetchRef.current) {
+          pendingFetchRef.current = false
+          debouncedFetch()
+        }
+      }
+    }, 300)
   }, [fetchAll])
 
   useEffect(() => {

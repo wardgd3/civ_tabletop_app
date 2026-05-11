@@ -1316,6 +1316,51 @@ export default function GameBoard({
 
   const resources = currentPlayer?.resources || {}
 
+  const mobileInspectPanel = inspectedUnit ? (
+    <div className="mb-3 p-3 rounded-lg flex items-center gap-3" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+      <img
+        src={getUnitIcon(inspectedUnit.wg_unit_types, inspectedUnit)}
+        alt={inspectedUnit.wg_unit_types?.name}
+        className="w-10 h-10 object-contain shrink-0"
+        style={{ filter: `drop-shadow(0 0 3px ${getPlayerColor(inspectedUnit.owner_id, inspectedUnit)})` }}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getPlayerColor(inspectedUnit.owner_id, inspectedUnit) }} />
+          <span className="font-semibold text-xs truncate" style={{ color: '#c9d1d9' }}>
+            {inspectedUnit.wg_unit_types?.name}
+          </span>
+        </div>
+        <div className="flex gap-2 mt-0.5 text-[10px] font-mono" style={{ color: '#8b949e' }}>
+          <span>HP {inspectedUnit.current_hp}/{inspectedUnit.wg_unit_types?.hp}</span>
+          <span>ATK {inspectedUnit.wg_unit_types?.attack}</span>
+          <span>DEF {inspectedUnit.wg_unit_types?.defense}</span>
+          <span>MOV {inspectedUnit.wg_unit_types?.movement}</span>
+        </div>
+        <div className="flex gap-2 text-[10px] mt-0.5" style={{ color: '#4a5568' }}>
+          <span>{inspectedUnit.isNPC ? 'Hostile Creature' : (allPlayers || players).find(p => p.player_id === inspectedUnit.owner_id)?.wg_profiles?.display_name}</span>
+          <span className="font-mono">X{inspectedUnit.grid_row}/Y{inspectedUnit.grid_col}</span>
+        </div>
+        {inspectedUnit.upgrades?.loadedUnits?.length > 0 && (
+          <div className="flex items-center gap-1 mt-0.5">
+            <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>Loaded:</span>
+            {inspectedUnit.upgrades.loadedUnits.map((lu, li) => {
+              const luType = allUnitTypes.find(ut => ut.id === lu.typeId)
+              return <img key={li} src={getUnitIcon(luType)} alt={lu.typeName} title={lu.typeName} className="w-3.5 h-3.5 object-contain" />
+            })}
+          </div>
+        )}
+      </div>
+      <button
+        onClick={() => setInspectedUnitId(null)}
+        className="w-5 h-5 rounded-full flex items-center justify-center text-xs cursor-pointer shrink-0"
+        style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+      >
+        &times;
+      </button>
+    </div>
+  ) : null
+
   const sidebarContent = (
     <div className="space-y-3">
       <div className="p-3 rounded flex items-center justify-between lg:block" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
@@ -2246,7 +2291,7 @@ export default function GameBoard({
 
       {inspectedUnit && (
         <div
-          className="fixed bottom-16 left-1/2 -translate-x-1/2 lg:absolute lg:bottom-4 z-30 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg max-w-sm"
+          className={`${panelOpen ? 'hidden lg:flex' : 'flex'} fixed bottom-16 left-1/2 -translate-x-1/2 lg:absolute lg:bottom-4 z-30 items-center gap-3 px-4 py-3 rounded-lg shadow-lg max-w-sm`}
           style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
         >
           <img
@@ -2373,8 +2418,9 @@ export default function GameBoard({
               />
             </div>
           )}
-          {panelOpen && !chatOpen && (
+          {panelOpen && !chatOpen && !battleLogOpen && (
             <div className="p-3 max-h-[50vh] overflow-y-auto" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #2a3140' }}>
+              {mobileInspectPanel}
               {sidebarContent}
             </div>
           )}
@@ -2468,7 +2514,7 @@ export default function GameBoard({
                     isFullscreen
                   />
                 </div>
-              ) : sidebarContent}
+              ) : <>{mobileInspectPanel}{sidebarContent}</>}
             </div>
           )}
         </div>
