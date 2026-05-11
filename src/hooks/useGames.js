@@ -124,15 +124,10 @@ export function useGames() {
         host_id: userId,
         grid_rows: gridRows,
         grid_cols: gridCols,
-        max_players: 2,
+        max_players: 4,
         terrain_seed: terrainSeed,
         terrain_theme: terrainTheme,
         is_admin: true,
-        status: 'active',
-        turn_number: 1,
-        current_player_id: userId,
-        current_team_color: '#3b82f6',
-        started_at: new Date().toISOString(),
       })
       .select()
       .single()
@@ -234,13 +229,26 @@ export function useGames() {
   }
 
   async function startGame(gameId) {
+    const { data: gameData } = await supabase
+      .from('wg_games')
+      .select('is_admin')
+      .eq('id', gameId)
+      .single()
+
     const { data: players } = await supabase
       .from('wg_game_players')
-      .select('player_id, color')
+      .select('id, player_id, color')
       .eq('game_id', gameId)
       .order('player_order')
 
-    if (!players || players.length < 2) throw new Error('Need at least 2 players')
+    const minPlayers = gameData?.is_admin ? 1 : 2
+    if (!players || players.length < minPlayers) throw new Error(`Need at least ${minPlayers} player${minPlayers > 1 ? 's' : ''}`)
+
+    if (gameData?.is_admin) {
+      for (const p of players) {
+        await supabase.from('wg_game_players').update({ gold: 99999 }).eq('id', p.id)
+      }
+    }
 
     const firstTeamColor = players[0].color
 
