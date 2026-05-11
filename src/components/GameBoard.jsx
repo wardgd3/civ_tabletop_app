@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import CommandShipPanel from './CommandShipPanel'
 import SpaceGuildPanel from './SpaceGuildPanel'
+import BattleLog from './BattleLog'
 import TeamChat from './TeamChat'
 import { TERRAIN, TERRAIN_THEMES, RESOURCES, SPACE_RESOURCES, LUXURY_RESOURCES } from '../lib/terrainGen'
 
@@ -100,6 +101,7 @@ export default function GameBoard({
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
   setAutoPath, clearAutoPath,
+  battleLog,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -122,6 +124,7 @@ export default function GameBoard({
   const [unitDeployFromTransportInfo, setUnitDeployFromTransportInfo] = useState(null)
   const [shipModelPicker, setShipModelPicker] = useState(null)
   const [chatOpen, setChatOpen] = useState(false)
+  const [battleLogOpen, setBattleLogOpen] = useState(false)
   const [spaceGuildOpen, setSpaceGuildOpen] = useState(false)
   const [clickedTile, setClickedTile] = useState(null)
   const boardRef = useRef(null)
@@ -1825,7 +1828,25 @@ export default function GameBoard({
         <div className="flex-1 overflow-y-auto min-h-0">
           {sidebarContent}
         </div>
-        <div className="shrink-0 mt-2">
+        <div className="shrink-0 mt-2 space-y-1.5">
+          {battleLogOpen ? (
+            <BattleLog
+              battleLog={battleLog || []}
+              currentPlayer={currentPlayer}
+              onClose={() => setBattleLogOpen(false)}
+            />
+          ) : (
+            <button
+              onClick={() => { setBattleLogOpen(true); setChatOpen(false) }}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded text-xs font-semibold cursor-pointer"
+              style={{ backgroundColor: '#161b22', border: '1px solid #2a3140', color: '#8b949e' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" />
+              </svg>
+              Battle Log{(battleLog || []).length > 0 ? ` (${(battleLog || []).length})` : ''}
+            </button>
+          )}
           {chatOpen ? (
             <TeamChat
               gameId={game.id}
@@ -1835,7 +1856,7 @@ export default function GameBoard({
             />
           ) : (
             <button
-              onClick={() => setChatOpen(true)}
+              onClick={() => { setChatOpen(true); setBattleLogOpen(false) }}
               className="w-full flex items-center justify-center gap-2 py-2 rounded text-xs font-semibold cursor-pointer"
               style={{ backgroundColor: '#161b22', border: '1px solid #2a3140', color: '#8b949e' }}
             >
@@ -2296,7 +2317,21 @@ export default function GameBoard({
                 </button>
               </div>
               <button
-                onClick={() => { setChatOpen(prev => !prev); if (!chatOpen) setPanelOpen(false) }}
+                onClick={() => { setBattleLogOpen(prev => !prev); if (!battleLogOpen) { setPanelOpen(false); setChatOpen(false) } }}
+                className="w-8 h-8 flex items-center justify-center rounded cursor-pointer"
+                style={{
+                  backgroundColor: battleLogOpen ? '#2a1a1a' : '#21262d',
+                  border: `1px solid ${battleLogOpen ? '#4a2a2a' : '#30363d'}`,
+                  color: battleLogOpen ? '#f47067' : '#8b949e',
+                }}
+                title="Battle Log"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" />
+                </svg>
+              </button>
+              <button
+                onClick={() => { setChatOpen(prev => !prev); if (!chatOpen) { setPanelOpen(false); setBattleLogOpen(false) } }}
                 className="w-8 h-8 flex items-center justify-center rounded cursor-pointer"
                 style={{
                   backgroundColor: chatOpen ? '#1c3043' : '#21262d',
@@ -2311,7 +2346,7 @@ export default function GameBoard({
               </button>
             </div>
             <button
-              onClick={() => { setPanelOpen(!panelOpen); if (panelOpen) setChatOpen(false); else setChatOpen(false) }}
+              onClick={() => { setPanelOpen(!panelOpen); if (panelOpen) { setChatOpen(false); setBattleLogOpen(false) } else { setChatOpen(false); setBattleLogOpen(false) } }}
               className="flex items-center gap-1.5 py-1 text-xs font-semibold uppercase tracking-wide cursor-pointer"
               style={{ color: '#4a5568' }}
             >
@@ -2319,7 +2354,16 @@ export default function GameBoard({
               <span className={`transition-transform ${panelOpen ? 'rotate-180' : ''}`}>&#9650;</span>
             </button>
           </div>
-          {chatOpen && (
+          {battleLogOpen && (
+            <div className="px-2 pb-1" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #2a3140' }}>
+              <BattleLog
+                battleLog={battleLog || []}
+                currentPlayer={currentPlayer}
+                onClose={() => setBattleLogOpen(false)}
+              />
+            </div>
+          )}
+          {chatOpen && !battleLogOpen && (
             <div className="px-2 pb-1" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #2a3140' }}>
               <TeamChat
                 gameId={game.id}
@@ -2371,7 +2415,21 @@ export default function GameBoard({
                     </button>
                   </div>
                   <button
-                    onClick={() => setChatOpen(prev => !prev)}
+                    onClick={() => { setBattleLogOpen(prev => !prev); setChatOpen(false) }}
+                    className="w-7 h-7 flex items-center justify-center rounded cursor-pointer"
+                    style={{
+                      backgroundColor: battleLogOpen ? '#2a1a1a' : '#21262d',
+                      border: `1px solid ${battleLogOpen ? '#4a2a2a' : '#30363d'}`,
+                      color: battleLogOpen ? '#f47067' : '#8b949e',
+                    }}
+                    title="Battle Log"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => { setChatOpen(prev => !prev); setBattleLogOpen(false) }}
                     className="w-7 h-7 flex items-center justify-center rounded cursor-pointer"
                     style={{
                       backgroundColor: chatOpen ? '#1c3043' : '#21262d',
@@ -2393,7 +2451,15 @@ export default function GameBoard({
                   &times;
                 </button>
               </div>
-              {chatOpen ? (
+              {battleLogOpen ? (
+                <div className="flex-1 min-h-0">
+                  <BattleLog
+                    battleLog={battleLog || []}
+                    currentPlayer={currentPlayer}
+                    isFullscreen
+                  />
+                </div>
+              ) : chatOpen ? (
                 <div className="flex-1 min-h-0">
                   <TeamChat
                     gameId={game.id}

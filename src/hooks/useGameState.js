@@ -315,6 +315,20 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  function getPlayerName(playerId) {
+    const p = players.find(pl => pl.player_id === playerId)
+    return p?.wg_profiles?.display_name || 'Unknown'
+  }
+
+  async function addBattleLogEntry(entry) {
+    const { data: freshGame } = await supabase.from('wg_games').select('settings').eq('id', gameId).single()
+    const settings = freshGame?.settings || {}
+    const log = settings.battleLog || []
+    log.push({ ...entry, timestamp: Date.now() })
+    if (log.length > 100) log.splice(0, log.length - 100)
+    await supabase.from('wg_games').update({ settings: { ...settings, battleLog: log } }).eq('id', gameId)
+  }
+
   async function attackUnit(attackerId, targetId) {
     const attacker = units.find(u => u.id === attackerId)
     const target = units.find(u => u.id === targetId)
@@ -328,6 +342,24 @@ export function useGameState(gameId) {
 
     const damage = Math.max(1, attacker.wg_unit_types.attack - target.wg_unit_types.defense)
     const newHp = target.current_hp - damage
+
+    const attackerName = attacker.wg_unit_types?.name || 'Unit'
+    const targetName = target.isNPC ? (target.wg_unit_types?.name || 'creature') : (target.wg_unit_types?.name || 'Unit')
+    const targetOwnerName = target.isNPC ? null : getPlayerName(target.owner_id)
+    const killed = newHp <= 0
+
+    await addBattleLogEntry({
+      type: 'attack',
+      attackerId: attacker.owner_id,
+      attackerUnit: attackerName,
+      targetId: target.isNPC ? null : target.owner_id,
+      targetUnit: targetName,
+      targetIsNPC: !!target.isNPC,
+      attackerPlayerName: getPlayerName(attacker.owner_id),
+      targetPlayerName: targetOwnerName,
+      damage,
+      killed,
+    })
 
     if (target.isNPC) {
       const { data: freshGame } = await supabase.from('wg_games').select('settings').eq('id', gameId).single()
@@ -1479,9 +1511,13 @@ export function useGameState(gameId) {
     spawnNPCs(5, 'test1')
   }, [isAdmin, game, tiles])
 
+  const battleLog = (game?.settings?.battleLog || []).filter(
+    e => e.attackerId === userId || e.targetId === userId
+  )
+
   return {
     game, players, units, unitTypes, tiles, discoveredTiles, loading,
-    currentPlayer, isMyTurn, isAdmin,
+    currentPlayer, isMyTurn, isAdmin, battleLog,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
     excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
