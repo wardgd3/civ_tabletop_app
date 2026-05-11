@@ -96,7 +96,7 @@ export default function GameBoard({
   game, players, units, allUnits, unitTypes, allUnitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-  excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, returnConvoyFromGuild,
+  excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, returnConvoyFromGuild,
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport,
   isFullscreen, onExitFullscreen,
@@ -1602,14 +1602,21 @@ export default function GameBoard({
             onSendToGuild={async (shipId, convoyIdx) => {
               try { await sendConvoyToGuild(shipId, convoyIdx) } catch (err) { setError(err.message) }
             }}
-            onSellAtGuild={async (shipId, sellUnits, sellResources) => {
-              try { return await sellAtGuild(shipId, sellUnits, sellResources) } catch (err) { setError(err.message) }
+            onSellAtGuild={async (shipId, gcIdx, sellUnits, sellResources) => {
+              try { return await sellAtGuild(shipId, gcIdx, sellUnits, sellResources) } catch (err) { setError(err.message) }
             }}
-            onReturnFromGuild={async (shipId) => {
-              try { await returnConvoyFromGuild(shipId) } catch (err) { setError(err.message) }
+            onBuyUnit={async (shipId, gcIdx, unitTypeId) => {
+              try { await buyUnitAtGuild(shipId, gcIdx, unitTypeId) } catch (err) { setError(err.message) }
+            }}
+            onReturnFromGuild={async (shipId, gcIdx) => {
+              try { await returnConvoyFromGuild(shipId, gcIdx) } catch (err) { setError(err.message) }
             }}
             playerResources={currentPlayer?.resources || {}}
             teamGold={economy?.teamGold ?? currentPlayer?.gold ?? 0}
+            availableUnitTypes={(allUnitTypes || unitTypes).filter(ut =>
+              (ut.board || 'ground') === 'space' &&
+              ut.name !== 'Command Ship'
+            )}
           />
         )
       })()}
