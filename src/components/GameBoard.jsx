@@ -99,6 +99,7 @@ export default function GameBoard({
   excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
+  setAutoPath, clearAutoPath,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -569,6 +570,52 @@ export default function GameBoard({
     return new Set(cells)
   }
 
+  function findPath(fromRow, fromCol, toRow, toCol, unitName) {
+    const maxDist = 40
+    if (hexDistance(fromRow, fromCol, toRow, toCol) > maxDist) return null
+    const startKey = `${fromRow}-${fromCol}`
+    const endKey = `${toRow}-${toCol}`
+    const gScore = new Map()
+    gScore.set(startKey, 0)
+    const cameFrom = new Map()
+    const open = [[hexDistance(fromRow, fromCol, toRow, toCol), fromRow, fromCol]]
+    const closed = new Set()
+
+    while (open.length > 0) {
+      open.sort((a, b) => a[0] - b[0])
+      const [, cr, cc] = open.shift()
+      const ck = `${cr}-${cc}`
+      if (ck === endKey) {
+        const path = []
+        let cur = endKey
+        while (cur && cur !== startKey) {
+          const [r, c] = cur.split('-').map(Number)
+          path.unshift({ row: r, col: c })
+          cur = cameFrom.get(cur)
+        }
+        return path
+      }
+      if (closed.has(ck)) continue
+      closed.add(ck)
+      const g = gScore.get(ck)
+      const neighbors = hexNeighborsBoard(cr, cc, rows, cols)
+      for (const [nr, nc] of neighbors) {
+        const nk = `${nr}-${nc}`
+        if (closed.has(nk)) continue
+        if (isImpassable(nr, nc, unitName)) continue
+        const tentG = g + 1
+        if (tentG > maxDist) continue
+        const prev = gScore.get(nk)
+        if (prev !== undefined && prev <= tentG) continue
+        gScore.set(nk, tentG)
+        cameFrom.set(nk, ck)
+        const h = hexDistance(nr, nc, toRow, toCol)
+        open.push([tentG + h, nr, nc])
+      }
+    }
+    return null
+  }
+
   function getAttackRange(unit) {
     if (!unit?.wg_unit_types) return new Set()
     const cells = new Set()
@@ -618,6 +665,19 @@ export default function GameBoard({
   const attackRange = mode === 'attack' && selectedUnit ? getAttackRange(selectedUnit) : new Set()
   const buildRange = mode === 'build' && selectedUnit ? getBuildRange(selectedUnit) : new Set()
   const destroyRange = mode === 'destroy' && selectedUnit ? getDestroyRange(selectedUnit) : new Set()
+
+  const autoPathTiles = useMemo(() => {
+    const set = new Set()
+    for (const u of units) {
+      const path = u.upgrades?.autoPath
+      if (path && Array.isArray(path)) {
+        for (const wp of path) set.add(`${wp.row}-${wp.col}`)
+      }
+    }
+    return set
+  }, [units])
+
+  const selectedAutoPath = selectedUnit?.upgrades?.autoPath || null
 
   function isNearEdge(r, c) {
     return Math.min(r, rows - 1 - r, c, cols - 1 - c) <= 3
@@ -1105,6 +1165,7 @@ export default function GameBoard({
 
     if (selectedUnit && moveRange.has(cellKey) && !showUnit) {
       try {
+        if (selectedUnit.upgrades?.autoPath) await clearAutoPath(selectedUnit.id)
         const moveDist = hexDistance(selectedUnit.grid_row, selectedUnit.grid_col, row, col)
         const usedAfter = (selectedUnit.moves_used || 0) + moveDist
         const maxRange = selectedUnit.wg_unit_types?.movement || 0
@@ -1118,6 +1179,20 @@ export default function GameBoard({
         setError(err.message)
       }
       return
+    }
+
+    if (selectedUnit && !showUnit && mode === 'select' && selectedUnit.owner_id === currentPlayer?.player_id && !moveRange.has(cellKey)) {
+      const dist = hexDistance(selectedUnit.grid_row, selectedUnit.grid_col, row, col)
+      if (dist > 0 && dist <= 40) {
+        const unitName = selectedUnit.wg_unit_types?.name
+        const path = findPath(selectedUnit.grid_row, selectedUnit.grid_col, row, col, unitName)
+        if (path && path.length > 0) {
+          try {
+            await setAutoPath(selectedUnit.id, path)
+          } catch (err) { setError(err.message) }
+          return
+        }
+      }
     }
 
     if (showUnit) {
@@ -1373,6 +1448,24 @@ export default function GameBoard({
                   )}
                 </div>
               </div>
+              {selectedAutoPath && selectedUnit.owner_id === currentPlayer?.player_id && (
+                <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #1a2a4a' }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#6090c0' }}>
+                      Auto-path ({selectedAutoPath.length} tiles)
+                    </span>
+                    <button
+                      onClick={async () => {
+                        try { await clearAutoPath(selectedUnit.id) } catch (err) { setError(err.message) }
+                      }}
+                      className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded cursor-pointer"
+                      style={{ backgroundColor: '#2a1a1a', color: '#f47067', border: '1px solid #4a2a2a' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
               {hasOreToExcavate && (
                 <button
                   onClick={async () => {
@@ -1793,6 +1886,7 @@ export default function GameBoard({
               const isInBayDeployRange = bayDeployRange.has(cellKey)
               const isInTransportDeployRange = transportDeployRange.has(cellKey)
               const isInUnitFromTransportRange = unitFromTransportDeployRange.has(cellKey)
+              const isOnAutoPath = autoPathTiles.has(cellKey)
               const isSelected = selectedUnit && selectedUnit.grid_row === row && selectedUnit.grid_col === col
               const isClicked = clickedTile?.row === row && clickedTile?.col === col
               const isHovered = hoveredTile?.row === row && hoveredTile?.col === col
@@ -1902,6 +1996,11 @@ export default function GameBoard({
                   })()}
                   {moveOverlay && (
                     <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
+                  )}
+                  {isOnAutoPath && (
+                    <div className="absolute inset-0 z-[2] flex items-center justify-center pointer-events-none" style={{ clipPath: hexClip }}>
+                      <div className="rounded-full" style={{ width: 8, height: 8, backgroundColor: 'rgba(100, 180, 255, 0.5)' }} />
+                    </div>
                   )}
                   {isMountainShadow && (isVisible || isDiscovered) && (
                     <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.12)', clipPath: hexClip }} />

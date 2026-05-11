@@ -1395,6 +1395,23 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function setAutoPath(unitId, path) {
+    const unit = units.find(u => u.id === unitId)
+    if (!unit || unit.owner_id !== userId) throw new Error('Not your unit')
+    const upgrades = unit.upgrades || {}
+    await supabase.from('wg_units').update({ upgrades: { ...upgrades, autoPath: path } }).eq('id', unitId)
+    await fetchAll()
+  }
+
+  async function clearAutoPath(unitId) {
+    const unit = units.find(u => u.id === unitId)
+    if (!unit) return
+    const upgrades = { ...(unit.upgrades || {}) }
+    delete upgrades.autoPath
+    await supabase.from('wg_units').update({ upgrades }).eq('id', unitId)
+    await fetchAll()
+  }
+
   async function boardSoldierToTransport(soldierUnitId, transportUnitId) {
     const soldier = units.find(u => u.id === soldierUnitId)
     if (!soldier) throw new Error('Unit not found')
@@ -1442,6 +1459,7 @@ export function useGameState(gameId) {
     excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
+    setAutoPath, clearAutoPath,
     persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
     refresh: fetchAll,
   }

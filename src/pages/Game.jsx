@@ -151,6 +151,8 @@ export default function Game() {
           deployFromTransport={gameState.deployFromTransport}
           buyAndLoadToTransport={gameState.buyAndLoadToTransport}
           boardSoldierToTransport={gameState.boardSoldierToTransport}
+          setAutoPath={gameState.setAutoPath}
+          clearAutoPath={gameState.clearAutoPath}
           isAdmin={gameState.isAdmin}
           productionPerTurn={gameState.productionPerTurn}
           economy={gameState.economy}
