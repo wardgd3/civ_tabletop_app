@@ -114,7 +114,10 @@ export default function GameBoard({
   const [bayDeployInfo, setBayDeployInfo] = useState(null)
   const [transportDeployInfo, setTransportDeployInfo] = useState(null)
   const [unitDeployFromTransportInfo, setUnitDeployFromTransportInfo] = useState(null)
+  const [clickedTile, setClickedTile] = useState(null)
   const boardRef = useRef(null)
+  const boardInnerRef = useRef(null)
+  const wrapperRef = useRef(null)
   const panStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
   const touchPanRef = useRef(null)
   const panningRef = useRef(false)
@@ -883,10 +886,13 @@ export default function GameBoard({
   }, [])
 
   const pinchRef = useRef(null)
+  const touchVelocityRef = useRef({ vx: 0, vy: 0 })
+  const touchLastMoveRef = useRef({ x: 0, y: 0, t: 0 })
 
   const handleTouchStart = useCallback((e) => {
     if (e.touches.length === 2) {
       e.preventDefault()
+      stopInertia()
       touchPanRef.current = null
       setTouchPanning(false)
       const dx = e.touches[0].clientX - e.touches[1].clientX
@@ -896,11 +902,15 @@ export default function GameBoard({
       const el = boardRef.current
       const rect = el.getBoundingClientRect()
       pinchRef.current = {
-        dist: Math.hypot(dx, dy),
-        contentX: midX - rect.left + el.scrollLeft,
-        contentY: midY - rect.top + el.scrollTop,
+        initialDist: Math.hypot(dx, dy),
+        initialZoom: zoomRef.current,
+        anchorX: midX - rect.left + el.scrollLeft,
+        anchorY: midY - rect.top + el.scrollTop,
+        lastMidX: midX,
+        lastMidY: midY,
       }
     } else if (e.touches.length === 1) {
+      stopInertia()
       const el = boardRef.current
       touchPanRef.current = {
         x: e.touches[0].clientX,
@@ -909,8 +919,19 @@ export default function GameBoard({
         scrollTop: el.scrollTop,
         moved: false,
       }
+      touchLastMoveRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: performance.now() }
+      touchVelocityRef.current = { vx: 0, vy: 0 }
     }
   }, [])
+
+  const applyZoomDirect = useCallback((newZoom) => {
+    const inner = boardInnerRef.current
+    const wrapper = wrapperRef.current
+    if (!inner || !wrapper) return
+    inner.style.transform = `scale(${newZoom})`
+    wrapper.style.width = `${boardPixelW * newZoom * 2.2}px`
+    wrapper.style.height = `${boardPixelH * newZoom * 2.2}px`
+  }, [boardPixelW, boardPixelH])
 
   const handleTouchMove = useCallback((e) => {
     if (e.touches.length === 2 && pinchRef.current !== null) {
@@ -923,24 +944,25 @@ export default function GameBoard({
       const dist = Math.hypot(dx, dy)
       const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2
       const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2
-      const scale = dist / pinchRef.current.dist
-      const oldZoom = zoomRef.current
-      const newZoom = Math.min(3, Math.max(0.3, oldZoom * scale))
-      const ratio = newZoom / oldZoom
 
-      const newContentX = pinchRef.current.contentX * ratio
-      const newContentY = pinchRef.current.contentY * ratio
+      const scale = dist / pinchRef.current.initialDist
+      const newZoom = Math.min(3, Math.max(0.3, pinchRef.current.initialZoom * scale))
+      const ratio = newZoom / zoomRef.current
 
-      setZoom(newZoom)
+      const scrollCenterX = el.scrollLeft + (midX - rect.left)
+      const scrollCenterY = el.scrollTop + (midY - rect.top)
+      const newScrollX = scrollCenterX * ratio - (midX - rect.left)
+      const newScrollY = scrollCenterY * ratio - (midY - rect.top)
+
+      const panDx = midX - pinchRef.current.lastMidX
+      const panDy = midY - pinchRef.current.lastMidY
+      pinchRef.current.lastMidX = midX
+      pinchRef.current.lastMidY = midY
+
       zoomRef.current = newZoom
-      pinchRef.current = {
-        dist,
-        contentX: newContentX,
-        contentY: newContentY,
-      }
-
-      el.scrollLeft = newContentX - (midX - rect.left)
-      el.scrollTop = newContentY - (midY - rect.top)
+      applyZoomDirect(newZoom)
+      el.scrollLeft = newScrollX - panDx
+      el.scrollTop = newScrollY - panDy
     } else if (e.touches.length === 1 && touchPanRef.current) {
       const dx = e.touches[0].clientX - touchPanRef.current.x
       const dy = e.touches[0].clientY - touchPanRef.current.y
@@ -953,12 +975,26 @@ export default function GameBoard({
         const el = boardRef.current
         el.scrollLeft = touchPanRef.current.scrollLeft - dx
         el.scrollTop = touchPanRef.current.scrollTop - dy
+        const now = performance.now()
+        const dt = now - touchLastMoveRef.current.t || 16
+        touchVelocityRef.current = {
+          vx: (e.touches[0].clientX - touchLastMoveRef.current.x) / dt * 16,
+          vy: (e.touches[0].clientY - touchLastMoveRef.current.y) / dt * 16,
+        }
+        touchLastMoveRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: now }
       }
     }
-  }, [])
+  }, [applyZoomDirect])
 
   const handleTouchEnd = useCallback(() => {
-    pinchRef.current = null
+    if (pinchRef.current !== null) {
+      setZoom(zoomRef.current)
+      pinchRef.current = null
+    }
+    if (touchPanRef.current?.moved) {
+      velocityRef.current = touchVelocityRef.current
+      startInertia()
+    }
     setTimeout(() => {
       touchPanRef.current = null
       setTouchPanning(false)
@@ -1007,6 +1043,7 @@ export default function GameBoard({
     setError(null)
 
     setTappedTile(prev => (prev?.row === row && prev?.col === col) ? null : { row, col })
+    setClickedTile({ row, col })
 
     const cellKey = `${row}-${col}`
 
@@ -1588,7 +1625,7 @@ export default function GameBoard({
         style={{ cursor: boardCursor, touchAction: 'none' }}
         onMouseDown={handleBoardMouseDown}
       >
-        <div style={{
+        <div ref={wrapperRef} style={{
           width: boardPixelW * zoom * 2.2,
           height: boardPixelH * zoom * 2.2,
           display: 'flex',
@@ -1596,12 +1633,14 @@ export default function GameBoard({
           justifyContent: 'center',
         }}>
           <div
+            ref={boardInnerRef}
             className="relative shrink-0"
             style={{
               width: boardPixelW,
               height: boardPixelH,
               transform: `scale(${zoom})`,
               transformOrigin: 'center center',
+              willChange: 'transform',
             }}
           >
             {Array.from({ length: rows * cols }, (_, i) => {
@@ -1619,6 +1658,8 @@ export default function GameBoard({
               const isInTransportDeployRange = transportDeployRange.has(cellKey)
               const isInUnitFromTransportRange = unitFromTransportDeployRange.has(cellKey)
               const isSelected = selectedUnit && selectedUnit.grid_row === row && selectedUnit.grid_col === col
+              const isClicked = clickedTile?.row === row && clickedTile?.col === col
+              const isHovered = hoveredTile?.row === row && hoveredTile?.col === col
 
               const board = activeBoard || 'ground'
               const fullKey = `${board}-${row}-${col}`
@@ -1708,6 +1749,21 @@ export default function GameBoard({
                     pointerEvents: spaceHeld ? 'none' : 'auto',
                   }}
                 >
+                  {(isClicked || isHovered) && (() => {
+                    const p = 1.5
+                    const w = RENDER_W, h = RENDER_H
+                    return (
+                      <svg className="absolute inset-0 z-[5] pointer-events-none" width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+                        <polygon
+                          points={`${w/2},${p} ${w-p},${h*0.25+p*0.5} ${w-p},${h*0.75-p*0.5} ${w/2},${h-p} ${p},${h*0.75-p*0.5} ${p},${h*0.25+p*0.5}`}
+                          fill="none"
+                          stroke={isClicked ? 'rgba(180, 210, 255, 0.5)' : 'rgba(180, 210, 255, 0.22)'}
+                          strokeWidth="1"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )
+                  })()}
                   {moveOverlay && (
                     <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
                   )}
