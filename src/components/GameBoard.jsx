@@ -98,7 +98,7 @@ export default function GameBoard({
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
   excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
-  dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport,
+  dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -527,7 +527,8 @@ export default function GameBoard({
     return map
   }, [allPlayers, players])
 
-  function getPlayerColor(playerId) {
+  function getPlayerColor(playerId, unit) {
+    if (unit?.isNPC) return '#e05050'
     return playerColorMap.get(playerId) || '#888'
   }
 
@@ -1584,6 +1585,9 @@ export default function GameBoard({
               setCommandShipUnitId(null)
               setPanelOpen(false)
             }}
+            onBuyAndLoadSoldier={async (structId, transportIdx, unitTypeId, unitTypeName) => {
+              try { await buyAndLoadToTransport(structId, transportIdx, unitTypeId, unitTypeName) } catch (err) { setError(err.message) }
+            }}
             groundUnits={allUnits.filter(u =>
               (u.board || 'ground') === 'ground' &&
               u.owner_id === csUnit.owner_id &&
@@ -1902,7 +1906,7 @@ export default function GameBoard({
                     )
                   })()}
                   {showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' && (() => {
-                    const pColor = getPlayerColor(unit.owner_id)
+                    const pColor = getPlayerColor(unit.owner_id, unit)
                     const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
                     const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * 1.032
                     return (

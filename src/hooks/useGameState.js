@@ -5,6 +5,24 @@ import { LUXURY_RESOURCES } from '../lib/terrainGen'
 
 const LUXURY_BY_ID = Object.fromEntries(Object.values(LUXURY_RESOURCES).map(r => [r.id, r]))
 
+const NPC_UNIT_TYPES = {
+  test1: {
+    id: 'npc-test1',
+    name: 'test1',
+    description: 'A hostile alien creature',
+    cost: 0,
+    attack: 3,
+    defense: 1,
+    hp: 5,
+    movement: 2,
+    attack_range: 1,
+    visibility: 2,
+    icon: 'large_creature.png',
+    board: 'ground',
+    isNPC: true,
+  },
+}
+
 function hexDistance(r1, c1, r2, c2) {
   const q1 = c1 - ((r1 - (r1 & 1)) >> 1)
   const q2 = c2 - ((r2 - (r2 & 1)) >> 1)
@@ -80,8 +98,15 @@ export function useGameState(gameId) {
 
     if (gameRes.data) setGame(gameRes.data)
     if (playersRes.data) setPlayers(playersRes.data)
-    if (unitsRes.data) setUnits(unitsRes.data)
     if (typesRes.data) setUnitTypes(typesRes.data)
+
+    const dbUnits = unitsRes.data || []
+    const npcUnits = (gameRes.data?.settings?.npcUnits || []).map(npc => ({
+      ...npc,
+      wg_unit_types: NPC_UNIT_TYPES[npc.npcType] || NPC_UNIT_TYPES.test1,
+      isNPC: true,
+    }))
+    setUnits([...dbUnits, ...npcUnits])
 
     const allTiles = []
     let tileOffset = 0
@@ -133,6 +158,15 @@ export function useGameState(gameId) {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [gameId, fetchAll, debouncedFetch])
+
+  const npcSpawnedRef = useRef(false)
+  useEffect(() => {
+    if (!isAdmin || !game || !tiles.length || npcSpawnedRef.current) return
+    const existing = game.settings?.npcUnits || []
+    if (existing.length > 0) { npcSpawnedRef.current = true; return }
+    npcSpawnedRef.current = true
+    spawnNPCs(5, 'test1')
+  }, [isAdmin, game, tiles])
 
   const persistDiscoveryRef = useRef(new Set())
 
@@ -294,13 +328,30 @@ export function useGameState(gameId) {
     if (!attacker || !target) throw new Error('Invalid attack')
     if (attacker.owner_id !== userId) throw new Error('Not your unit')
     if (!isAdmin && attacker.has_attacked) throw new Error('Unit already attacked')
-    if (target.owner_id === userId) throw new Error("Can't attack your own unit")
+    if (!target.isNPC && target.owner_id === userId) throw new Error("Can't attack your own unit")
 
     const dist = hexDistance(attacker.grid_row, attacker.grid_col, target.grid_row, target.grid_col)
     if (dist > attacker.wg_unit_types.attack_range) throw new Error('Out of range')
 
     const damage = Math.max(1, attacker.wg_unit_types.attack - target.wg_unit_types.defense)
     const newHp = target.current_hp - damage
+
+    if (target.isNPC) {
+      const { data: freshGame } = await supabase.from('wg_games').select('settings').eq('id', gameId).single()
+      const settings = freshGame?.settings || {}
+      let npcUnits = settings.npcUnits || []
+      if (newHp <= 0) {
+        npcUnits = npcUnits.filter(n => n.id !== targetId)
+      } else {
+        npcUnits = npcUnits.map(n => n.id === targetId ? { ...n, current_hp: newHp } : n)
+      }
+      await supabase.from('wg_games').update({ settings: { ...settings, npcUnits } }).eq('id', gameId)
+      if (!isAdmin) {
+        await supabase.from('wg_units').update({ has_attacked: true }).eq('id', attackerId)
+      }
+      await fetchAll()
+      return
+    }
 
     if (newHp <= 0) {
       const { error } = await supabase.from('wg_units').update({ current_hp: 0, is_alive: false }).eq('id', targetId)
@@ -357,6 +408,59 @@ export function useGameState(gameId) {
     const { error: atkError } = await supabase.from('wg_units').update({ has_attacked: true }).eq('id', attackerId)
     if (atkError) throw atkError
 
+    await fetchAll()
+  }
+
+  async function spawnNPCs(count = 5, npcType = 'test1') {
+    if (!game) return
+    const { data: freshGame } = await supabase.from('wg_games').select('*').eq('id', gameId).single()
+    if (!freshGame) return
+    const settings = freshGame.settings || {}
+    const existing = settings.npcUnits || []
+
+    const npcDef = NPC_UNIT_TYPES[npcType]
+    if (!npcDef) return
+
+    const occupiedSet = new Set()
+    for (const u of units) occupiedSet.add(`${u.grid_row}-${u.grid_col}`)
+    for (const n of existing) occupiedSet.add(`${n.grid_row}-${n.grid_col}`)
+
+    const impassable = new Set(['ocean', 'mountain', 'lake', 'river'])
+    const tilesByKey = new Map(tiles.map(t => [`${t.grid_row}-${t.grid_col}`, t]))
+
+    const candidates = []
+    for (let r = 0; r < freshGame.grid_rows; r++) {
+      for (let c = 0; c < freshGame.grid_cols; c++) {
+        const key = `${r}-${c}`
+        if (occupiedSet.has(key)) continue
+        const tile = tilesByKey.get(key)
+        if (tile && impassable.has(tile.terrain)) continue
+        candidates.push({ row: r, col: c })
+      }
+    }
+
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]]
+    }
+
+    const newNPCs = []
+    for (let i = 0; i < Math.min(count, candidates.length); i++) {
+      const spot = candidates[i]
+      newNPCs.push({
+        id: `npc-${crypto.randomUUID()}`,
+        npcType,
+        grid_row: spot.row,
+        grid_col: spot.col,
+        current_hp: npcDef.hp,
+        board: 'ground',
+        is_alive: true,
+      })
+    }
+
+    await supabase.from('wg_games').update({
+      settings: { ...settings, npcUnits: [...existing, ...newNPCs] }
+    }).eq('id', gameId)
     await fetchAll()
   }
 
@@ -1074,6 +1178,42 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function buyAndLoadToTransport(structId, transportIndex, unitTypeId, unitTypeName) {
+    const struct = units.find(u => u.id === structId)
+    if (!struct) throw new Error('Structure not found')
+
+    const ut = unitTypes.find(t => t.id === unitTypeId)
+    if (!ut) throw new Error('Unit type not found')
+
+    const upgrades = struct.upgrades || {}
+    const loadingBay = [...(upgrades.loadingBay || [])]
+    const transport = loadingBay[transportIndex]
+    if (!transport) throw new Error('Transport not found')
+    if ((transport.units || []).length >= 4) throw new Error('Transport full (max 4)')
+
+    if (!isAdmin && teamGold < ut.cost) throw new Error('Not enough gold')
+
+    if (!isAdmin) {
+      const perPlayer = Math.ceil(ut.cost / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase
+          .from('wg_game_players')
+          .update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) })
+          .eq('id', tp.id)
+      }
+    }
+
+    transport.units = [...(transport.units || []), {
+      typeId: unitTypeId,
+      typeName: unitTypeName,
+      hp: ut.hp,
+    }]
+    loadingBay[transportIndex] = transport
+
+    await supabase.from('wg_units').update({ upgrades: { ...upgrades, loadingBay } }).eq('id', structId)
+    await fetchAll()
+  }
+
   async function loadFromBayToConvoy(shipId, convoyIndex, bayIndex) {
     const ship = units.find(u => u.id === shipId)
     if (!ship) throw new Error('Ship not found')
@@ -1455,8 +1595,8 @@ export function useGameState(gameId) {
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
     excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
-    dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport,
-    persistDiscoveredTiles, productionPerTurn, economy,
+    dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport,
+    persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
     refresh: fetchAll,
   }
 }
