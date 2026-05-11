@@ -4,11 +4,11 @@ import SpaceGuildPanel from './SpaceGuildPanel'
 import TeamChat from './TeamChat'
 import { TERRAIN, TERRAIN_THEMES, RESOURCES, SPACE_RESOURCES, LUXURY_RESOURCES } from '../lib/terrainGen'
 
-const HEX_SIZE = 16
+const HEX_SIZE = 48
 const HEX_W = Math.round(Math.sqrt(3) * HEX_SIZE)
 const HEX_H = HEX_SIZE * 2
 const ROW_H = HEX_H * 0.75
-const GAP = 0.3
+const GAP = 1
 const RENDER_W = HEX_W - GAP
 const RENDER_H = HEX_H - GAP
 
@@ -111,7 +111,7 @@ export default function GameBoard({
   const [mode, setMode] = useState('select')
   const [error, setError] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
-  const [zoom, setZoom] = useState(1)
+  const [zoom, setZoom] = useState(0.34)
   const [spaceHeld, setSpaceHeld] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
   const [touchPanning, setTouchPanning] = useState(false)
@@ -855,7 +855,7 @@ export default function GameBoard({
 
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
-  const targetZoomRef = useRef(zoom)
+  const targetZoomRef = useRef(0.34)
   const wheelAnimRef = useRef(null)
   const wheelCursorRef = useRef({ clientX: 0, clientY: 0 })
 
@@ -888,7 +888,7 @@ export default function GameBoard({
     e.preventDefault()
     wheelCursorRef.current = { clientX: e.clientX, clientY: e.clientY }
     const factor = e.deltaY > 0 ? 0.85 : 1.18
-    targetZoomRef.current = Math.min(3, Math.max(0.3, targetZoomRef.current * factor))
+    targetZoomRef.current = Math.min(1.5, Math.max(0.1, targetZoomRef.current * factor))
     if (!wheelAnimRef.current) {
       wheelAnimRef.current = requestAnimationFrame(tickWheelZoom)
     }
@@ -955,7 +955,7 @@ export default function GameBoard({
       const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2
 
       const scale = dist / pinchRef.current.initialDist
-      const newZoom = Math.min(3, Math.max(0.3, pinchRef.current.initialZoom * scale))
+      const newZoom = Math.min(1.5, Math.max(0.1, pinchRef.current.initialZoom * scale))
       const ratio = newZoom / zoomRef.current
 
       const scrollCenterX = el.scrollLeft + (midX - rect.left)
@@ -1856,7 +1856,7 @@ export default function GameBoard({
                   }}
                 >
                   {(isClicked || isHovered) && (() => {
-                    const p = 1.5
+                    const p = 3
                     const w = RENDER_W, h = RENDER_H
                     return (
                       <svg className="absolute inset-0 z-[5] pointer-events-none" width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
@@ -1864,7 +1864,7 @@ export default function GameBoard({
                           points={`${w/2},${p} ${w-p},${h*0.25+p*0.5} ${w-p},${h*0.75-p*0.5} ${w/2},${h-p} ${p},${h*0.75-p*0.5} ${p},${h*0.25+p*0.5}`}
                           fill="none"
                           stroke={isClicked ? 'rgba(180, 210, 255, 0.5)' : 'rgba(180, 210, 255, 0.22)'}
-                          strokeWidth="1"
+                          strokeWidth="2"
                           strokeLinejoin="round"
                         />
                       </svg>
@@ -1913,7 +1913,7 @@ export default function GameBoard({
                       <div className="relative flex items-center justify-center z-10" style={{ width: tokenSize, height: tokenSize }}>
                         <div
                           className="absolute inset-0 rounded-full overflow-hidden"
-                          style={{ border: `2px solid ${pColor}`, boxShadow: `0 0 6px ${pColor}40` }}
+                          style={{ border: `3px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}
                         >
                           <img
                             src={getUnitIcon(unit.wg_unit_types, unit)}
@@ -1924,11 +1924,11 @@ export default function GameBoard({
                         <div
                           className="absolute left-1/2 -translate-x-1/2 rounded-full z-20"
                           style={{
-                            bottom: 1,
-                            height: 2,
+                            bottom: 3,
+                            height: 4,
                             width: `${hpRatio * 60}%`,
                             backgroundColor: hpRatio > 0.5 ? '#4a8060' : '#804a4a',
-                            minWidth: 3,
+                            minWidth: 6,
                             boxShadow: '0 0 2px #000',
                           }}
                         />
@@ -1936,10 +1936,10 @@ export default function GameBoard({
                           <div
                             className="absolute -top-0.5 -left-0.5 flex items-center justify-center rounded-full z-20"
                             style={{
-                              width: 7, height: 7,
+                              width: 18, height: 18,
                               backgroundColor: '#1a1a0d',
-                              border: '1px solid #cca43b',
-                              fontSize: 5, fontWeight: 'bold',
+                              border: '2px solid #cca43b',
+                              fontSize: 12, fontWeight: 'bold',
                               color: '#cca43b', lineHeight: 1,
                             }}
                           >
