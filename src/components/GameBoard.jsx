@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import CommandShipPanel from './CommandShipPanel'
+import TeamChat from './TeamChat'
 import { TERRAIN, TERRAIN_THEMES, RESOURCES, SPACE_RESOURCES, LUXURY_RESOURCES } from '../lib/terrainGen'
 
 const HEX_SIZE = 16
@@ -118,6 +119,7 @@ export default function GameBoard({
   const [transportDeployInfo, setTransportDeployInfo] = useState(null)
   const [unitDeployFromTransportInfo, setUnitDeployFromTransportInfo] = useState(null)
   const [shipModelPicker, setShipModelPicker] = useState(null)
+  const [chatOpen, setChatOpen] = useState(false)
   const [clickedTile, setClickedTile] = useState(null)
   const boardRef = useRef(null)
   const boardInnerRef = useRef(null)
@@ -1627,8 +1629,31 @@ export default function GameBoard({
 
   return (
     <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 h-full">
-      <div className="hidden lg:block lg:w-80 shrink-0 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto">
-        {sidebarContent}
+      <div className="hidden lg:flex lg:flex-col lg:w-80 shrink-0 lg:max-h-[calc(100vh-5rem)]">
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {sidebarContent}
+        </div>
+        <div className="shrink-0 mt-2">
+          {chatOpen ? (
+            <TeamChat
+              gameId={game.id}
+              currentPlayer={currentPlayer}
+              players={allPlayers || players}
+              onClose={() => setChatOpen(false)}
+            />
+          ) : (
+            <button
+              onClick={() => setChatOpen(true)}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded text-xs font-semibold cursor-pointer"
+              style={{ backgroundColor: '#161b22', border: '1px solid #2a3140', color: '#8b949e' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              Team Chat
+            </button>
+          )}
+        </div>
       </div>
 
       <div
@@ -2051,28 +2076,44 @@ export default function GameBoard({
       {!isFullscreen && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20">
           <div className="flex items-center justify-between px-3 py-1.5" style={{ backgroundColor: '#161b22', borderTop: '1px solid #2a3140' }}>
-            <div className="flex rounded overflow-hidden" style={{ border: '1px solid #30363d' }}>
+            <div className="flex items-center gap-1.5">
+              <div className="flex rounded overflow-hidden" style={{ border: '1px solid #30363d' }}>
+                <button
+                  onClick={() => setActiveBoard('ground')}
+                  className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                  style={activeBoard === 'ground'
+                    ? { backgroundColor: '#1c3043', color: '#6cb4e6' }
+                    : { backgroundColor: '#21262d', color: '#4a5568' }}
+                >
+                  Ground
+                </button>
+                <button
+                  onClick={() => setActiveBoard('space')}
+                  className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                  style={activeBoard === 'space'
+                    ? { backgroundColor: '#2a1a3a', color: '#c080e0' }
+                    : { backgroundColor: '#21262d', color: '#4a5568' }}
+                >
+                  Space
+                </button>
+              </div>
               <button
-                onClick={() => setActiveBoard('ground')}
-                className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
-                style={activeBoard === 'ground'
-                  ? { backgroundColor: '#1c3043', color: '#6cb4e6' }
-                  : { backgroundColor: '#21262d', color: '#4a5568' }}
+                onClick={() => { setChatOpen(prev => !prev); if (!chatOpen) setPanelOpen(false) }}
+                className="w-8 h-8 flex items-center justify-center rounded cursor-pointer"
+                style={{
+                  backgroundColor: chatOpen ? '#1c3043' : '#21262d',
+                  border: `1px solid ${chatOpen ? '#2a4a6a' : '#30363d'}`,
+                  color: chatOpen ? '#6cb4e6' : '#8b949e',
+                }}
+                title="Team Chat"
               >
-                Ground
-              </button>
-              <button
-                onClick={() => setActiveBoard('space')}
-                className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
-                style={activeBoard === 'space'
-                  ? { backgroundColor: '#2a1a3a', color: '#c080e0' }
-                  : { backgroundColor: '#21262d', color: '#4a5568' }}
-              >
-                Space
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
               </button>
             </div>
             <button
-              onClick={() => setPanelOpen(!panelOpen)}
+              onClick={() => { setPanelOpen(!panelOpen); if (panelOpen) setChatOpen(false); else setChatOpen(false) }}
               className="flex items-center gap-1.5 py-1 text-xs font-semibold uppercase tracking-wide cursor-pointer"
               style={{ color: '#4a5568' }}
             >
@@ -2080,7 +2121,17 @@ export default function GameBoard({
               <span className={`transition-transform ${panelOpen ? 'rotate-180' : ''}`}>&#9650;</span>
             </button>
           </div>
-          {panelOpen && (
+          {chatOpen && (
+            <div className="px-2 pb-1" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #2a3140' }}>
+              <TeamChat
+                gameId={game.id}
+                currentPlayer={currentPlayer}
+                players={allPlayers || players}
+                onClose={() => setChatOpen(false)}
+              />
+            </div>
+          )}
+          {panelOpen && !chatOpen && (
             <div className="p-3 max-h-[50vh] overflow-y-auto" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #2a3140' }}>
               {sidebarContent}
             </div>
@@ -2098,26 +2149,42 @@ export default function GameBoard({
             <span className="text-xs font-semibold uppercase tracking-widest">{panelOpen ? 'Hide' : 'Menu'}</span>
           </button>
           {panelOpen && (
-            <div className="w-54 h-full overflow-y-auto p-3" style={{ backgroundColor: '#0d1117', borderLeft: '1px solid #2a3140' }}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex rounded overflow-hidden" style={{ border: '1px solid #30363d' }}>
+            <div className="h-full overflow-y-auto p-3 flex flex-col" style={{ width: 260, backgroundColor: '#0d1117', borderLeft: '1px solid #2a3140' }}>
+              <div className="flex items-center justify-between mb-3 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex rounded overflow-hidden" style={{ border: '1px solid #30363d' }}>
+                    <button
+                      onClick={() => setActiveBoard('ground')}
+                      className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                      style={activeBoard === 'ground'
+                        ? { backgroundColor: '#1c3043', color: '#6cb4e6' }
+                        : { backgroundColor: '#21262d', color: '#4a5568' }}
+                    >
+                      Ground
+                    </button>
+                    <button
+                      onClick={() => setActiveBoard('space')}
+                      className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                      style={activeBoard === 'space'
+                        ? { backgroundColor: '#2a1a3a', color: '#c080e0' }
+                        : { backgroundColor: '#21262d', color: '#4a5568' }}
+                    >
+                      Space
+                    </button>
+                  </div>
                   <button
-                    onClick={() => setActiveBoard('ground')}
-                    className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
-                    style={activeBoard === 'ground'
-                      ? { backgroundColor: '#1c3043', color: '#6cb4e6' }
-                      : { backgroundColor: '#21262d', color: '#4a5568' }}
+                    onClick={() => setChatOpen(prev => !prev)}
+                    className="w-7 h-7 flex items-center justify-center rounded cursor-pointer"
+                    style={{
+                      backgroundColor: chatOpen ? '#1c3043' : '#21262d',
+                      border: `1px solid ${chatOpen ? '#2a4a6a' : '#30363d'}`,
+                      color: chatOpen ? '#6cb4e6' : '#8b949e',
+                    }}
+                    title="Team Chat"
                   >
-                    Ground
-                  </button>
-                  <button
-                    onClick={() => setActiveBoard('space')}
-                    className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
-                    style={activeBoard === 'space'
-                      ? { backgroundColor: '#2a1a3a', color: '#c080e0' }
-                      : { backgroundColor: '#21262d', color: '#4a5568' }}
-                  >
-                    Space
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
                   </button>
                 </div>
                 <button
@@ -2128,16 +2195,25 @@ export default function GameBoard({
                   &times;
                 </button>
               </div>
-              {sidebarContent}
+              {chatOpen ? (
+                <div className="flex-1 min-h-0">
+                  <TeamChat
+                    gameId={game.id}
+                    currentPlayer={currentPlayer}
+                    players={allPlayers || players}
+                    isFullscreen
+                  />
+                </div>
+              ) : sidebarContent}
             </div>
           )}
         </div>
       )}
       {shipModelPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
-          <div className="rounded-lg p-4 max-w-sm w-full mx-4" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
-            <div className="text-sm font-semibold mb-3 text-center" style={{ color: '#c9d1d9' }}>Select Your Command Ship</div>
-            <div className="grid grid-cols-5 gap-2 mb-3">
+          <div className="rounded-lg p-6 w-full mx-4" style={{ maxWidth: 576, backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+            <div className="text-base font-semibold mb-4 text-center" style={{ color: '#c9d1d9' }}>Select Your Command Ship</div>
+            <div className="grid grid-cols-5 gap-3 mb-4">
               {[2, 3, 4, 5, 6].map(n => {
                 const model = `commandship${n}`
                 return (
@@ -2154,20 +2230,20 @@ export default function GameBoard({
                         setError(err.message)
                       }
                     }}
-                    className="flex flex-col items-center gap-1 p-2 rounded cursor-pointer transition-all"
+                    className="flex flex-col items-center gap-1.5 p-3 rounded cursor-pointer transition-all"
                     style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = '#c060e0'; e.currentTarget.style.backgroundColor = '#1a1a2e' }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a3140'; e.currentTarget.style.backgroundColor = '#0d1117' }}
                   >
-                    <img src={`/assets/${model}.png`} alt={`Model ${n}`} className="w-12 h-12 object-contain" />
-                    <span className="text-[9px] font-mono" style={{ color: '#8b949e' }}>Mk.{n - 1}</span>
+                    <img src={`/assets/${model}.png`} alt={`Model ${n}`} className="w-18 h-18 object-contain" />
+                    <span className="text-[11px] font-mono" style={{ color: '#8b949e' }}>Mk.{n - 1}</span>
                   </button>
                 )
               })}
             </div>
             <button
               onClick={() => setShipModelPicker(null)}
-              className="w-full py-1.5 rounded text-xs font-semibold cursor-pointer"
+              className="w-full py-2 rounded text-sm font-semibold cursor-pointer"
               style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
             >
               Cancel
