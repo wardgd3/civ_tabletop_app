@@ -46,6 +46,7 @@ export function useGameState(gameId) {
   const debounceRef = useRef(null)
   const fetchingRef = useRef(false)
   const pendingFetchRef = useRef(false)
+  const attackingRef = useRef(new Set())
   const npcSpawnedRef = useRef(false)
 
   const currentPlayer = players.find(p => p.player_id === userId)
@@ -347,12 +348,17 @@ export function useGameState(gameId) {
   }
 
   async function attackUnit(attackerId, targetId) {
+    if (attackingRef.current.has(attackerId)) throw new Error('Attack in progress')
     const attacker = units.find(u => u.id === attackerId)
     const target = units.find(u => u.id === targetId)
     if (!attacker || !target) throw new Error('Invalid attack')
     if (attacker.owner_id !== userId) throw new Error('Not your unit')
     if (attacker.has_attacked) throw new Error('Unit already attacked')
     if (!target.isNPC && target.owner_id === userId) throw new Error("Can't attack your own unit")
+    attackingRef.current.add(attackerId)
+    setUnits(prev => prev.map(u => u.id === attackerId ? { ...u, has_attacked: true } : u))
+
+    try {
 
     const dist = hexDistance(attacker.grid_row, attacker.grid_col, target.grid_row, target.grid_col)
     if (dist > attacker.wg_unit_types.attack_range) throw new Error('Out of range')
@@ -388,9 +394,7 @@ export function useGameState(gameId) {
         npcUnits = npcUnits.map(n => n.id === targetId ? { ...n, current_hp: newHp } : n)
       }
       await supabase.from('wg_games').update({ settings: { ...settings, npcUnits } }).eq('id', gameId)
-      if (!isAdmin) {
-        await supabase.from('wg_units').update({ has_attacked: true }).eq('id', attackerId)
-      }
+      await supabase.from('wg_units').update({ has_attacked: true }).eq('id', attackerId)
       await fetchAll()
       return
     }
@@ -451,6 +455,10 @@ export function useGameState(gameId) {
     if (atkError) throw atkError
 
     await fetchAll()
+
+    } finally {
+      attackingRef.current.delete(attackerId)
+    }
   }
 
   async function spawnNPCs(count = 5, npcType = 'test1') {

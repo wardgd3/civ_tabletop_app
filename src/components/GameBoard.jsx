@@ -2229,7 +2229,7 @@ export default function GameBoard({
               const hy = hr * ROW_H - 4
               return (
                 <div
-                  className="absolute z-20 pointer-events-none"
+                  className="hidden lg:block absolute z-20 pointer-events-none"
                   style={{
                     left: hx,
                     top: hy,
@@ -2289,9 +2289,77 @@ export default function GameBoard({
         </div>
       </div>
 
+      {tappedTile && (() => {
+        const { row: tr, col: tc } = tappedTile
+        const tKey = `${tr}-${tc}`
+        const board = activeBoard || 'ground'
+        const tVisible = visibleTiles.has(tKey)
+        const tDiscovered = discoveredTiles.has(`${board}-${tr}-${tc}`)
+        const tu = getUnitAt(tr, tc)
+        const tShowUnit = tu && (tu.owner_id === currentPlayer?.player_id || tVisible)
+        const tInfo = (tVisible || tDiscovered) ? getTerrainInfo(tr, tc) : null
+        if (!tInfo && !tShowUnit) return null
+        return (
+          <div
+            className="lg:hidden fixed top-2 right-2 z-30 rounded-lg shadow-lg max-w-[180px]"
+            style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+          >
+            <button
+              onClick={() => setTappedTile(null)}
+              className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs cursor-pointer z-10"
+              style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+            >
+              &times;
+            </button>
+            <div className="px-2 py-1.5">
+              {tShowUnit && (
+                <div className="flex flex-col items-center gap-1 mb-1">
+                  <img
+                    src={getUnitIcon(tu.wg_unit_types, tu)}
+                    alt={tu.wg_unit_types.name}
+                    className="object-contain"
+                    style={{ maxHeight: 56, maxWidth: 56 }}
+                  />
+                  <div className="text-xs font-semibold text-center" style={{ color: '#c9d1d9' }}>
+                    {tu.wg_unit_types.name}
+                    {(tu.upgrades?.level || 0) > 0 && (
+                      <span className="ml-1 font-mono" style={{ color: '#cca43b' }}>Lv{tu.upgrades.level}</span>
+                    )}
+                  </div>
+                  <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>HP {tu.current_hp}/{tu.wg_unit_types.hp}</div>
+                  {tu.upgrades?.loadedUnits?.length > 0 && (
+                    <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>{tu.upgrades.loadedUnits.length} unit{tu.upgrades.loadedUnits.length !== 1 ? 's' : ''} loaded</div>
+                  )}
+                </div>
+              )}
+              {tInfo?.resourceId === 'space_guild' && (
+                <div className="flex flex-col items-center gap-1 mb-1">
+                  <img src="/assets/spaceguild.png" alt="Space Guild" className="object-contain" style={{ maxHeight: 56, maxWidth: 56 }} />
+                  <div className="text-xs font-semibold text-center" style={{ color: '#6cb4e6' }}>Space Guild</div>
+                  <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>Trade Station</div>
+                </div>
+              )}
+              {tInfo && (
+                <div className="text-center">
+                  <div className="text-[10px] font-semibold" style={{ color: '#8b949e' }}>
+                    {tInfo.terrain?.name}{tInfo.hasRiver ? ' (River)' : ''}
+                  </div>
+                  {tInfo.resource && tInfo.resourceId !== 'space_guild' && (
+                    <div className="text-[10px] font-mono" style={{ color: '#cca43b' }}>
+                      {tInfo.resource.name}{tInfo.oreAmount ? ` (${tInfo.oreAmount})` : ''}{tInfo.resource.yield != null ? ` (+${tInfo.resource.yield}g/turn)` : ' (+1g/turn)'}
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="text-[9px] font-mono text-center" style={{ color: '#4a5568' }}>X{tr}/Y{tc}</div>
+            </div>
+          </div>
+        )
+      })()}
+
       {inspectedUnit && (
         <div
-          className={`${panelOpen ? 'hidden lg:flex' : 'flex'} fixed bottom-16 left-1/2 -translate-x-1/2 lg:absolute lg:bottom-4 z-30 items-center gap-3 px-4 py-3 rounded-lg shadow-lg max-w-sm`}
+          className="hidden lg:flex fixed bottom-16 left-1/2 -translate-x-1/2 lg:absolute lg:bottom-4 z-30 items-center gap-3 px-4 py-3 rounded-lg shadow-lg max-w-sm"
           style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
         >
           <img
