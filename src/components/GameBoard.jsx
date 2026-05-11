@@ -64,9 +64,12 @@ const RESOURCE_BY_ID = Object.fromEntries([
   ...Object.values(SPACE_RESOURCES).map(r => [r.id, r]),
   ...Object.values(LUXURY_RESOURCES).map(r => [r.id, r]),
 ])
-function getUnitIcon(unitType) {
+function getUnitIcon(unitType, unit) {
   if (!unitType?.icon) return '/assets/infantry.png'
-  if (unitType.name === 'Command Ship') return '/assets/commandship2.png'
+  if (unitType.name === 'Command Ship') {
+    const model = unit?.upgrades?.shipModel || 'commandship2'
+    return `/assets/${model}.png`
+  }
   return `/assets/${encodeURIComponent(unitType.icon)}`
 }
 
@@ -114,6 +117,7 @@ export default function GameBoard({
   const [bayDeployInfo, setBayDeployInfo] = useState(null)
   const [transportDeployInfo, setTransportDeployInfo] = useState(null)
   const [unitDeployFromTransportInfo, setUnitDeployFromTransportInfo] = useState(null)
+  const [shipModelPicker, setShipModelPicker] = useState(null)
   const [clickedTile, setClickedTile] = useState(null)
   const boardRef = useRef(null)
   const boardInnerRef = useRef(null)
@@ -1136,6 +1140,11 @@ export default function GameBoard({
           setError(hasCommandCenter ? 'Too far from Command Center or Base' : 'Deploy a Command Center first')
           return
         }
+        const deployingType = unitTypes.find(t => t.id === selectedUnitType) || allUnitTypes?.find(t => t.id === selectedUnitType)
+        if (deployingType?.name === 'Command Ship') {
+          setShipModelPicker({ unitTypeId: selectedUnitType, row, col })
+          return
+        }
         await deployUnit(selectedUnitType, row, col)
         setMode('select')
         setSelectedUnitType(null)
@@ -1292,7 +1301,7 @@ export default function GameBoard({
             <div className="text-xs p-3 rounded mb-2" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140', color: '#8b949e' }}>
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 font-semibold" style={{ color: '#c9d1d9' }}>
-                  <img src={getUnitIcon(selectedUnit.wg_unit_types)} alt={selectedUnit.wg_unit_types?.name} className="w-20 h-20 object-contain" />
+                  <img src={getUnitIcon(selectedUnit.wg_unit_types, selectedUnit)} alt={selectedUnit.wg_unit_types?.name} className="w-20 h-20 object-contain" />
                   {selectedUnit.wg_unit_types?.name}
                   {(selectedUnit.upgrades?.level || 0) > 0 && (
                     <span className="text-xs font-mono" style={{ color: '#cca43b' }}>Lv{selectedUnit.upgrades.level}</span>
@@ -1813,7 +1822,7 @@ export default function GameBoard({
                           style={{ border: `2px solid ${pColor}`, boxShadow: `0 0 6px ${pColor}40` }}
                         >
                           <img
-                            src={getUnitIcon(unit.wg_unit_types)}
+                            src={getUnitIcon(unit.wg_unit_types, unit)}
                             alt={unit.wg_unit_types?.name}
                             className="w-full h-full object-cover pointer-events-none"
                           />
@@ -1896,7 +1905,7 @@ export default function GameBoard({
                 >
                   <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `2px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
                     <img
-                      src={cc.wg_unit_types?.name === 'Command Ship' ? '/assets/commandship2.png' : getUnitIcon(cc.wg_unit_types)}
+                      src={getUnitIcon(cc.wg_unit_types, cc)}
                       alt={cc.wg_unit_types?.name}
                       className="w-full h-full object-cover"
                     />
@@ -1946,7 +1955,7 @@ export default function GameBoard({
                     {hShowUnit && (
                       <div className="flex flex-col items-center gap-1 mb-1">
                         <img
-                          src={getUnitIcon(hu.wg_unit_types)}
+                          src={getUnitIcon(hu.wg_unit_types, hu)}
                           alt={hu.wg_unit_types.name}
                           className="object-contain"
                           style={{ maxHeight: 80, maxWidth: 80 }}
@@ -1997,7 +2006,7 @@ export default function GameBoard({
           style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
         >
           <img
-            src={getUnitIcon(inspectedUnit.wg_unit_types)}
+            src={getUnitIcon(inspectedUnit.wg_unit_types, inspectedUnit)}
             alt={inspectedUnit.wg_unit_types?.name}
             className="w-12 h-12 object-contain shrink-0"
             style={{ filter: `drop-shadow(0 0 3px ${getPlayerColor(inspectedUnit.owner_id)})` }}
@@ -2122,6 +2131,48 @@ export default function GameBoard({
               {sidebarContent}
             </div>
           )}
+        </div>
+      )}
+      {shipModelPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+          <div className="rounded-lg p-4 max-w-sm w-full mx-4" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+            <div className="text-sm font-semibold mb-3 text-center" style={{ color: '#c9d1d9' }}>Select Your Command Ship</div>
+            <div className="grid grid-cols-5 gap-2 mb-3">
+              {[2, 3, 4, 5, 6].map(n => {
+                const model = `commandship${n}`
+                return (
+                  <button
+                    key={n}
+                    onClick={async () => {
+                      const { unitTypeId, row, col } = shipModelPicker
+                      setShipModelPicker(null)
+                      try {
+                        await deployUnit(unitTypeId, row, col, { shipModel: model })
+                        setMode('select')
+                        setSelectedUnitType(null)
+                      } catch (err) {
+                        setError(err.message)
+                      }
+                    }}
+                    className="flex flex-col items-center gap-1 p-2 rounded cursor-pointer transition-all"
+                    style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#c060e0'; e.currentTarget.style.backgroundColor = '#1a1a2e' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a3140'; e.currentTarget.style.backgroundColor = '#0d1117' }}
+                  >
+                    <img src={`/assets/${model}.png`} alt={`Model ${n}`} className="w-12 h-12 object-contain" />
+                    <span className="text-[9px] font-mono" style={{ color: '#8b949e' }}>Mk.{n - 1}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <button
+              onClick={() => setShipModelPicker(null)}
+              className="w-full py-1.5 rounded text-xs font-semibold cursor-pointer"
+              style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>

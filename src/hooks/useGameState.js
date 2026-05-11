@@ -155,7 +155,7 @@ export function useGameState(gameId) {
     }
   }, [gameId, userId])
 
-  async function deployUnit(unitTypeId, row, col) {
+  async function deployUnit(unitTypeId, row, col, opts) {
     const unitType = unitTypes.find(t => t.id === unitTypeId)
     if (!unitType || !currentPlayer) throw new Error('Invalid deployment')
     if (!isAdmin && teamGold < unitType.cost) throw new Error('Not enough production')
@@ -211,7 +211,7 @@ export function useGameState(gameId) {
       }
     }
 
-    const { error: unitError } = await supabase.from('wg_units').insert({
+    const insertData = {
       game_id: gameId,
       owner_id: userId,
       unit_type_id: unitTypeId,
@@ -219,7 +219,11 @@ export function useGameState(gameId) {
       grid_col: col,
       current_hp: unitType.hp,
       board: unitBoard,
-    })
+    }
+    if (opts?.shipModel) {
+      insertData.upgrades = { shipModel: opts.shipModel }
+    }
+    const { error: unitError } = await supabase.from('wg_units').insert(insertData)
     if (unitError) throw unitError
 
     if (!isAdmin) {
