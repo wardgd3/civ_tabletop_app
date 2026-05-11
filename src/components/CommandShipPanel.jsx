@@ -296,12 +296,12 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
   return (
     <div className="p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
       <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-        Convoy {convoyIndex + 1} — Units
+        Convoy {convoyIndex + 1} — Inventory
       </div>
 
-      {(convoy.units || []).length > 0 && (
-        <div className="mb-2">
-          <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Loaded:</div>
+      <div className="mb-2">
+        <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Units ({(convoy.units || []).length}/{CONVOY_CAPACITY}):</div>
+        {(convoy.units || []).length > 0 ? (
           <div className="flex flex-col gap-0.5">
             {convoy.units.map((u, idx) => (
               <div key={idx} className="flex items-center justify-between p-1 rounded"
@@ -317,8 +317,14 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="flex gap-1">
+            {Array.from({ length: CONVOY_CAPACITY }, (_, i) => (
+              <div key={i} className="flex-1 rounded" style={{ height: 24, backgroundColor: '#161b22', border: '1px solid #2a3140' }} />
+            ))}
+          </div>
+        )}
+      </div>
 
       {(convoy.units || []).length < CONVOY_CAPACITY && (() => {
         const bayUnits = upgrades.holdingBay || []
@@ -363,27 +369,32 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
 
       {(() => {
         const munitions = convoy.munitions || { tactical: 0, cruise: 0, ipbm: 0 }
-        const hasMunitions = Object.values(munitions).some(v => v > 0)
-        if (!hasMunitions) return null
         const MISSILE_TYPES = [
           { key: 'tactical', name: 'Tactical', color: '#8b949e' },
           { key: 'cruise', name: 'Cruise', color: '#3fb950' },
           { key: 'ipbm', name: 'IPBM', color: '#d29922' },
         ]
+        const totalMun = MISSILE_TYPES.reduce((s, m) => s + (munitions[m.key] || 0), 0)
         return (
           <div className="mb-2">
             <div className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
-              Munitions
+              Munitions ({totalMun})
             </div>
-            <div className="flex flex-col gap-1">
-              {MISSILE_TYPES.filter(m => (munitions[m.key] || 0) > 0).map(m => (
-                <div key={m.key} className="flex items-center justify-between p-1 rounded"
-                  style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
-                  <span className="text-[9px] font-semibold" style={{ color: m.color }}>{m.name}</span>
-                  <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>{munitions[m.key]}</span>
-                </div>
-              ))}
-            </div>
+            {totalMun > 0 ? (
+              <div className="flex flex-col gap-1">
+                {MISSILE_TYPES.filter(m => (munitions[m.key] || 0) > 0).map(m => (
+                  <div key={m.key} className="flex items-center justify-between p-1 rounded"
+                    style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                    <span className="text-[9px] font-semibold" style={{ color: m.color }}>{m.name}</span>
+                    <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>{munitions[m.key]}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-1 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                <span className="text-[9px]" style={{ color: '#4a5568' }}>None</span>
+              </div>
+            )}
           </div>
         )
       })()}
@@ -392,9 +403,8 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
         Cargo
       </div>
 
-      {((cargo.gold || 0) > 0 || Object.keys(cargo.resources || {}).length > 0) && (
+      {((cargo.gold || 0) > 0 || Object.values(cargo.resources || {}).some(v => v > 0)) ? (
         <div className="mb-2">
-          <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Loaded cargo:</div>
           <div className="flex flex-col gap-0.5">
             {(cargo.gold || 0) > 0 && (
               <div className="flex items-center justify-between p-1 rounded"
@@ -416,6 +426,10 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
           >
             Unload All Cargo
           </button>
+        </div>
+      ) : (
+        <div className="p-1 rounded mb-2" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+          <span className="text-[9px]" style={{ color: '#4a5568' }}>None</span>
         </div>
       )}
 
@@ -717,6 +731,20 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
       <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
         Barracks ({holdingBay.length}/{HOLDING_BAY_CAPACITY})
       </div>
+
+      <button
+        onClick={() => { setShowProduceMenu(!showProduceMenu); setSelectedSlot(null) }}
+        disabled={isFull}
+        className="w-full py-1.5 mb-2 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
+        style={{
+          backgroundColor: showProduceMenu ? comp.color + '20' : '#21262d',
+          color: showProduceMenu ? comp.color : '#8b949e',
+          border: `1px solid ${showProduceMenu ? comp.color : '#30363d'}`,
+        }}
+      >
+        {isFull ? 'Bay Full' : showProduceMenu ? 'Close Menu' : 'Produce Unit'}
+      </button>
+
       <div className="flex flex-col gap-1 mb-2">
         {[row1, row2].map((row, rowIdx) => (
           <div key={rowIdx} className="grid grid-cols-6 gap-1">
@@ -779,19 +807,6 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
         </div>
       )}
 
-      <button
-        onClick={() => { setShowProduceMenu(!showProduceMenu); setSelectedSlot(null) }}
-        disabled={isFull}
-        className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
-        style={{
-          backgroundColor: showProduceMenu ? comp.color + '20' : '#21262d',
-          color: showProduceMenu ? comp.color : '#8b949e',
-          border: `1px solid ${showProduceMenu ? comp.color : '#30363d'}`,
-        }}
-      >
-        {isFull ? 'Bay Full' : showProduceMenu ? 'Close Menu' : 'Produce Unit'}
-      </button>
-
       {showProduceMenu && !isFull && (
         <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
           <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
@@ -846,10 +861,13 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
 const VEHICLE_NAMES = new Set(['Armor Transport', 'Armored Cavalry', 'Modern Armor', 'Rocket Artillery', 'Heavy Unit', 'Missile Defense', 'Excavator'])
 const TRANSPORT_CAPACITY = 4
 
-function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, groundUnits, comp }) {
+function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onProduceUnit, onBuyAndLoadSoldier, groundUnits, comp, unitTypes, teamGold }) {
   const [selectedTransport, setSelectedTransport] = useState(null)
+  const [showBuyMenu, setShowBuyMenu] = useState(false)
   const loadingBay = upgrades.loadingBay || []
   const maxSlots = comp.slots
+
+  const armorTransport = (unitTypes || []).find(ut => ut.name === 'Armor Transport')
 
   const soldierUnits = (groundUnits || []).filter(u =>
     !STRUCTURE_NAMES.has(u.wg_unit_types?.name) && !VEHICLE_NAMES.has(u.wg_unit_types?.name)
@@ -871,11 +889,28 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
           const transport = loadingBay[i]
           const isSelected = selectedTransport === i
           if (!transport) {
+            const canAfford = armorTransport && teamGold >= armorTransport.cost
             return (
-              <div key={i} className="p-2 rounded text-center"
-                style={{ backgroundColor: '#161b22', border: '1px solid #30363d' }}>
-                <div className="text-[10px]" style={{ color: '#4a5568' }}>Empty Slot</div>
-              </div>
+              <button
+                key={i}
+                onClick={() => canAfford && armorTransport && onProduceUnit(unit.id, armorTransport.id, armorTransport.name)}
+                className="p-2 rounded text-center transition-all"
+                style={{
+                  backgroundColor: canAfford ? comp.color + '10' : '#161b22',
+                  border: `1px solid ${canAfford ? comp.color + '40' : '#30363d'}`,
+                  cursor: canAfford ? 'pointer' : 'default',
+                  opacity: canAfford ? 1 : 0.5,
+                }}
+              >
+                <div className="text-[10px] font-semibold" style={{ color: canAfford ? comp.color : '#4a5568' }}>
+                  + Armor Transport
+                </div>
+                {armorTransport && (
+                  <div className="text-[9px] font-mono" style={{ color: canAfford ? '#cca43b' : '#4a5568' }}>
+                    {armorTransport.cost}g
+                  </div>
+                )}
+              </button>
             )
           }
           return (
@@ -982,6 +1017,66 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
             )
           })()}
 
+          {(loadingBay[selectedTransport].units || []).length < TRANSPORT_CAPACITY && (() => {
+            const soldierTypes = (unitTypes || []).filter(ut =>
+              (ut.board || 'ground') === 'ground' && !STRUCTURE_NAMES.has(ut.name) && !VEHICLE_NAMES.has(ut.name)
+            )
+            if (soldierTypes.length === 0) return null
+            return (
+              <>
+                <button
+                  onClick={() => setShowBuyMenu(!showBuyMenu)}
+                  className="w-full py-1.5 mb-1 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                  style={{
+                    backgroundColor: showBuyMenu ? '#cca43b20' : '#21262d',
+                    color: showBuyMenu ? '#cca43b' : '#8b949e',
+                    border: `1px solid ${showBuyMenu ? '#cca43b40' : '#30363d'}`,
+                  }}
+                >
+                  {showBuyMenu ? 'Close Shop' : 'Purchase Units'}
+                </button>
+                {showBuyMenu && (
+                  <div className="mb-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #cca43b30' }}>
+                    <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+                      Buy & Load — <span className="font-mono" style={{ color: '#8b949e' }}>⚒{teamGold}</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
+                      {soldierTypes.map(ut => {
+                        const canAfford = teamGold >= ut.cost
+                        return (
+                          <button
+                            key={ut.id}
+                            onClick={() => canAfford && onBuyAndLoadSoldier(unit.id, selectedTransport, ut.id, ut.name)}
+                            disabled={!canAfford}
+                            className="flex items-center justify-between p-1.5 rounded text-left transition-all"
+                            style={{
+                              backgroundColor: '#161b22',
+                              border: '1px solid #2a3140',
+                              opacity: canAfford ? 1 : 0.4,
+                              cursor: canAfford ? 'pointer' : 'default',
+                            }}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <div>
+                                <div className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{ut.name}</div>
+                                <div className="text-[8px]" style={{ color: '#6e7681' }}>
+                                  ATK {ut.attack} DEF {ut.defense} HP {ut.hp}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-mono" style={{ color: canAfford ? '#cca43b' : '#e05050' }}>
+                              {ut.cost}g
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            )
+          })()}
+
           <button
             onClick={() => { onUndock(unit.id, selectedTransport); setSelectedTransport(null) }}
             className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
@@ -1003,7 +1098,7 @@ export default function CommandShipPanel({
   unit, onClose, onUpgrade, onMove, isAdmin,
   onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay, onProduceUnit,
   onLoadCargo, onUnloadCargo,
-  onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock,
+  onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
   onBuyMissile,
   groundUnits, unitTypes, teamGold, playerResources,
 }) {
@@ -1170,8 +1265,12 @@ export default function CommandShipPanel({
               onLoadBaySoldier={onLoadBaySoldier}
               onUnloadSoldier={onUnloadSoldier}
               onUndock={onUndock}
+              onProduceUnit={onProduceUnit}
+              onBuyAndLoadSoldier={onBuyAndLoadSoldier}
               groundUnits={groundUnits || []}
               comp={comp}
+              unitTypes={unitTypes}
+              teamGold={teamGold}
             />
           ) : (
             <>

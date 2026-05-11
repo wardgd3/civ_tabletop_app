@@ -31,6 +31,7 @@ function hexDistance(r1, c1, r2, c2) {
   return Math.max(Math.abs(q1 - q2), Math.abs(r1 - r2), Math.abs(s1 - s2))
 }
 
+
 export function useGameState(gameId) {
   const { session } = useAuth()
   const userId = session?.user?.id
@@ -99,6 +100,8 @@ export function useGameState(gameId) {
 
     if (gameRes.data) setGame(gameRes.data)
     if (playersRes.data) setPlayers(playersRes.data)
+    if (typesRes.data) setUnitTypes(typesRes.data)
+
     const dbUnits = unitsRes.data || []
     const npcUnits = (gameRes.data?.settings?.npcUnits || []).map(npc => ({
       ...npc,
@@ -106,7 +109,6 @@ export function useGameState(gameId) {
       isNPC: true,
     }))
     setUnits([...dbUnits, ...npcUnits])
-    if (typesRes.data) setUnitTypes(typesRes.data)
 
     const allTiles = []
     let tileOffset = 0
@@ -336,9 +338,15 @@ export function useGameState(gameId) {
       } else {
         npcUnits = npcUnits.map(n => n.id === targetId ? { ...n, current_hp: newHp } : n)
       }
-      const { error } = await supabase.from('wg_games').update({ settings: { ...settings, npcUnits } }).eq('id', gameId)
-      if (error) throw error
-    } else if (newHp <= 0) {
+      await supabase.from('wg_games').update({ settings: { ...settings, npcUnits } }).eq('id', gameId)
+      if (!isAdmin) {
+        await supabase.from('wg_units').update({ has_attacked: true }).eq('id', attackerId)
+      }
+      await fetchAll()
+      return
+    }
+
+    if (newHp <= 0) {
       const { error } = await supabase.from('wg_units').update({ current_hp: 0, is_alive: false }).eq('id', targetId)
       if (error) throw error
 
@@ -393,6 +401,59 @@ export function useGameState(gameId) {
     const { error: atkError } = await supabase.from('wg_units').update({ has_attacked: true }).eq('id', attackerId)
     if (atkError) throw atkError
 
+    await fetchAll()
+  }
+
+  async function spawnNPCs(count = 5, npcType = 'test1') {
+    if (!game) return
+    const { data: freshGame } = await supabase.from('wg_games').select('*').eq('id', gameId).single()
+    if (!freshGame) return
+    const settings = freshGame.settings || {}
+    const existing = settings.npcUnits || []
+
+    const npcDef = NPC_UNIT_TYPES[npcType]
+    if (!npcDef) return
+
+    const occupiedSet = new Set()
+    for (const u of units) occupiedSet.add(`${u.grid_row}-${u.grid_col}`)
+    for (const n of existing) occupiedSet.add(`${n.grid_row}-${n.grid_col}`)
+
+    const impassable = new Set(['ocean', 'mountain', 'lake', 'river'])
+    const tilesByKey = new Map(tiles.map(t => [`${t.grid_row}-${t.grid_col}`, t]))
+
+    const candidates = []
+    for (let r = 0; r < freshGame.grid_rows; r++) {
+      for (let c = 0; c < freshGame.grid_cols; c++) {
+        const key = `${r}-${c}`
+        if (occupiedSet.has(key)) continue
+        const tile = tilesByKey.get(key)
+        if (tile && impassable.has(tile.terrain)) continue
+        candidates.push({ row: r, col: c })
+      }
+    }
+
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]]
+    }
+
+    const newNPCs = []
+    for (let i = 0; i < Math.min(count, candidates.length); i++) {
+      const spot = candidates[i]
+      newNPCs.push({
+        id: `npc-${crypto.randomUUID()}`,
+        npcType,
+        grid_row: spot.row,
+        grid_col: spot.col,
+        current_hp: npcDef.hp,
+        board: 'ground',
+        is_alive: true,
+      })
+    }
+
+    await supabase.from('wg_games').update({
+      settings: { ...settings, npcUnits: [...existing, ...newNPCs] }
+    }).eq('id', gameId)
     await fetchAll()
   }
 
@@ -1110,6 +1171,42 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function buyAndLoadToTransport(structId, transportIndex, unitTypeId, unitTypeName) {
+    const struct = units.find(u => u.id === structId)
+    if (!struct) throw new Error('Structure not found')
+
+    const ut = unitTypes.find(t => t.id === unitTypeId)
+    if (!ut) throw new Error('Unit type not found')
+
+    const upgrades = struct.upgrades || {}
+    const loadingBay = [...(upgrades.loadingBay || [])]
+    const transport = loadingBay[transportIndex]
+    if (!transport) throw new Error('Transport not found')
+    if ((transport.units || []).length >= 4) throw new Error('Transport full (max 4)')
+
+    if (!isAdmin && teamGold < ut.cost) throw new Error('Not enough gold')
+
+    if (!isAdmin) {
+      const perPlayer = Math.ceil(ut.cost / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase
+          .from('wg_game_players')
+          .update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) })
+          .eq('id', tp.id)
+      }
+    }
+
+    transport.units = [...(transport.units || []), {
+      typeId: unitTypeId,
+      typeName: unitTypeName,
+      hp: ut.hp,
+    }]
+    loadingBay[transportIndex] = transport
+
+    await supabase.from('wg_units').update({ upgrades: { ...upgrades, loadingBay } }).eq('id', structId)
+    await fetchAll()
+  }
+
   async function loadFromBayToConvoy(shipId, convoyIndex, bayIndex) {
     const ship = units.find(u => u.id === shipId)
     if (!ship) throw new Error('Ship not found')
@@ -1282,6 +1379,7 @@ export function useGameState(gameId) {
       has_attacked: true,
       moves_used: 99,
       is_alive: true,
+      upgrades: { deployedFromTransport: true },
     })
     if (error) throw error
 
@@ -1289,198 +1387,59 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function setAutoPath(unitId, path) {
+    const unit = units.find(u => u.id === unitId)
+    if (!unit || unit.owner_id !== userId) throw new Error('Not your unit')
+    const upgrades = unit.upgrades || {}
+    await supabase.from('wg_units').update({ upgrades: { ...upgrades, autoPath: path } }).eq('id', unitId)
+    await fetchAll()
+  }
+
+  async function clearAutoPath(unitId) {
+    const unit = units.find(u => u.id === unitId)
+    if (!unit) return
+    const upgrades = { ...(unit.upgrades || {}) }
+    delete upgrades.autoPath
+    await supabase.from('wg_units').update({ upgrades }).eq('id', unitId)
+    await fetchAll()
+  }
+
+  async function boardSoldierToTransport(soldierUnitId, transportUnitId) {
+    const soldier = units.find(u => u.id === soldierUnitId)
+    if (!soldier) throw new Error('Unit not found')
+    if (soldier.owner_id !== userId) throw new Error('Not your unit')
+    if (soldier.upgrades?.deployedFromTransport) throw new Error('Cannot re-enter transport on the same turn')
+
+    const transport = units.find(u => u.id === transportUnitId)
+    if (!transport) throw new Error('Transport not found')
+    if (transport.wg_unit_types?.name !== 'Armor Transport') throw new Error('Not a transport')
+    if (transport.owner_id !== userId) throw new Error('Not your transport')
+
+    const dist = hexDistance(soldier.grid_row, soldier.grid_col, transport.grid_row, transport.grid_col)
+    if (dist > 1) throw new Error('Must be adjacent to transport')
+
+    const loaded = transport.upgrades?.loadedUnits || []
+    if (loaded.length >= 4) throw new Error('Transport full (max 4)')
+
+    const updatedLoaded = [...loaded, {
+      typeId: soldier.unit_type_id,
+      typeName: soldier.wg_unit_types?.name || 'Unknown',
+      hp: soldier.current_hp,
+    }]
+
+    await supabase.from('wg_units').update({ is_alive: false }).eq('id', soldierUnitId)
+    await supabase.from('wg_units').update({ upgrades: { ...transport.upgrades, loadedUnits: updatedLoaded } }).eq('id', transportUnitId)
+    await fetchAll()
+  }
+
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
-    const teamPlayers = players.filter(p => p.color === myColor)
-
-    const { error: endError } = await supabase
-      .from('wg_game_players')
-      .update({ has_ended_turn: true })
-      .eq('id', currentPlayer.id)
-    if (endError) throw endError
-
-    const { data: freshTeam } = await supabase
-      .from('wg_game_players')
-      .select('has_ended_turn')
-      .eq('game_id', gameId)
-      .eq('color', myColor)
-
-    const allEnded = freshTeam?.every(p => p.has_ended_turn)
-
-    if (!allEnded) {
-      await fetchAll()
-      return
-    }
-
-    const teamColors = [...new Set(players.map(p => p.color))]
-    const currentColorIdx = teamColors.indexOf(myColor)
-    const nextColorIdx = (currentColorIdx + 1) % teamColors.length
-    const nextColor = teamColors[nextColorIdx]
-    const isNewRound = nextColorIdx <= currentColorIdx
-    const newTurnNumber = isNewRound ? game.turn_number + 1 : game.turn_number
-
-    const nextTeamPlayers = players.filter(p => p.color === nextColor)
-    const nextTeamPlayerIds = nextTeamPlayers.map(p => p.player_id)
-
-    const nextTeamUnits = units.filter(u => nextTeamPlayerIds.includes(u.owner_id))
-    if (nextTeamUnits.length > 0) {
-      const { error } = await supabase
-        .from('wg_units')
-        .update({ has_moved: false, has_attacked: false, moves_used: 0 })
-        .in('id', nextTeamUnits.map(u => u.id))
-      if (error) throw error
-    }
-
-    // Advance convoy transit timers for the next team's command structures
-    const commandStructures = nextTeamUnits.filter(u =>
-      u.wg_unit_types?.name === 'Command Ship' || u.wg_unit_types?.name === 'Command Center'
-    )
-    let cargoGoldToAdd = 0
-    for (const struct of commandStructures) {
-      const { data: freshStruct } = await supabase.from('wg_units').select('upgrades').eq('id', struct.id).single()
-      const structUpgrades = freshStruct?.upgrades || {}
-      const convoys = structUpgrades.convoys
-      if (!convoys || !Array.isArray(convoys)) continue
-
-      let changed = false
-      const holdingBay = [...(structUpgrades.holdingBay || [])]
-      const updatedConvoys = []
-      for (const convoy of convoys) {
-        if (!convoy.inTransit) {
-          updatedConvoys.push(convoy)
-          continue
-        }
-        const newTurns = convoy.turnsLeft - 1
-        if (newTurns <= 0) {
-          changed = true
-          const isGroundStruct = (struct.board || 'ground') === 'ground'
-          const loadingBay = [...(structUpgrades.loadingBay || [])]
-          const maxLoadingSlots = struct.wg_unit_types?.name === 'Base' ? 1 : 2
-          for (const u of (convoy.units || [])) {
-            if (isGroundStruct && u.typeName === 'Armor Transport' && loadingBay.length < maxLoadingSlots) {
-              loadingBay.push({ ...u, units: u.units || [] })
-            } else if (holdingBay.length < 12) {
-              holdingBay.push(u)
-            }
-          }
-          structUpgrades.loadingBay = loadingBay
-          const cargo = convoy.cargo || {}
-          if (cargo.gold) cargoGoldToAdd += cargo.gold
-          if (cargo.resources && Object.keys(cargo.resources).length > 0) {
-            const structOwner = nextTeamPlayers.find(p => p.player_id === struct.owner_id)
-            if (structOwner) {
-              const res = { ...(structOwner.resources || {}) }
-              for (const [key, amount] of Object.entries(cargo.resources)) {
-                res[key] = (res[key] || 0) + amount
-              }
-              await supabase.from('wg_game_players').update({ resources: res }).eq('id', structOwner.id)
-            }
-          }
-          updatedConvoys.push({ units: [], cargo: { gold: 0, resources: {} }, inTransit: false, turnsLeft: 0 })
-        } else {
-          changed = true
-          updatedConvoys.push({ ...convoy, turnsLeft: newTurns })
-        }
-      }
-
-      const rawGuildConvoys = structUpgrades.guildConvoys || (structUpgrades.guildConvoy ? [structUpgrades.guildConvoy] : [])
-      if (rawGuildConvoys.length > 0) {
-        const updatedGuild = rawGuildConvoys.map(gc => {
-          if (!gc.inTransit) return gc
-          const newTurns = gc.turnsLeft - 1
-          changed = true
-          if (newTurns <= 0) return { ...gc, inTransit: false, turnsLeft: 0 }
-          return { ...gc, turnsLeft: newTurns }
-        })
-        structUpgrades.guildConvoys = updatedGuild
-        delete structUpgrades.guildConvoy
-      }
-
-      if (changed) {
-        await supabase.from('wg_units').update({
-          upgrades: { ...structUpgrades, convoys: updatedConvoys, holdingBay, loadingBay: structUpgrades.loadingBay }
-        }).eq('id', struct.id)
-      }
-    }
-
-    const freshNextTeam = []
-    for (const np of nextTeamPlayers) {
-      const { data: freshPlayer } = await supabase
-        .from('wg_game_players')
-        .select('gold, resources')
-        .eq('id', np.id)
-        .single()
-      freshNextTeam.push({ ...np, gold: freshPlayer.gold, resources: freshPlayer.resources })
-    }
-
-    const ccCount = nextTeamUnits.filter(u =>
-      u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'
-    ).length
-    const baseCount = nextTeamUnits.filter(u => u.wg_unit_types?.name === 'Base').length
-    const factoryCount = nextTeamUnits.filter(u => u.wg_unit_types?.name === 'Factory').length
-    let totalCoal = 0
-    let totalExcavations = 0
-    let luxuryIncome = 0
-    for (const np of freshNextTeam) {
-      const res = np.resources || {}
-      totalCoal += res.coal || 0
-      totalExcavations += res.excavations || 0
-      for (const [resId] of Object.entries(res)) {
-        const lux = LUXURY_BY_ID[resId]
-        if (lux) luxuryIncome += lux.yield
-      }
-    }
-    const activeFactories = Math.min(factoryCount, totalCoal)
-    const production = (ccCount * 4) + (baseCount * 2) + activeFactories
-    const unitUpkeep = nextTeamUnits.length
-    const excavationIncome = totalExcavations + luxuryIncome
-
-    const currentTeamGold = freshNextTeam.reduce((s, p) => s + (p.gold || 0), 0)
-    const newTeamGold = Math.max(0, currentTeamGold + production + excavationIncome - unitUpkeep) + cargoGoldToAdd
-
-    let coalToDeduct = activeFactories
-    for (const np of freshNextTeam) {
-      const npResources = { ...(np.resources || {}) }
-      const playerCoal = npResources.coal || 0
-      if (coalToDeduct > 0 && playerCoal > 0) {
-        const deduct = Math.min(playerCoal, coalToDeduct)
-        npResources.coal = playerCoal - deduct
-        coalToDeduct -= deduct
-      }
-      await supabase
-        .from('wg_game_players')
-        .update({
-          gold: Math.round(newTeamGold / nextTeamPlayers.length),
-          has_ended_turn: false,
-          resources: npResources,
-        })
-        .eq('id', np.id)
-    }
-
-    for (const tp of teamPlayers) {
-      await supabase
-        .from('wg_game_players')
-        .update({ has_ended_turn: false })
-        .eq('id', tp.id)
-    }
-
-    const { error: turnError } = await supabase.from('wg_turns').insert({
-      game_id: gameId,
-      player_id: userId,
-      turn_number: game.turn_number,
+    const { data, error } = await supabase.functions.invoke('end-turn', {
+      body: { gameId },
     })
-    if (turnError) throw turnError
-
-    const { error: gameError } = await supabase
-      .from('wg_games')
-      .update({
-        current_player_id: nextTeamPlayers[0]?.player_id,
-        current_team_color: nextColor,
-        turn_number: newTurnNumber,
-      })
-      .eq('id', gameId)
-    if (gameError) throw gameError
+    if (error) throw new Error(error.message || 'End turn failed')
+    if (data?.error) throw new Error(data.error)
 
     await fetchAll()
   }
@@ -1526,8 +1485,9 @@ export function useGameState(gameId) {
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
     excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
-    dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport,
-    persistDiscoveredTiles, productionPerTurn, economy,
-    spawnNPCs, refresh: fetchAll,
+    dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
+    setAutoPath, clearAutoPath,
+    persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
+    refresh: fetchAll,
   }
 }

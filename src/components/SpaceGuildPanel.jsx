@@ -10,6 +10,7 @@ export default function SpaceGuildPanel({
   playerResources, teamGold, availableUnitTypes, commandShipUpgrades,
 }) {
   const [sellResult, setSellResult] = useState(null)
+  const [expandedGuildConvoy, setExpandedGuildConvoy] = useState(null)
 
   if (!commandShip) {
     return (
@@ -85,14 +86,30 @@ export default function SpaceGuildPanel({
           )
         }
 
+        const unitCount = (gc.units || []).length
+        const resCount = Object.values(gc.cargo?.resources || {}).filter(v => v > 0).length
+        const munCount = Object.values(gc.munitions || {}).filter(v => v > 0).length
+        const goldAmount = gc.cargo?.gold || 0
+        const totalItems = unitCount + resCount + munCount + (goldAmount > 0 ? 1 : 0)
+        const isExpanded = expandedGuildConvoy === gcIdx
+
         return (
           <div key={gcIdx} className="p-2 rounded mb-2" style={{ backgroundColor: '#0d1117', border: '1px solid #6cb4e640' }}>
-            <div className="text-[10px] font-semibold mb-1.5" style={{ color: '#3fb950' }}>Convoy {gcIdx + 1} — Docked</div>
+            <div
+              onClick={() => setExpandedGuildConvoy(isExpanded ? null : gcIdx)}
+              className="flex items-center justify-between cursor-pointer"
+              style={{ marginBottom: isExpanded ? 6 : 0 }}
+            >
+              <span className="text-[10px] font-semibold" style={{ color: '#3fb950' }}>Convoy {gcIdx + 1} — Docked</span>
+              <span className="text-[9px]" style={{ color: '#6e7681' }}>
+                {totalItems > 0 ? `${totalItems} item${totalItems !== 1 ? 's' : ''}` : 'Empty'} {isExpanded ? '▴' : '▾'}
+              </span>
+            </div>
 
-            {(gc.units || []).length > 0 && (
+            {isExpanded && (
               <div className="mb-2">
-                <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Units:</div>
-                {gc.units.map((u, idx) => (
+                <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Units ({(gc.units || []).length}/4):</div>
+                {(gc.units || []).length > 0 ? gc.units.map((u, idx) => (
                   <div key={idx} className="flex items-center justify-between p-1 rounded mb-0.5"
                     style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
                     <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{u.typeName}</span>
@@ -108,63 +125,80 @@ export default function SpaceGuildPanel({
                       Sell ({u.cost || 10}g)
                     </button>
                   </div>
-                ))}
-              </div>
-            )}
-
-            {Object.entries(gc.cargo?.resources || {}).filter(([, v]) => v > 0).length > 0 && (
-              <div className="mb-2">
-                <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Resources:</div>
-                {Object.entries(gc.cargo.resources).filter(([, v]) => v > 0).map(([key, amount]) => (
-                  <div key={key} className="flex items-center justify-between p-1 rounded mb-0.5"
-                    style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
-                    <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{key}: {amount}</span>
-                    <button
-                      onClick={async () => {
-                        const earned = await onSellAtGuild(commandShip.id, gcIdx, null, { [key]: amount })
-                        if (earned) setSellResult(`+${earned}g`)
-                        setTimeout(() => setSellResult(null), 2000)
-                      }}
-                      className="text-[8px] px-1.5 py-0.5 rounded cursor-pointer"
-                      style={{ backgroundColor: '#cca43b20', color: '#cca43b', border: '1px solid #cca43b40' }}
-                    >
-                      Sell ({amount * (RESOURCE_VALUES[key] || 5)}g)
-                    </button>
+                )) : (
+                  <div className="flex gap-1">
+                    {Array.from({ length: 4 }, (_, i) => (
+                      <div key={i} className="flex-1 rounded" style={{ height: 24, backgroundColor: '#161b22', border: '1px solid #2a3140' }} />
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             )}
 
-            {(() => {
+            {isExpanded && (
+              <div className="mb-2">
+                <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Cargo:</div>
+                {Object.entries(gc.cargo?.resources || {}).filter(([, v]) => v > 0).length > 0 ? (
+                  <>
+                    {Object.entries(gc.cargo.resources).filter(([, v]) => v > 0).map(([key, amount]) => (
+                      <div key={key} className="flex items-center justify-between p-1 rounded mb-0.5"
+                        style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                        <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{key}: {amount}</span>
+                        <button
+                          onClick={async () => {
+                            const earned = await onSellAtGuild(commandShip.id, gcIdx, null, { [key]: amount })
+                            if (earned) setSellResult(`+${earned}g`)
+                            setTimeout(() => setSellResult(null), 2000)
+                          }}
+                          className="text-[8px] px-1.5 py-0.5 rounded cursor-pointer"
+                          style={{ backgroundColor: '#cca43b20', color: '#cca43b', border: '1px solid #cca43b40' }}
+                        >
+                          Sell ({amount * (RESOURCE_VALUES[key] || 5)}g)
+                        </button>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <div className="p-1 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                    <span className="text-[9px]" style={{ color: '#4a5568' }}>None</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isExpanded && (() => {
               const munitions = gc.munitions || {}
-              const hasMunitions = Object.values(munitions).some(v => v > 0)
-              if (!hasMunitions) return null
               const MISSILE_TYPES = [
                 { key: 'tactical', name: 'Tactical', color: '#8b949e' },
                 { key: 'cruise', name: 'Cruise', color: '#3fb950' },
                 { key: 'ipbm', name: 'IPBM', color: '#d29922' },
               ]
+              const totalMun = MISSILE_TYPES.reduce((s, m) => s + (munitions[m.key] || 0), 0)
               return (
                 <div className="mb-2">
-                  <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Munitions:</div>
-                  {MISSILE_TYPES.filter(m => (munitions[m.key] || 0) > 0).map(m => (
+                  <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Munitions ({totalMun}):</div>
+                  {totalMun > 0 ? MISSILE_TYPES.filter(m => (munitions[m.key] || 0) > 0).map(m => (
                     <div key={m.key} className="flex items-center justify-between p-1 rounded mb-0.5"
                       style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
                       <span className="text-[9px] font-semibold" style={{ color: m.color }}>{m.name}</span>
                       <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>x{munitions[m.key]}</span>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="p-1 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                      <span className="text-[9px]" style={{ color: '#4a5568' }}>None</span>
+                    </div>
+                  )}
                 </div>
               )
             })()}
 
-            {(gc.cargo?.gold || 0) > 0 && (
+            {isExpanded && (gc.cargo?.gold || 0) > 0 && (
               <div className="p-1 rounded mb-2" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
                 <span className="text-[9px]" style={{ color: '#cca43b' }}>Gold in cargo: {gc.cargo.gold}</span>
               </div>
             )}
 
-            {sellResult && (
+            {isExpanded && sellResult && (
               <div className="text-center text-xs font-bold mb-1" style={{ color: '#3fb950' }}>{sellResult}</div>
             )}
 

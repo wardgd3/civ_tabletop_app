@@ -4,11 +4,11 @@ import SpaceGuildPanel from './SpaceGuildPanel'
 import TeamChat from './TeamChat'
 import { TERRAIN, TERRAIN_THEMES, RESOURCES, SPACE_RESOURCES, LUXURY_RESOURCES } from '../lib/terrainGen'
 
-const HEX_SIZE = 16
+const HEX_SIZE = 48
 const HEX_W = Math.round(Math.sqrt(3) * HEX_SIZE)
 const HEX_H = HEX_SIZE * 2
 const ROW_H = HEX_H * 0.75
-const GAP = 0.3
+const GAP = 1
 const RENDER_W = HEX_W - GAP
 const RENDER_H = HEX_H - GAP
 
@@ -98,7 +98,8 @@ export default function GameBoard({
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
   excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
-  dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport,
+  dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
+  setAutoPath, clearAutoPath,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -111,7 +112,7 @@ export default function GameBoard({
   const [mode, setMode] = useState('select')
   const [error, setError] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
-  const [zoom, setZoom] = useState(1)
+  const [zoom, setZoom] = useState(0.34)
   const [spaceHeld, setSpaceHeld] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
   const [touchPanning, setTouchPanning] = useState(false)
@@ -569,6 +570,52 @@ export default function GameBoard({
     return new Set(cells)
   }
 
+  function findPath(fromRow, fromCol, toRow, toCol, unitName) {
+    const maxDist = 40
+    if (hexDistance(fromRow, fromCol, toRow, toCol) > maxDist) return null
+    const startKey = `${fromRow}-${fromCol}`
+    const endKey = `${toRow}-${toCol}`
+    const gScore = new Map()
+    gScore.set(startKey, 0)
+    const cameFrom = new Map()
+    const open = [[hexDistance(fromRow, fromCol, toRow, toCol), fromRow, fromCol]]
+    const closed = new Set()
+
+    while (open.length > 0) {
+      open.sort((a, b) => a[0] - b[0])
+      const [, cr, cc] = open.shift()
+      const ck = `${cr}-${cc}`
+      if (ck === endKey) {
+        const path = []
+        let cur = endKey
+        while (cur && cur !== startKey) {
+          const [r, c] = cur.split('-').map(Number)
+          path.unshift({ row: r, col: c })
+          cur = cameFrom.get(cur)
+        }
+        return path
+      }
+      if (closed.has(ck)) continue
+      closed.add(ck)
+      const g = gScore.get(ck)
+      const neighbors = hexNeighborsBoard(cr, cc, rows, cols)
+      for (const [nr, nc] of neighbors) {
+        const nk = `${nr}-${nc}`
+        if (closed.has(nk)) continue
+        if (isImpassable(nr, nc, unitName)) continue
+        const tentG = g + 1
+        if (tentG > maxDist) continue
+        const prev = gScore.get(nk)
+        if (prev !== undefined && prev <= tentG) continue
+        gScore.set(nk, tentG)
+        cameFrom.set(nk, ck)
+        const h = hexDistance(nr, nc, toRow, toCol)
+        open.push([tentG + h, nr, nc])
+      }
+    }
+    return null
+  }
+
   function getAttackRange(unit) {
     if (!unit?.wg_unit_types) return new Set()
     const cells = new Set()
@@ -618,6 +665,19 @@ export default function GameBoard({
   const attackRange = mode === 'attack' && selectedUnit ? getAttackRange(selectedUnit) : new Set()
   const buildRange = mode === 'build' && selectedUnit ? getBuildRange(selectedUnit) : new Set()
   const destroyRange = mode === 'destroy' && selectedUnit ? getDestroyRange(selectedUnit) : new Set()
+
+  const autoPathTiles = useMemo(() => {
+    const set = new Set()
+    for (const u of units) {
+      const path = u.upgrades?.autoPath
+      if (path && Array.isArray(path)) {
+        for (const wp of path) set.add(`${wp.row}-${wp.col}`)
+      }
+    }
+    return set
+  }, [units])
+
+  const selectedAutoPath = selectedUnit?.upgrades?.autoPath || null
 
   function isNearEdge(r, c) {
     return Math.min(r, rows - 1 - r, c, cols - 1 - c) <= 3
@@ -855,7 +915,7 @@ export default function GameBoard({
 
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
-  const targetZoomRef = useRef(zoom)
+  const targetZoomRef = useRef(0.34)
   const wheelAnimRef = useRef(null)
   const wheelCursorRef = useRef({ clientX: 0, clientY: 0 })
 
@@ -888,7 +948,7 @@ export default function GameBoard({
     e.preventDefault()
     wheelCursorRef.current = { clientX: e.clientX, clientY: e.clientY }
     const factor = e.deltaY > 0 ? 0.85 : 1.18
-    targetZoomRef.current = Math.min(3, Math.max(0.3, targetZoomRef.current * factor))
+    targetZoomRef.current = Math.min(1.5, Math.max(0.1, targetZoomRef.current * factor))
     if (!wheelAnimRef.current) {
       wheelAnimRef.current = requestAnimationFrame(tickWheelZoom)
     }
@@ -955,7 +1015,7 @@ export default function GameBoard({
       const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2
 
       const scale = dist / pinchRef.current.initialDist
-      const newZoom = Math.min(3, Math.max(0.3, pinchRef.current.initialZoom * scale))
+      const newZoom = Math.min(1.5, Math.max(0.1, pinchRef.current.initialZoom * scale))
       const ratio = newZoom / zoomRef.current
 
       const scrollCenterX = el.scrollLeft + (midX - rect.left)
@@ -1105,6 +1165,7 @@ export default function GameBoard({
 
     if (selectedUnit && moveRange.has(cellKey) && !showUnit) {
       try {
+        if (selectedUnit.upgrades?.autoPath) await clearAutoPath(selectedUnit.id)
         const moveDist = hexDistance(selectedUnit.grid_row, selectedUnit.grid_col, row, col)
         const usedAfter = (selectedUnit.moves_used || 0) + moveDist
         const maxRange = selectedUnit.wg_unit_types?.movement || 0
@@ -1118,6 +1179,20 @@ export default function GameBoard({
         setError(err.message)
       }
       return
+    }
+
+    if (selectedUnit && !showUnit && mode === 'select' && selectedUnit.owner_id === currentPlayer?.player_id && !moveRange.has(cellKey)) {
+      const dist = hexDistance(selectedUnit.grid_row, selectedUnit.grid_col, row, col)
+      if (dist > 0 && dist <= 40) {
+        const unitName = selectedUnit.wg_unit_types?.name
+        const path = findPath(selectedUnit.grid_row, selectedUnit.grid_col, row, col, unitName)
+        if (path && path.length > 0) {
+          try {
+            await setAutoPath(selectedUnit.id, path)
+          } catch (err) { setError(err.message) }
+          return
+        }
+      }
     }
 
     if (showUnit) {
@@ -1373,6 +1448,24 @@ export default function GameBoard({
                   )}
                 </div>
               </div>
+              {selectedAutoPath && selectedUnit.owner_id === currentPlayer?.player_id && (
+                <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #1a2a4a' }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#6090c0' }}>
+                      Auto-path ({selectedAutoPath.length} tiles)
+                    </span>
+                    <button
+                      onClick={async () => {
+                        try { await clearAutoPath(selectedUnit.id) } catch (err) { setError(err.message) }
+                      }}
+                      className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded cursor-pointer"
+                      style={{ backgroundColor: '#2a1a1a', color: '#f47067', border: '1px solid #4a2a2a' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
               {hasOreToExcavate && (
                 <button
                   onClick={async () => {
@@ -1457,6 +1550,36 @@ export default function GameBoard({
                   )}
                 </div>
               )}
+              {selectedUnit.owner_id === currentPlayer?.player_id && selectedUnit.wg_unit_types?.name !== 'Armor Transport' && !['Command Center', 'Command Ship', 'Base', 'Factory', 'Mining Station'].includes(selectedUnit.wg_unit_types?.name) && (() => {
+                const nearbyTransports = units.filter(u =>
+                  u.owner_id === currentPlayer?.player_id &&
+                  u.wg_unit_types?.name === 'Armor Transport' &&
+                  (u.board || 'ground') === (selectedUnit.board || 'ground') &&
+                  hexDistance(u.grid_row, u.grid_col, selectedUnit.grid_row, selectedUnit.grid_col) === 1
+                )
+                if (nearbyTransports.length === 0) return null
+                const cantReenter = !!selectedUnit.upgrades?.deployedFromTransport
+                return nearbyTransports.map(transport => {
+                  const loaded = transport.upgrades?.loadedUnits || []
+                  const isFull = loaded.length >= 4
+                  return (
+                    <button
+                      key={transport.id}
+                      onClick={async () => {
+                        try {
+                          await boardSoldierToTransport(selectedUnit.id, transport.id)
+                          setSelectedUnitId(null)
+                        } catch (err) { setError(err.message) }
+                      }}
+                      disabled={isFull || cantReenter}
+                      className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
+                      style={{ backgroundColor: '#1a2a3a', color: '#6080a0', border: '1px solid #304a6a' }}
+                    >
+                      Enter Transport ({loaded.length}/4){cantReenter ? ' — Just Deployed' : ''}
+                    </button>
+                  )
+                })
+              })()}
               {selectedUnit.owner_id === currentPlayer?.player_id && (() => {
                 const unitLevel = selectedUnit.upgrades?.level || 0
                 const maxLevel = 5
@@ -1584,6 +1707,9 @@ export default function GameBoard({
               setTransportDeployInfo({ structId, transportIndex: transportIdx })
               setCommandShipUnitId(null)
               setPanelOpen(false)
+            }}
+            onBuyAndLoadSoldier={async (structId, transportIdx, unitTypeId, unitTypeName) => {
+              try { await buyAndLoadToTransport(structId, transportIdx, unitTypeId, unitTypeName) } catch (err) { setError(err.message) }
             }}
             groundUnits={allUnits.filter(u =>
               (u.board || 'ground') === 'ground' &&
@@ -1760,6 +1886,7 @@ export default function GameBoard({
               const isInBayDeployRange = bayDeployRange.has(cellKey)
               const isInTransportDeployRange = transportDeployRange.has(cellKey)
               const isInUnitFromTransportRange = unitFromTransportDeployRange.has(cellKey)
+              const isOnAutoPath = autoPathTiles.has(cellKey)
               const isSelected = selectedUnit && selectedUnit.grid_row === row && selectedUnit.grid_col === col
               const isClicked = clickedTile?.row === row && clickedTile?.col === col
               const isHovered = hoveredTile?.row === row && hoveredTile?.col === col
@@ -1853,7 +1980,7 @@ export default function GameBoard({
                   }}
                 >
                   {(isClicked || isHovered) && (() => {
-                    const p = 1.5
+                    const p = 3
                     const w = RENDER_W, h = RENDER_H
                     return (
                       <svg className="absolute inset-0 z-[5] pointer-events-none" width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
@@ -1861,7 +1988,7 @@ export default function GameBoard({
                           points={`${w/2},${p} ${w-p},${h*0.25+p*0.5} ${w-p},${h*0.75-p*0.5} ${w/2},${h-p} ${p},${h*0.75-p*0.5} ${p},${h*0.25+p*0.5}`}
                           fill="none"
                           stroke={isClicked ? 'rgba(180, 210, 255, 0.5)' : 'rgba(180, 210, 255, 0.22)'}
-                          strokeWidth="1"
+                          strokeWidth="2"
                           strokeLinejoin="round"
                         />
                       </svg>
@@ -1869,6 +1996,11 @@ export default function GameBoard({
                   })()}
                   {moveOverlay && (
                     <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
+                  )}
+                  {isOnAutoPath && (
+                    <div className="absolute inset-0 z-[2] flex items-center justify-center pointer-events-none" style={{ clipPath: hexClip }}>
+                      <div className="rounded-full" style={{ width: 8, height: 8, backgroundColor: 'rgba(100, 180, 255, 0.5)' }} />
+                    </div>
                   )}
                   {isMountainShadow && (isVisible || isDiscovered) && (
                     <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.12)', clipPath: hexClip }} />
@@ -1910,7 +2042,7 @@ export default function GameBoard({
                       <div className="relative flex items-center justify-center z-10" style={{ width: tokenSize, height: tokenSize }}>
                         <div
                           className="absolute inset-0 rounded-full overflow-hidden"
-                          style={{ border: `2px solid ${pColor}`, boxShadow: `0 0 6px ${pColor}40` }}
+                          style={{ border: `3px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}
                         >
                           <img
                             src={getUnitIcon(unit.wg_unit_types, unit)}
@@ -1921,11 +2053,11 @@ export default function GameBoard({
                         <div
                           className="absolute left-1/2 -translate-x-1/2 rounded-full z-20"
                           style={{
-                            bottom: 1,
-                            height: 2,
+                            bottom: 3,
+                            height: 4,
                             width: `${hpRatio * 60}%`,
                             backgroundColor: hpRatio > 0.5 ? '#4a8060' : '#804a4a',
-                            minWidth: 3,
+                            minWidth: 6,
                             boxShadow: '0 0 2px #000',
                           }}
                         />
@@ -1933,10 +2065,10 @@ export default function GameBoard({
                           <div
                             className="absolute -top-0.5 -left-0.5 flex items-center justify-center rounded-full z-20"
                             style={{
-                              width: 7, height: 7,
+                              width: 18, height: 18,
                               backgroundColor: '#1a1a0d',
-                              border: '1px solid #cca43b',
-                              fontSize: 5, fontWeight: 'bold',
+                              border: '2px solid #cca43b',
+                              fontSize: 12, fontWeight: 'bold',
                               color: '#cca43b', lineHeight: 1,
                             }}
                           >
