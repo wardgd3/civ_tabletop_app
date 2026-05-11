@@ -10,6 +10,7 @@ export default function SpaceGuildPanel({
   playerResources, teamGold, availableUnitTypes, commandShipUpgrades,
 }) {
   const [sellResult, setSellResult] = useState(null)
+  const [expandedGuildConvoy, setExpandedGuildConvoy] = useState(null)
 
   if (!commandShip) {
     return (
@@ -85,11 +86,27 @@ export default function SpaceGuildPanel({
           )
         }
 
+        const unitCount = (gc.units || []).length
+        const resCount = Object.values(gc.cargo?.resources || {}).filter(v => v > 0).length
+        const munCount = Object.values(gc.munitions || {}).filter(v => v > 0).length
+        const goldAmount = gc.cargo?.gold || 0
+        const totalItems = unitCount + resCount + munCount + (goldAmount > 0 ? 1 : 0)
+        const isExpanded = expandedGuildConvoy === gcIdx
+
         return (
           <div key={gcIdx} className="p-2 rounded mb-2" style={{ backgroundColor: '#0d1117', border: '1px solid #6cb4e640' }}>
-            <div className="text-[10px] font-semibold mb-1.5" style={{ color: '#3fb950' }}>Convoy {gcIdx + 1} — Docked</div>
+            <div
+              onClick={() => setExpandedGuildConvoy(isExpanded ? null : gcIdx)}
+              className="flex items-center justify-between cursor-pointer"
+              style={{ marginBottom: isExpanded ? 6 : 0 }}
+            >
+              <span className="text-[10px] font-semibold" style={{ color: '#3fb950' }}>Convoy {gcIdx + 1} — Docked</span>
+              <span className="text-[9px]" style={{ color: '#6e7681' }}>
+                {totalItems > 0 ? `${totalItems} item${totalItems !== 1 ? 's' : ''}` : 'Empty'} {isExpanded ? '▴' : '▾'}
+              </span>
+            </div>
 
-            {(gc.units || []).length > 0 && (
+            {isExpanded && (gc.units || []).length > 0 && (
               <div className="mb-2">
                 <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Units:</div>
                 {gc.units.map((u, idx) => (
@@ -112,7 +129,7 @@ export default function SpaceGuildPanel({
               </div>
             )}
 
-            {Object.entries(gc.cargo?.resources || {}).filter(([, v]) => v > 0).length > 0 && (
+            {isExpanded && Object.entries(gc.cargo?.resources || {}).filter(([, v]) => v > 0).length > 0 && (
               <div className="mb-2">
                 <div className="text-[9px] mb-1" style={{ color: '#6e7681' }}>Resources:</div>
                 {Object.entries(gc.cargo.resources).filter(([, v]) => v > 0).map(([key, amount]) => (
@@ -135,7 +152,7 @@ export default function SpaceGuildPanel({
               </div>
             )}
 
-            {(() => {
+            {isExpanded && (() => {
               const munitions = gc.munitions || {}
               const hasMunitions = Object.values(munitions).some(v => v > 0)
               if (!hasMunitions) return null
@@ -158,13 +175,13 @@ export default function SpaceGuildPanel({
               )
             })()}
 
-            {(gc.cargo?.gold || 0) > 0 && (
+            {isExpanded && (gc.cargo?.gold || 0) > 0 && (
               <div className="p-1 rounded mb-2" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
                 <span className="text-[9px]" style={{ color: '#cca43b' }}>Gold in cargo: {gc.cargo.gold}</span>
               </div>
             )}
 
-            {sellResult && (
+            {isExpanded && sellResult && (
               <div className="text-center text-xs font-bold mb-1" style={{ color: '#3fb950' }}>{sellResult}</div>
             )}
 
