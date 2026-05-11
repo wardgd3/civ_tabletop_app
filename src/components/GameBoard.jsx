@@ -527,7 +527,8 @@ export default function GameBoard({
     return map
   }, [allPlayers, players])
 
-  function getPlayerColor(playerId) {
+  function getPlayerColor(playerId, unit) {
+    if (unit?.isNPC) return '#e05050'
     return playerColorMap.get(playerId) || '#888'
   }
 
@@ -1902,7 +1903,7 @@ export default function GameBoard({
                     )
                   })()}
                   {showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' && (() => {
-                    const pColor = getPlayerColor(unit.owner_id)
+                    const pColor = getPlayerColor(unit.owner_id, unit)
                     const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
                     const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * 1.032
                     return (
@@ -2099,11 +2100,11 @@ export default function GameBoard({
             src={getUnitIcon(inspectedUnit.wg_unit_types, inspectedUnit)}
             alt={inspectedUnit.wg_unit_types?.name}
             className="w-12 h-12 object-contain shrink-0"
-            style={{ filter: `drop-shadow(0 0 3px ${getPlayerColor(inspectedUnit.owner_id)})` }}
+            style={{ filter: `drop-shadow(0 0 3px ${getPlayerColor(inspectedUnit.owner_id, inspectedUnit)})` }}
           />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getPlayerColor(inspectedUnit.owner_id) }} />
+              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getPlayerColor(inspectedUnit.owner_id, inspectedUnit) }} />
               <span className="font-semibold text-sm truncate" style={{ color: '#c9d1d9' }}>
                 {inspectedUnit.wg_unit_types?.name}
               </span>
@@ -2115,7 +2116,7 @@ export default function GameBoard({
               <span>MOV {inspectedUnit.wg_unit_types?.movement}</span>
             </div>
             <div className="flex gap-2 text-xs mt-0.5" style={{ color: '#4a5568' }}>
-              <span>{(allPlayers || players).find(p => p.player_id === inspectedUnit.owner_id)?.wg_profiles?.display_name}</span>
+              <span>{inspectedUnit.isNPC ? 'Hostile Creature' : (allPlayers || players).find(p => p.player_id === inspectedUnit.owner_id)?.wg_profiles?.display_name}</span>
               <span className="font-mono">X{inspectedUnit.grid_row}/Y{inspectedUnit.grid_col}</span>
             </div>
             {inspectedUnit.upgrades?.loadedUnits?.length > 0 && (

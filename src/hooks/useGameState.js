@@ -5,6 +5,24 @@ import { LUXURY_RESOURCES } from '../lib/terrainGen'
 
 const LUXURY_BY_ID = Object.fromEntries(Object.values(LUXURY_RESOURCES).map(r => [r.id, r]))
 
+const NPC_UNIT_TYPES = {
+  test1: {
+    id: 'npc-test1',
+    name: 'test1',
+    description: 'A hostile alien creature',
+    cost: 0,
+    attack: 3,
+    defense: 1,
+    hp: 5,
+    movement: 2,
+    attack_range: 1,
+    visibility: 2,
+    icon: 'large_creature.png',
+    board: 'ground',
+    isNPC: true,
+  },
+}
+
 function hexDistance(r1, c1, r2, c2) {
   const q1 = c1 - ((r1 - (r1 & 1)) >> 1)
   const q2 = c2 - ((r2 - (r2 & 1)) >> 1)
@@ -25,6 +43,7 @@ export function useGameState(gameId) {
   const [loading, setLoading] = useState(true)
   const fetchRef = useRef(0)
   const debounceRef = useRef(null)
+  const npcSpawnedRef = useRef(false)
 
   const currentPlayer = players.find(p => p.player_id === userId)
   const myColor = currentPlayer?.color
@@ -80,7 +99,13 @@ export function useGameState(gameId) {
 
     if (gameRes.data) setGame(gameRes.data)
     if (playersRes.data) setPlayers(playersRes.data)
-    if (unitsRes.data) setUnits(unitsRes.data)
+    const dbUnits = unitsRes.data || []
+    const npcUnits = (gameRes.data?.settings?.npcUnits || []).map(npc => ({
+      ...npc,
+      wg_unit_types: NPC_UNIT_TYPES[npc.npcType] || NPC_UNIT_TYPES.test1,
+      isNPC: true,
+    }))
+    setUnits([...dbUnits, ...npcUnits])
     if (typesRes.data) setUnitTypes(typesRes.data)
 
     const allTiles = []
@@ -294,7 +319,7 @@ export function useGameState(gameId) {
     if (!attacker || !target) throw new Error('Invalid attack')
     if (attacker.owner_id !== userId) throw new Error('Not your unit')
     if (!isAdmin && attacker.has_attacked) throw new Error('Unit already attacked')
-    if (target.owner_id === userId) throw new Error("Can't attack your own unit")
+    if (!target.isNPC && target.owner_id === userId) throw new Error("Can't attack your own unit")
 
     const dist = hexDistance(attacker.grid_row, attacker.grid_col, target.grid_row, target.grid_col)
     if (dist > attacker.wg_unit_types.attack_range) throw new Error('Out of range')
@@ -302,7 +327,18 @@ export function useGameState(gameId) {
     const damage = Math.max(1, attacker.wg_unit_types.attack - target.wg_unit_types.defense)
     const newHp = target.current_hp - damage
 
-    if (newHp <= 0) {
+    if (target.isNPC) {
+      const { data: freshGame } = await supabase.from('wg_games').select('settings').eq('id', gameId).single()
+      const settings = freshGame?.settings || {}
+      let npcUnits = settings.npcUnits || []
+      if (newHp <= 0) {
+        npcUnits = npcUnits.filter(n => n.id !== targetId)
+      } else {
+        npcUnits = npcUnits.map(n => n.id === targetId ? { ...n, current_hp: newHp } : n)
+      }
+      const { error } = await supabase.from('wg_games').update({ settings: { ...settings, npcUnits } }).eq('id', gameId)
+      if (error) throw error
+    } else if (newHp <= 0) {
       const { error } = await supabase.from('wg_units').update({ current_hp: 0, is_alive: false }).eq('id', targetId)
       if (error) throw error
 
@@ -1449,6 +1485,41 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function spawnNPCs(count, npcType = 'test1') {
+    if (!game || !tiles.length) return
+    const groundTiles = tiles.filter(t => {
+      if ((t.board || 'ground') !== 'ground') return false
+      const impassable = new Set(['ocean', 'mountain', 'lake', 'river'])
+      if (impassable.has(t.terrain)) return false
+      const occupied = units.some(u => (u.board || 'ground') === 'ground' && u.grid_row === t.grid_row && u.grid_col === t.grid_col)
+      return !occupied
+    })
+    const shuffled = [...groundTiles].sort(() => Math.random() - 0.5)
+    const chosen = shuffled.slice(0, count)
+    const npcUnits = chosen.map((tile, i) => ({
+      id: `npc-${Date.now()}-${i}`,
+      npcType,
+      grid_row: tile.grid_row,
+      grid_col: tile.grid_col,
+      board: 'ground',
+      current_hp: NPC_UNIT_TYPES[npcType].hp,
+      owner_id: null,
+    }))
+    const { data: freshGame } = await supabase.from('wg_games').select('settings').eq('id', gameId).single()
+    const settings = freshGame?.settings || {}
+    const existing = settings.npcUnits || []
+    await supabase.from('wg_games').update({ settings: { ...settings, npcUnits: [...existing, ...npcUnits] } }).eq('id', gameId)
+    await fetchAll()
+  }
+
+  useEffect(() => {
+    if (!isAdmin || !game || !tiles.length || npcSpawnedRef.current) return
+    const existing = game.settings?.npcUnits || []
+    if (existing.length > 0) { npcSpawnedRef.current = true; return }
+    npcSpawnedRef.current = true
+    spawnNPCs(5, 'test1')
+  }, [isAdmin, game, tiles])
+
   return {
     game, players, units, unitTypes, tiles, discoveredTiles, loading,
     currentPlayer, isMyTurn, isAdmin,
@@ -1457,6 +1528,6 @@ export function useGameState(gameId) {
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport,
     persistDiscoveredTiles, productionPerTurn, economy,
-    refresh: fetchAll,
+    spawnNPCs, refresh: fetchAll,
   }
 }
