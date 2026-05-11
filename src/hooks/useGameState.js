@@ -1387,10 +1387,39 @@ export function useGameState(gameId) {
       has_attacked: true,
       moves_used: 99,
       is_alive: true,
+      upgrades: { deployedFromTransport: true },
     })
     if (error) throw error
 
     await supabase.from('wg_units').update({ upgrades: { ...transport.upgrades, loadedUnits: remaining } }).eq('id', transportId)
+    await fetchAll()
+  }
+
+  async function boardSoldierToTransport(soldierUnitId, transportUnitId) {
+    const soldier = units.find(u => u.id === soldierUnitId)
+    if (!soldier) throw new Error('Unit not found')
+    if (soldier.owner_id !== userId) throw new Error('Not your unit')
+    if (soldier.upgrades?.deployedFromTransport) throw new Error('Cannot re-enter transport on the same turn')
+
+    const transport = units.find(u => u.id === transportUnitId)
+    if (!transport) throw new Error('Transport not found')
+    if (transport.wg_unit_types?.name !== 'Armor Transport') throw new Error('Not a transport')
+    if (transport.owner_id !== userId) throw new Error('Not your transport')
+
+    const dist = hexDistance(soldier.grid_row, soldier.grid_col, transport.grid_row, transport.grid_col)
+    if (dist > 1) throw new Error('Must be adjacent to transport')
+
+    const loaded = transport.upgrades?.loadedUnits || []
+    if (loaded.length >= 4) throw new Error('Transport full (max 4)')
+
+    const updatedLoaded = [...loaded, {
+      typeId: soldier.unit_type_id,
+      typeName: soldier.wg_unit_types?.name || 'Unknown',
+      hp: soldier.current_hp,
+    }]
+
+    await supabase.from('wg_units').update({ is_alive: false }).eq('id', soldierUnitId)
+    await supabase.from('wg_units').update({ upgrades: { ...transport.upgrades, loadedUnits: updatedLoaded } }).eq('id', transportUnitId)
     await fetchAll()
   }
 
@@ -1412,7 +1441,7 @@ export function useGameState(gameId) {
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
     excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
-    dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport,
+    dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
     persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
     refresh: fetchAll,
   }

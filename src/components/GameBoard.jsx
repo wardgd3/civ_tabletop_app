@@ -98,7 +98,7 @@ export default function GameBoard({
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
   excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
-  dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport,
+  dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy,
@@ -1457,6 +1457,36 @@ export default function GameBoard({
                   )}
                 </div>
               )}
+              {selectedUnit.owner_id === currentPlayer?.player_id && selectedUnit.wg_unit_types?.name !== 'Armor Transport' && !['Command Center', 'Command Ship', 'Base', 'Factory', 'Mining Station'].includes(selectedUnit.wg_unit_types?.name) && (() => {
+                const nearbyTransports = units.filter(u =>
+                  u.owner_id === currentPlayer?.player_id &&
+                  u.wg_unit_types?.name === 'Armor Transport' &&
+                  (u.board || 'ground') === (selectedUnit.board || 'ground') &&
+                  hexDistance(u.grid_row, u.grid_col, selectedUnit.grid_row, selectedUnit.grid_col) === 1
+                )
+                if (nearbyTransports.length === 0) return null
+                const cantReenter = !!selectedUnit.upgrades?.deployedFromTransport
+                return nearbyTransports.map(transport => {
+                  const loaded = transport.upgrades?.loadedUnits || []
+                  const isFull = loaded.length >= 4
+                  return (
+                    <button
+                      key={transport.id}
+                      onClick={async () => {
+                        try {
+                          await boardSoldierToTransport(selectedUnit.id, transport.id)
+                          setSelectedUnitId(null)
+                        } catch (err) { setError(err.message) }
+                      }}
+                      disabled={isFull || cantReenter}
+                      className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
+                      style={{ backgroundColor: '#1a2a3a', color: '#6080a0', border: '1px solid #304a6a' }}
+                    >
+                      Enter Transport ({loaded.length}/4){cantReenter ? ' — Just Deployed' : ''}
+                    </button>
+                  )
+                })
+              })()}
               {selectedUnit.owner_id === currentPlayer?.player_id && (() => {
                 const unitLevel = selectedUnit.upgrades?.level || 0
                 const maxLevel = 5
