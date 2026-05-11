@@ -320,7 +320,7 @@ export function useGameState(gameId) {
     const target = units.find(u => u.id === targetId)
     if (!attacker || !target) throw new Error('Invalid attack')
     if (attacker.owner_id !== userId) throw new Error('Not your unit')
-    if (!isAdmin && attacker.has_attacked) throw new Error('Unit already attacked')
+    if (attacker.has_attacked) throw new Error('Unit already attacked')
     if (!target.isNPC && target.owner_id === userId) throw new Error("Can't attack your own unit")
 
     const dist = hexDistance(attacker.grid_row, attacker.grid_col, target.grid_row, target.grid_col)
@@ -461,7 +461,7 @@ export function useGameState(gameId) {
     const unit = units.find(u => u.id === unitId)
     if (!unit || unit.owner_id !== userId) throw new Error('Not your unit')
     if (unit.wg_unit_types?.name !== 'Engineer') throw new Error('Only engineers can build roads')
-    if (!isAdmin && unit.has_attacked) throw new Error('Engineer already built this turn')
+    if (unit.has_attacked) throw new Error('Engineer already built this turn')
 
     const dist = hexDistance(unit.grid_row, unit.grid_col, row, col)
     if (dist > 1) throw new Error('Too far to build')
@@ -494,7 +494,7 @@ export function useGameState(gameId) {
     const unit = units.find(u => u.id === unitId)
     if (!unit || unit.owner_id !== userId) throw new Error('Not your unit')
     if (unit.wg_unit_types?.name !== 'Engineer') throw new Error('Only engineers can destroy roads')
-    if (!isAdmin && unit.has_attacked) throw new Error('Engineer already acted this turn')
+    if (unit.has_attacked) throw new Error('Engineer already acted this turn')
 
     const dist = hexDistance(unit.grid_row, unit.grid_col, row, col)
     if (dist > 1) throw new Error('Too far')

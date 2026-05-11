@@ -1410,7 +1410,7 @@ export default function GameBoard({
                 <div className="flex gap-1">
                   {selectedUnit.wg_unit_types?.name === 'Engineer' ? (
                     <>
-                      {(isAdmin || !selectedUnit.has_attacked) && (
+                      {(!selectedUnit.has_attacked) && (
                         <button
                           onClick={() => setMode('build')}
                           className="px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
@@ -1421,7 +1421,7 @@ export default function GameBoard({
                           Build
                         </button>
                       )}
-                      {(isAdmin || !selectedUnit.has_attacked) && (
+                      {(!selectedUnit.has_attacked) && (
                         <button
                           onClick={() => setMode('destroy')}
                           className="px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
@@ -1434,7 +1434,7 @@ export default function GameBoard({
                       )}
                     </>
                   ) : (
-                    (isAdmin || !selectedUnit.has_attacked) && (
+                    (!selectedUnit.has_attacked) && (
                       <button
                         onClick={() => setMode('attack')}
                         className="px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
