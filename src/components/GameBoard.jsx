@@ -2094,16 +2094,7 @@ export default function GameBoard({
                 }
               }
 
-              let voidStarBg = null
-              if (isSpace && tileData?.terrain === 'void') {
-                const starHash = ((Math.sin(row * 127.1 + col * 311.7) * 43758.5453) % 1 + 1) % 1
-                if (starHash < 0.05) {
-                  const sizeHash = ((Math.sin(row * 53.3 + col * 97.1) * 28461.213) % 1 + 1) % 1
-                  const starR = sizeHash < 0.15 ? 3 : sizeHash < 0.5 ? 2 : 1.5
-                  const opacity = sizeHash < 0.15 ? 0.9 : sizeHash < 0.5 ? 0.75 : 0.6
-                  voidStarBg = `radial-gradient(circle ${starR}px at 50% 50%, rgba(255,255,255,${opacity}) 0%, rgba(255,255,255,${opacity * 0.5}) 40%, rgba(255,255,255,0) 100%)`
-                }
-              }
+              const voidStarBg = null
 
               let bg
               let moveOverlay = false
