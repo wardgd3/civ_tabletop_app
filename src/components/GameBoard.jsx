@@ -934,36 +934,28 @@ export default function GameBoard({
     const current = zoomRef.current
     const target = targetZoomRef.current
     const diff = target - current
-    if (Math.abs(diff) < 0.002) {
+    if (Math.abs(diff) < 0.001) {
       zoomRef.current = target
-      const vw = el.clientWidth
-      const vh = el.clientHeight
-      const padX = boardPixelW * target * wrapPad
-      const padY = boardPixelH * target * wrapPad
-      const cx = (el.scrollLeft + vw / 2 - padX) / target
-      const cy = (el.scrollTop + vh / 2 - padY) / target
-      commitZoom(target)
+      baseZoomRef.current = target
       setZoom(target)
-      requestAnimationFrame(() => {
-        const np = boardPixelW * target * wrapPad
-        const npy = boardPixelH * target * wrapPad
-        el.scrollLeft = np + cx * target - vw / 2
-        el.scrollTop = npy + cy * target - vh / 2
-      })
       wheelAnimRef.current = null
       return
     }
-    const rect = el.getBoundingClientRect()
     const { clientX, clientY } = wheelCursorRef.current
+    const rect = el.getBoundingClientRect()
     const cursorInViewX = clientX - rect.left
     const cursorInViewY = clientY - rect.top
     const oldPadX = boardPixelW * current * wrapPad
     const oldPadY = boardPixelH * current * wrapPad
     const boardX = (el.scrollLeft + cursorInViewX - oldPadX) / current
     const boardY = (el.scrollTop + cursorInViewY - oldPadY) / current
-    const next = current + diff * 0.25
+    const next = current + diff * 0.18
     zoomRef.current = next
-    applyZoomDirect(next)
+    baseZoomRef.current = next
+    const inner = boardInnerRef.current
+    const wrapper = wrapperRef.current
+    if (inner) inner.style.zoom = next
+    if (wrapper) wrapper.style.padding = `${boardPixelH * next * wrapPad}px ${boardPixelW * next * wrapPad}px`
     const newPadX = boardPixelW * next * wrapPad
     const newPadY = boardPixelH * next * wrapPad
     el.scrollLeft = newPadX + boardX * next - cursorInViewX
@@ -974,7 +966,7 @@ export default function GameBoard({
   const handleWheel = useCallback((e) => {
     e.preventDefault()
     wheelCursorRef.current = { clientX: e.clientX, clientY: e.clientY }
-    const factor = e.deltaY > 0 ? 0.85 : 1.18
+    const factor = e.deltaY > 0 ? 0.93 : 1.08
     targetZoomRef.current = Math.min(1.5, Math.max(minZoom, targetZoomRef.current * factor))
     if (!wheelAnimRef.current) {
       wheelAnimRef.current = requestAnimationFrame(tickWheelZoom)
