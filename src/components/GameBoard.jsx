@@ -928,6 +928,8 @@ export default function GameBoard({
   const wheelAnimRef = useRef(null)
   const wheelCursorRef = useRef({ clientX: 0, clientY: 0 })
 
+  const wheelSettleTimer = useRef(null)
+
   function tickWheelZoom() {
     const el = boardRef.current
     if (!el) return
@@ -936,8 +938,6 @@ export default function GameBoard({
     const diff = target - current
     if (Math.abs(diff) < 0.001) {
       zoomRef.current = target
-      baseZoomRef.current = target
-      setZoom(target)
       wheelAnimRef.current = null
       return
     }
@@ -951,16 +951,32 @@ export default function GameBoard({
     const boardY = (el.scrollTop + cursorInViewY - oldPadY) / current
     const next = current + diff * 0.18
     zoomRef.current = next
-    baseZoomRef.current = next
-    const inner = boardInnerRef.current
-    const wrapper = wrapperRef.current
-    if (inner) inner.style.zoom = next
-    if (wrapper) wrapper.style.padding = `${boardPixelH * next * wrapPad}px ${boardPixelW * next * wrapPad}px`
+    applyZoomDirect(next)
     const newPadX = boardPixelW * next * wrapPad
     const newPadY = boardPixelH * next * wrapPad
     el.scrollLeft = newPadX + boardX * next - cursorInViewX
     el.scrollTop = newPadY + boardY * next - cursorInViewY
     wheelAnimRef.current = requestAnimationFrame(tickWheelZoom)
+  }
+
+  function commitWheelZoom() {
+    const el = boardRef.current
+    if (!el) return
+    const finalZoom = zoomRef.current
+    const vw = el.clientWidth
+    const vh = el.clientHeight
+    const padX = boardPixelW * finalZoom * wrapPad
+    const padY = boardPixelH * finalZoom * wrapPad
+    const cx = (el.scrollLeft + vw / 2 - padX) / finalZoom
+    const cy = (el.scrollTop + vh / 2 - padY) / finalZoom
+    commitZoom(finalZoom)
+    setZoom(finalZoom)
+    requestAnimationFrame(() => {
+      const np = boardPixelW * finalZoom * wrapPad
+      const npy = boardPixelH * finalZoom * wrapPad
+      el.scrollLeft = np + cx * finalZoom - vw / 2
+      el.scrollTop = npy + cy * finalZoom - vh / 2
+    })
   }
 
   const handleWheel = useCallback((e) => {
@@ -971,6 +987,8 @@ export default function GameBoard({
     if (!wheelAnimRef.current) {
       wheelAnimRef.current = requestAnimationFrame(tickWheelZoom)
     }
+    if (wheelSettleTimer.current) clearTimeout(wheelSettleTimer.current)
+    wheelSettleTimer.current = setTimeout(commitWheelZoom, 200)
   }, [])
 
   const pinchRef = useRef(null)
