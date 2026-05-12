@@ -183,17 +183,23 @@ export default function GameBoard({
   useEffect(() => {
     const el = boardRef.current
     if (!el) return
+    const wrapW = boardPixelW * zoom * 2.2
+    const wrapH = boardPixelH * zoom * 2.2
+    const scaledW = boardPixelW * zoom
+    const scaledH = boardPixelH * zoom
+    const offsetX = (wrapW - scaledW) / 2
+    const offsetY = (wrapH - scaledH) / 2
+    const pad = Math.max(HEX_W, HEX_H) * 3
     function updateViewport() {
-      const inner = boardInnerRef.current
-      if (!inner) return
-      const innerRect = inner.getBoundingClientRect()
-      const elRect = el.getBoundingClientRect()
-      const pad = Math.max(HEX_W, HEX_H) * 2
+      const sl = el.scrollLeft
+      const st = el.scrollTop
+      const vw = el.clientWidth
+      const vh = el.clientHeight
       setViewportRect({
-        left: (elRect.left - innerRect.left) / zoom - pad,
-        top: (elRect.top - innerRect.top) / zoom - pad,
-        right: (elRect.right - innerRect.left) / zoom + pad,
-        bottom: (elRect.bottom - innerRect.top) / zoom + pad,
+        left: (sl - offsetX) / zoom - pad,
+        top: (st - offsetY) / zoom - pad,
+        right: (sl + vw - offsetX) / zoom + pad,
+        bottom: (st + vh - offsetY) / zoom + pad,
       })
     }
     updateViewport()
@@ -212,7 +218,7 @@ export default function GameBoard({
       ro.disconnect()
       if (viewportRafRef.current) cancelAnimationFrame(viewportRafRef.current)
     }
-  }, [zoom])
+  }, [zoom, boardPixelW, boardPixelH])
 
   const tileMap = useMemo(() => {
     const map = new Map()
