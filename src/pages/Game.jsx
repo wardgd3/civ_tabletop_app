@@ -72,7 +72,7 @@ export default function Game() {
   const boardUnitTypes = gameState.unitTypes.filter(ut => (ut.board || 'ground') === activeBoard)
 
   return (
-    <div className="h-screen flex flex-col p-2 sm:p-4 pb-16 lg:pb-4 overflow-hidden" style={{ backgroundColor: '#0d1117' }}>
+    <div className={`h-screen flex flex-col overflow-hidden ${isFullscreen ? 'p-0' : 'p-2 sm:p-4 pb-16 lg:pb-4'}`} style={{ backgroundColor: '#0d1117' }}>
       {!isFullscreen && (
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div className="flex items-center gap-2 sm:gap-4">

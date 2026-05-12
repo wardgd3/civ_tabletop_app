@@ -189,13 +189,15 @@ export default function GameBoard({
 
   const boardPixelW = cols * HEX_W + HEX_W / 2 + GAP
   const boardPixelH = (rows - 1) * ROW_H + HEX_H + GAP
+  const isMobileView = isFullscreen || (typeof window !== 'undefined' && window.innerWidth < 768)
+  const wrapMul = isMobileView ? 1.3 : 2.2
 
   const updateViewportNow = useCallback(() => {
     const el = boardRef.current
     if (!el) return
     const z = zoomRef.current
-    const wrapW = boardPixelW * z * 2.2
-    const wrapH = boardPixelH * z * 2.2
+    const wrapW = boardPixelW * z * wrapMul
+    const wrapH = boardPixelH * z * wrapMul
     const scaledW = boardPixelW * z
     const scaledH = boardPixelH * z
     const offsetX = (wrapW - scaledW) / 2
@@ -1058,8 +1060,8 @@ export default function GameBoard({
     const wrapper = wrapperRef.current
     if (!inner || !wrapper) return
     inner.style.transform = `scale(${newZoom})`
-    wrapper.style.width = `${boardPixelW * newZoom * 2.2}px`
-    wrapper.style.height = `${boardPixelH * newZoom * 2.2}px`
+    wrapper.style.width = `${boardPixelW * newZoom * wrapMul}px`
+    wrapper.style.height = `${boardPixelH * newZoom * wrapMul}px`
   }, [boardPixelW, boardPixelH])
 
   const handleTouchMove = useCallback((e) => {
@@ -1166,8 +1168,8 @@ export default function GameBoard({
       if (cc) {
         const ccX = cc.grid_col * HEX_W + (cc.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
         const ccY = cc.grid_row * ROW_H + RENDER_H / 2
-        const wrapW = boardPixelW * zoom * 2.2
-        const wrapH = boardPixelH * zoom * 2.2
+        const wrapW = boardPixelW * zoom * wrapMul
+        const wrapH = boardPixelH * zoom * wrapMul
         const offsetX = (wrapW - boardPixelW * zoom) / 2
         const offsetY = (wrapH - boardPixelH * zoom) / 2
         el.scrollLeft = offsetX + ccX * zoom - el.clientWidth / 2
@@ -1964,7 +1966,7 @@ export default function GameBoard({
   )
 
   return (
-    <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 h-full">
+    <div className={`flex flex-col lg:flex-row h-full ${isFullscreen ? 'gap-0' : 'gap-3 lg:gap-4'}`}>
       <div className="hidden lg:flex lg:flex-col lg:w-80 shrink-0 lg:max-h-[calc(100vh-5rem)]">
         <div className="flex-1 overflow-y-auto min-h-0">
           {sidebarContent}
@@ -2010,6 +2012,7 @@ export default function GameBoard({
         </div>
       </div>
 
+      <div className="flex-1 min-h-0 flex flex-row">
       <div
         ref={boardRef}
         className="flex-1 overflow-auto"
@@ -2017,8 +2020,8 @@ export default function GameBoard({
         onMouseDown={handleBoardMouseDown}
       >
         <div ref={wrapperRef} style={{
-          width: boardPixelW * zoom * 2.2,
-          height: boardPixelH * zoom * 2.2,
+          width: boardPixelW * zoom * wrapMul,
+          height: boardPixelH * zoom * wrapMul,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -2395,6 +2398,100 @@ export default function GameBoard({
         </div>
       </div>
 
+      {isFullscreen && (
+        <div className="lg:hidden flex shrink-0 h-full">
+          <button
+            onClick={() => setPanelOpen(!panelOpen)}
+            className="flex items-center justify-center px-1 cursor-pointer self-stretch"
+            style={{ backgroundColor: '#161b22', borderLeft: '1px solid #2a3140', color: '#4a5568', writingMode: 'vertical-rl' }}
+          >
+            <span className="text-xs font-semibold uppercase tracking-widest">{panelOpen ? 'Hide' : 'Menu'}</span>
+          </button>
+          {panelOpen && (
+            <div className="h-full overflow-y-auto p-3 flex flex-col" style={{ width: 260, backgroundColor: '#0d1117', borderLeft: '1px solid #2a3140' }}>
+              <div className="flex items-center justify-between mb-3 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex rounded overflow-hidden" style={{ border: '1px solid #30363d' }}>
+                    <button
+                      onClick={() => setActiveBoard('ground')}
+                      className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                      style={activeBoard === 'ground'
+                        ? { backgroundColor: '#1c3043', color: '#6cb4e6' }
+                        : { backgroundColor: '#21262d', color: '#4a5568' }}
+                    >
+                      Ground
+                    </button>
+                    <button
+                      onClick={() => setActiveBoard('space')}
+                      className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                      style={activeBoard === 'space'
+                        ? { backgroundColor: '#2a1a3a', color: '#c080e0' }
+                        : { backgroundColor: '#21262d', color: '#4a5568' }}
+                    >
+                      Space
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => { setBattleLogOpen(prev => !prev); setChatOpen(false) }}
+                    className="w-7 h-7 flex items-center justify-center rounded cursor-pointer"
+                    style={{
+                      backgroundColor: battleLogOpen ? '#2a1a1a' : '#21262d',
+                      border: `1px solid ${battleLogOpen ? '#4a2a2a' : '#30363d'}`,
+                      color: battleLogOpen ? '#f47067' : '#8b949e',
+                    }}
+                    title="Battle Log"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => { setChatOpen(prev => !prev); setBattleLogOpen(false) }}
+                    className="w-7 h-7 flex items-center justify-center rounded cursor-pointer"
+                    style={{
+                      backgroundColor: chatOpen ? '#1c3043' : '#21262d',
+                      border: `1px solid ${chatOpen ? '#2a4a6a' : '#30363d'}`,
+                      color: chatOpen ? '#6cb4e6' : '#8b949e',
+                    }}
+                    title="Team Chat"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                  </button>
+                </div>
+                <button
+                  onClick={onExitFullscreen}
+                  className="w-6 h-6 flex items-center justify-center rounded cursor-pointer text-xs"
+                  style={{ backgroundColor: '#21262d', color: '#f47067', border: '1px solid #3d2525' }}
+                >
+                  &times;
+                </button>
+              </div>
+              {battleLogOpen ? (
+                <div className="flex-1 min-h-0">
+                  <BattleLog
+                    battleLog={battleLog || []}
+                    currentPlayer={currentPlayer}
+                    isFullscreen
+                  />
+                </div>
+              ) : chatOpen ? (
+                <div className="flex-1 min-h-0">
+                  <TeamChat
+                    gameId={game.id}
+                    currentPlayer={currentPlayer}
+                    players={allPlayers || players}
+                    isFullscreen
+                  />
+                </div>
+              ) : <>{mobileInspectPanel}{sidebarContent}</>}
+            </div>
+          )}
+        </div>
+      )}
+      </div>
+
       {tappedTile && (() => {
         const { row: tr, col: tc } = tappedTile
         const tKey = `${tr}-${tc}`
@@ -2601,98 +2698,6 @@ export default function GameBoard({
         </div>
       )}
 
-      {isFullscreen && (
-        <div className="lg:hidden fixed top-0 right-0 bottom-0 z-20 flex">
-          <button
-            onClick={() => setPanelOpen(!panelOpen)}
-            className="flex items-center justify-center px-1 cursor-pointer self-stretch"
-            style={{ backgroundColor: '#161b22', borderLeft: '1px solid #2a3140', color: '#4a5568', writingMode: 'vertical-rl' }}
-          >
-            <span className="text-xs font-semibold uppercase tracking-widest">{panelOpen ? 'Hide' : 'Menu'}</span>
-          </button>
-          {panelOpen && (
-            <div className="h-full overflow-y-auto p-3 flex flex-col" style={{ width: 260, backgroundColor: '#0d1117', borderLeft: '1px solid #2a3140' }}>
-              <div className="flex items-center justify-between mb-3 shrink-0">
-                <div className="flex items-center gap-1.5">
-                  <div className="flex rounded overflow-hidden" style={{ border: '1px solid #30363d' }}>
-                    <button
-                      onClick={() => setActiveBoard('ground')}
-                      className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
-                      style={activeBoard === 'ground'
-                        ? { backgroundColor: '#1c3043', color: '#6cb4e6' }
-                        : { backgroundColor: '#21262d', color: '#4a5568' }}
-                    >
-                      Ground
-                    </button>
-                    <button
-                      onClick={() => setActiveBoard('space')}
-                      className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
-                      style={activeBoard === 'space'
-                        ? { backgroundColor: '#2a1a3a', color: '#c080e0' }
-                        : { backgroundColor: '#21262d', color: '#4a5568' }}
-                    >
-                      Space
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => { setBattleLogOpen(prev => !prev); setChatOpen(false) }}
-                    className="w-7 h-7 flex items-center justify-center rounded cursor-pointer"
-                    style={{
-                      backgroundColor: battleLogOpen ? '#2a1a1a' : '#21262d',
-                      border: `1px solid ${battleLogOpen ? '#4a2a2a' : '#30363d'}`,
-                      color: battleLogOpen ? '#f47067' : '#8b949e',
-                    }}
-                    title="Battle Log"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => { setChatOpen(prev => !prev); setBattleLogOpen(false) }}
-                    className="w-7 h-7 flex items-center justify-center rounded cursor-pointer"
-                    style={{
-                      backgroundColor: chatOpen ? '#1c3043' : '#21262d',
-                      border: `1px solid ${chatOpen ? '#2a4a6a' : '#30363d'}`,
-                      color: chatOpen ? '#6cb4e6' : '#8b949e',
-                    }}
-                    title="Team Chat"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                    </svg>
-                  </button>
-                </div>
-                <button
-                  onClick={onExitFullscreen}
-                  className="w-6 h-6 flex items-center justify-center rounded cursor-pointer text-xs"
-                  style={{ backgroundColor: '#21262d', color: '#f47067', border: '1px solid #3d2525' }}
-                >
-                  &times;
-                </button>
-              </div>
-              {battleLogOpen ? (
-                <div className="flex-1 min-h-0">
-                  <BattleLog
-                    battleLog={battleLog || []}
-                    currentPlayer={currentPlayer}
-                    isFullscreen
-                  />
-                </div>
-              ) : chatOpen ? (
-                <div className="flex-1 min-h-0">
-                  <TeamChat
-                    gameId={game.id}
-                    currentPlayer={currentPlayer}
-                    players={allPlayers || players}
-                    isFullscreen
-                  />
-                </div>
-              ) : <>{mobileInspectPanel}{sidebarContent}</>}
-            </div>
-          )}
-        </div>
-      )}
       {shipModelPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <div className="rounded-lg p-6 w-full mx-4" style={{ maxWidth: 576, backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
