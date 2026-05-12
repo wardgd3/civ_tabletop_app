@@ -147,8 +147,6 @@ export default function GameBoard({
   const velocityRef = useRef({ vx: 0, vy: 0 })
   const lastMoveRef = useRef({ x: 0, y: 0, t: 0 })
   const inertiaRef = useRef(null)
-  const viewportRafRef = useRef(null)
-  const [viewportRect, setViewportRect] = useState(null)
 
   const selectedUnit = selectedUnitId ? units.find(u => u.id === selectedUnitId) || null : null
   const inspectedUnit = inspectedUnitId ? units.find(u => u.id === inspectedUnitId) || null : null
@@ -190,53 +188,7 @@ export default function GameBoard({
   const boardPixelW = cols * HEX_W + HEX_W / 2 + GAP
   const boardPixelH = (rows - 1) * ROW_H + HEX_H + GAP
   const isMobileView = isFullscreen || (typeof window !== 'undefined' && window.innerWidth < 768)
-  const wrapMul = isMobileView ? 1.3 : 2.2
-
-  const getVisualOffset = useCallback((z) => {
-    return {
-      x: (boardPixelW * z * wrapMul - boardPixelW * z) / 2,
-      y: (boardPixelH * z * wrapMul - boardPixelH * z) / 2,
-    }
-  }, [boardPixelW, boardPixelH, wrapMul])
-
-  const updateViewportNow = useCallback(() => {
-    const el = boardRef.current
-    if (!el) return
-    const z = zoomRef.current
-    const off = getVisualOffset(z)
-    const pad = Math.max(HEX_W, HEX_H) * 3
-    const sl = el.scrollLeft
-    const st = el.scrollTop
-    const vw = el.clientWidth
-    const vh = el.clientHeight
-    setViewportRect({
-      left: (sl - off.x) / z - pad,
-      top: (st - off.y) / z - pad,
-      right: (sl + vw - off.x) / z + pad,
-      bottom: (st + vh - off.y) / z + pad,
-    })
-  }, [getVisualOffset])
-
-  useEffect(() => {
-    const el = boardRef.current
-    if (!el) return
-    updateViewportNow()
-    function onScroll() {
-      if (viewportRafRef.current) return
-      viewportRafRef.current = requestAnimationFrame(() => {
-        viewportRafRef.current = null
-        updateViewportNow()
-      })
-    }
-    el.addEventListener('scroll', onScroll, { passive: true })
-    const ro = new ResizeObserver(updateViewportNow)
-    ro.observe(el)
-    return () => {
-      el.removeEventListener('scroll', onScroll)
-      ro.disconnect()
-      if (viewportRafRef.current) cancelAnimationFrame(viewportRafRef.current)
-    }
-  }, [zoom, updateViewportNow])
+  const wrapPad = isMobileView ? 0.15 : 0.6
 
   const tileMap = useMemo(() => {
     const map = new Map()
@@ -996,15 +948,17 @@ export default function GameBoard({
     const { clientX, clientY } = wheelCursorRef.current
     const cursorInViewX = clientX - rect.left
     const cursorInViewY = clientY - rect.top
-    const oldOff = getVisualOffset(current)
-    const boardX = (el.scrollLeft + cursorInViewX - oldOff.x) / current
-    const boardY = (el.scrollTop + cursorInViewY - oldOff.y) / current
+    const oldPadX = boardPixelW * current * wrapPad
+    const oldPadY = boardPixelH * current * wrapPad
+    const boardX = (el.scrollLeft + cursorInViewX - oldPadX) / current
+    const boardY = (el.scrollTop + cursorInViewY - oldPadY) / current
     const next = current + diff * 0.25
     zoomRef.current = next
     setZoom(next)
-    const newOff = getVisualOffset(next)
-    el.scrollLeft = newOff.x + boardX * next - cursorInViewX
-    el.scrollTop = newOff.y + boardY * next - cursorInViewY
+    const newPadX = boardPixelW * next * wrapPad
+    const newPadY = boardPixelH * next * wrapPad
+    el.scrollLeft = newPadX + boardX * next - cursorInViewX
+    el.scrollTop = newPadY + boardY * next - cursorInViewY
     wheelAnimRef.current = requestAnimationFrame(tickWheelZoom)
   }
 
@@ -1064,14 +1018,9 @@ export default function GameBoard({
     const inner = boardInnerRef.current
     const wrapper = wrapperRef.current
     if (!inner || !wrapper) return
-    const wW = boardPixelW * newZoom * wrapMul
-    const wH = boardPixelH * newZoom * wrapMul
     inner.style.transform = `scale(${newZoom})`
-    inner.style.left = `${(wW - boardPixelW * newZoom) / 2}px`
-    inner.style.top = `${(wH - boardPixelH * newZoom) / 2}px`
-    wrapper.style.width = `${wW}px`
-    wrapper.style.height = `${wH}px`
-  }, [boardPixelW, boardPixelH, wrapMul])
+    wrapper.style.padding = `${boardPixelH * newZoom * wrapPad}px ${boardPixelW * newZoom * wrapPad}px`
+  }, [boardPixelW, boardPixelH, wrapPad])
 
   const handleTouchMove = useCallback((e) => {
     if (e.touches.length === 2 && pinchRef.current !== null) {
@@ -1107,9 +1056,10 @@ export default function GameBoard({
           const cursorInViewX = p.midX - elRect.left
           const cursorInViewY = p.midY - elRect.top
 
-          const oldOff = getVisualOffset(current)
-          const boardX = (el.scrollLeft + cursorInViewX - oldOff.x) / current
-          const boardY = (el.scrollTop + cursorInViewY - oldOff.y) / current
+          const oldPadX = boardPixelW * current * wrapPad
+          const oldPadY = boardPixelH * current * wrapPad
+          const boardX = (el.scrollLeft + cursorInViewX - oldPadX) / current
+          const boardY = (el.scrollTop + cursorInViewY - oldPadY) / current
 
           const panDx = p.midX - p.lastMidX
           const panDy = p.midY - p.lastMidY
@@ -1119,10 +1069,10 @@ export default function GameBoard({
           zoomRef.current = newZoom
           applyZoomDirect(newZoom)
 
-          const newOff = getVisualOffset(newZoom)
-          el.scrollLeft = newOff.x + boardX * newZoom - cursorInViewX - panDx
-          el.scrollTop = newOff.y + boardY * newZoom - cursorInViewY - panDy
-          updateViewportNow()
+          const newPadX = boardPixelW * newZoom * wrapPad
+          const newPadY = boardPixelH * newZoom * wrapPad
+          el.scrollLeft = newPadX + boardX * newZoom - cursorInViewX - panDx
+          el.scrollTop = newPadY + boardY * newZoom - cursorInViewY - panDy
 
           if (Math.abs(targetPinchZoomRef.current - newZoom) > 0.001 || p) {
             pinchAnimRef.current = requestAnimationFrame(tickPinch)
@@ -1153,7 +1103,7 @@ export default function GameBoard({
         touchLastMoveRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: now }
       }
     }
-  }, [applyZoomDirect, updateViewportNow])
+  }, [applyZoomDirect])
 
   const handleTouchEnd = useCallback(() => {
     if (pinchRef.current !== null) {
@@ -1179,17 +1129,17 @@ export default function GameBoard({
     hasCentered.current = true
     requestAnimationFrame(() => {
       const cc = myCommandCenter
-      const off = getVisualOffset(zoom)
+      const padX = boardPixelW * zoom * wrapPad
+      const padY = boardPixelH * zoom * wrapPad
       if (cc) {
         const ccX = cc.grid_col * HEX_W + (cc.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
         const ccY = cc.grid_row * ROW_H + RENDER_H / 2
-        el.scrollLeft = off.x + ccX * zoom - el.clientWidth / 2
-        el.scrollTop = off.y + ccY * zoom - el.clientHeight / 2
+        el.scrollLeft = padX + ccX * zoom - el.clientWidth / 2
+        el.scrollTop = padY + ccY * zoom - el.clientHeight / 2
       } else {
         el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2
         el.scrollTop = (el.scrollHeight - el.clientHeight) / 2
       }
-      updateViewportNow()
     })
   })
 
@@ -2031,36 +1981,24 @@ export default function GameBoard({
         onMouseDown={handleBoardMouseDown}
       >
         <div ref={wrapperRef} style={{
-          width: boardPixelW * zoom * wrapMul,
-          height: boardPixelH * zoom * wrapMul,
-          position: 'relative',
+          padding: `${boardPixelH * zoom * wrapPad}px ${boardPixelW * zoom * wrapPad}px`,
+          display: 'inline-block',
         }}>
           <div
             ref={boardInnerRef}
-            className="absolute"
+            className="relative"
             style={{
               width: boardPixelW,
               height: boardPixelH,
               transform: `scale(${zoom})`,
               transformOrigin: '0 0',
-              left: (boardPixelW * zoom * wrapMul - boardPixelW * zoom) / 2,
-              top: (boardPixelH * zoom * wrapMul - boardPixelH * zoom) / 2,
               willChange: 'transform',
+              contain: 'layout style paint',
             }}
           >
             {Array.from({ length: rows * cols }, (_, i) => {
               const row = Math.floor(i / cols)
               const col = i % cols
-
-              if (viewportRect) {
-                const tx = col * HEX_W + (row & 1 ? HEX_W / 2 : 0)
-                const ty = row * ROW_H
-                if (tx + RENDER_W < viewportRect.left || tx > viewportRect.right ||
-                    ty + RENDER_H < viewportRect.top || ty > viewportRect.bottom) {
-                  return null
-                }
-              }
-
               const unit = getUnitAt(row, col)
               const cellKey = `${row}-${col}`
               const isVisible = visibleTiles.has(cellKey)
