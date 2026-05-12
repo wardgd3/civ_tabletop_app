@@ -130,7 +130,6 @@ export default function GameBoard({
   const boardRef = useRef(null)
   const boardInnerRef = useRef(null)
   const wrapperRef = useRef(null)
-  const clipRef = useRef(null)
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
   const panStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
@@ -183,7 +182,7 @@ export default function GameBoard({
   const isMobileView = isFullscreen || (typeof window !== 'undefined' && window.innerWidth < 768)
   const wrapPad = isMobileView ? 0.05 : 0.6
   const minZoom = isMobileView
-    ? Math.max(window.innerWidth / boardPixelW, window.innerHeight / boardPixelH) * 0.85
+    ? Math.max(window.innerWidth / boardPixelW, window.innerHeight / boardPixelH) * 0.68
     : 0.1
 
   const tileMap = useMemo(() => {
@@ -1013,13 +1012,10 @@ export default function GameBoard({
   const applyZoomDirect = useCallback((newZoom) => {
     const inner = boardInnerRef.current
     const wrapper = wrapperRef.current
-    const clip = clipRef.current
     if (!inner || !wrapper) return
     inner.style.transform = `scale(${newZoom})`
-    if (clip) {
-      clip.style.width = `${boardPixelW * newZoom}px`
-      clip.style.height = `${boardPixelH * newZoom}px`
-    }
+    wrapper.style.width = `${boardPixelW * newZoom}px`
+    wrapper.style.height = `${boardPixelH * newZoom}px`
     wrapper.style.padding = `${boardPixelH * newZoom * wrapPad}px ${boardPixelW * newZoom * wrapPad}px`
   }, [boardPixelW, boardPixelH, wrapPad])
 
@@ -1986,21 +1982,19 @@ export default function GameBoard({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-row">
+      <div className="flex-1 min-h-0 flex flex-row overflow-hidden">
       <div
         ref={boardRef}
-        className="flex-1 overflow-auto"
+        className="flex-1 overflow-auto min-w-0"
         style={{ cursor: boardCursor, touchAction: 'none' }}
         onMouseDown={handleBoardMouseDown}
       >
         <div ref={wrapperRef} style={{
+          width: boardPixelW * zoom,
+          height: boardPixelH * zoom,
           padding: `${boardPixelH * zoom * wrapPad}px ${boardPixelW * zoom * wrapPad}px`,
+          boxSizing: 'content-box',
         }}>
-          <div ref={clipRef} style={{
-            width: boardPixelW * zoom,
-            height: boardPixelH * zoom,
-            overflow: 'hidden',
-          }}>
           <div
             ref={boardInnerRef}
             className="relative"
@@ -2361,7 +2355,6 @@ export default function GameBoard({
             })()}
           </div>
         </div>
-      </div>
       </div>
 
       {isFullscreen && (
