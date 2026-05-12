@@ -243,8 +243,8 @@ export function generateTerrain(rows, cols, seed) {
     }
   }
 
-  generateCoastalInlets(tiles, rows, cols, rand, noise)
   const mainRiver = generateMainRiver(tiles, rows, cols, elevMap, rand)
+  generateCoastalWaters(tiles, rows, cols, rand, mainRiver)
   generateMountainRanges(tiles, rows, cols, rand, mainRiver)
   generateRivers(tiles, rows, cols, elevMap, rand)
   generateLargeLake(tiles, rows, cols, elevMap, rand, mainRiver)
@@ -256,55 +256,65 @@ export function generateTerrain(rows, cols, seed) {
   return tiles
 }
 
-function generateCoastalInlets(tiles, rows, cols, rand, noise) {
+function generateCoastalWaters(tiles, rows, cols, rand, mainRiver) {
   const tileAt = (r, c) => tiles[r * cols + c]
-  const inletCount = 2 + Math.floor(rand() * 2)
 
-  const sides = ['top', 'bottom', 'left', 'right']
-  for (let i = sides.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [sides[i], sides[j]] = [sides[j], sides[i]]
-  }
+  if (!mainRiver || !mainRiver.path || mainRiver.path.length === 0) return
+
+  const riverEnd = mainRiver.path[mainRiver.path.length - 1]
+  const [endR, endC] = riverEnd
+
+  const nearBottom = endR > rows / 2
+  const nearRight = endC > cols / 2
+  const edgeSide = nearBottom ? 'bottom' : 'top'
+  const cornerC = nearRight ? cols - 1 : 0
+
+  const centerC = Math.round(endC * 0.6 + cornerC * 0.4)
+  const centerR = edgeSide === 'bottom' ? rows - 1 : 0
+
+  const spanW = Math.floor(cols * (0.25 + rand() * 0.15))
+  const spanH = Math.floor(rows * (0.12 + rand() * 0.08))
 
   const waterSet = new Set()
 
-  for (let i = 0; i < Math.min(inletCount, sides.length); i++) {
-    const side = sides[i]
-    const depthRadius = 3 + Math.floor(rand() * 4)
-    const widthRadius = depthRadius * (1.4 + rand() * 0.8)
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const distC = (c - centerC) / spanW
+      let distR
+      if (edgeSide === 'bottom') {
+        distR = (rows - 1 - r) / spanH
+        if (r > rows - 1) continue
+      } else {
+        distR = r / spanH
+      }
+      if (distR < 0) continue
 
-    let edgeR, edgeC
-    if (side === 'top' || side === 'bottom') {
-      edgeC = Math.floor(cols * (0.2 + rand() * 0.6))
-      edgeR = side === 'top' ? 0 : rows - 1
-    } else {
-      edgeR = Math.floor(rows * (0.2 + rand() * 0.6))
-      edgeC = side === 'left' ? 0 : cols - 1
-    }
+      const seed1 = Math.sin(r * 5.1 + c * 8.7) * 43758.5453
+      const edgeNoise = (seed1 - Math.floor(seed1) - 0.5) * 0.4
+      const ellipse = distR * distR + distC * distC + edgeNoise
 
-    const scanR = Math.ceil(Math.max(depthRadius, widthRadius)) + 2
-    for (let dr = -scanR; dr <= scanR; dr++) {
-      for (let dc = -scanR; dc <= scanR; dc++) {
-        const r = edgeR + dr, c = edgeC + dc
-        if (r < 0 || r >= rows || c < 0 || c >= cols) continue
-
-        let inward, lateral
-        if (side === 'top') { inward = r; lateral = c - edgeC }
-        else if (side === 'bottom') { inward = rows - 1 - r; lateral = c - edgeC }
-        else if (side === 'left') { inward = c; lateral = r - edgeR }
-        else { inward = cols - 1 - c; lateral = r - edgeR }
-
-        if (inward < 0) continue
-        const ellipseDist = (inward / depthRadius) ** 2 + (lateral / widthRadius) ** 2
-        const seed1 = Math.sin(r * 5.1 + c * 8.7) * 43758.5453
-        const edgeNoise = (seed1 - Math.floor(seed1) - 0.5) * 0.35
-        if (ellipseDist + edgeNoise > 1) continue
+      if (ellipse < 1) {
         waterSet.add(`${r}-${c}`)
       }
     }
   }
 
-  // Compute distance from land for each water tile (BFS from edges of water)
+  let [br, bc] = riverEnd
+  for (let step = 0; step < 40; step++) {
+    if (waterSet.has(`${br}-${bc}`)) break
+    waterSet.add(`${br}-${bc}`)
+    for (const [nr, nc] of hexNeighbors(br, bc, rows, cols)) {
+      waterSet.add(`${nr}-${nc}`)
+    }
+    const dr = centerR - br
+    const dc = centerC - bc
+    const len = Math.max(1, Math.abs(dr) + Math.abs(dc))
+    br += Math.round(dr / len)
+    bc += Math.round(dc / len)
+    br = Math.max(0, Math.min(rows - 1, br))
+    bc = Math.max(0, Math.min(cols - 1, bc))
+  }
+
   const waterDistFromLand = new Map()
   let landBorder = []
   for (const k of waterSet) {
@@ -331,14 +341,14 @@ function generateCoastalInlets(tiles, rows, cols, rand, noise) {
     landBorder = next
   }
 
-  // Apply water terrain - ocean everywhere except tiles adjacent to land (coast)
   for (const k of waterSet) {
     const [r, c] = k.split('-').map(Number)
+    const t = tileAt(r, c).terrain
+    if (t === 'river') continue
     const depth = waterDistFromLand.get(k) || 0
-    tileAt(r, c).terrain = depth >= 1 ? 'ocean' : 'coast'
+    tileAt(r, c).terrain = depth >= 2 ? 'ocean' : 'coast'
   }
 
-  // Place coast tiles around the water edges that touch land
   for (const k of waterSet) {
     const [r, c] = k.split('-').map(Number)
     for (const [nr, nc] of hexNeighbors(r, c, rows, cols)) {
