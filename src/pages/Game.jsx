@@ -18,6 +18,16 @@ export default function Game() {
     return () => document.removeEventListener('fullscreenchange', onFsChange)
   }, [])
 
+  useEffect(() => {
+    if (gameState.loading || !gameState.game) return
+    const isMobile = window.innerWidth < 768 || 'ontouchstart' in window
+    if (isMobile && !document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => {
+        try { screen.orientation?.lock?.('landscape') } catch {}
+      }).catch(() => {})
+    }
+  }, [gameState.loading, gameState.game])
+
   const toggleFullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement) {

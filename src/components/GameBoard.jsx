@@ -1162,8 +1162,21 @@ export default function GameBoard({
     if (!el || hasCentered.current) return
     hasCentered.current = true
     requestAnimationFrame(() => {
-      el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2
-      el.scrollTop = (el.scrollHeight - el.clientHeight) / 2
+      const cc = myCommandCenter
+      if (cc) {
+        const ccX = cc.grid_col * HEX_W + (cc.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
+        const ccY = cc.grid_row * ROW_H + RENDER_H / 2
+        const wrapW = boardPixelW * zoom * 2.2
+        const wrapH = boardPixelH * zoom * 2.2
+        const offsetX = (wrapW - boardPixelW * zoom) / 2
+        const offsetY = (wrapH - boardPixelH * zoom) / 2
+        el.scrollLeft = offsetX + ccX * zoom - el.clientWidth / 2
+        el.scrollTop = offsetY + ccY * zoom - el.clientHeight / 2
+      } else {
+        el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2
+        el.scrollTop = (el.scrollHeight - el.clientHeight) / 2
+      }
+      updateViewportNow()
     })
   })
 
