@@ -2095,7 +2095,7 @@ export default function GameBoard({
               }
 
               let voidStarBg = null
-              if (isSpace && tile.terrain === 'void') {
+              if (isSpace && tileData?.terrain === 'void') {
                 const starHash = ((Math.sin(row * 127.1 + col * 311.7) * 43758.5453) % 1 + 1) % 1
                 if (starHash < 0.05) {
                   const sizeHash = ((Math.sin(row * 53.3 + col * 97.1) * 28461.213) % 1 + 1) % 1
