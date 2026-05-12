@@ -114,7 +114,15 @@ export default function GameBoard({
   const [mode, setMode] = useState('select')
   const [error, setError] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
-  const [zoom, setZoom] = useState(0.34)
+  const [zoom, setZoom] = useState(() => {
+    const isMobile = window.innerWidth < 768
+    if (!isMobile) return 0.34
+    const bw = game.grid_cols * HEX_W + HEX_W / 2 + GAP
+    const bh = (game.grid_rows - 1) * ROW_H + HEX_H + GAP
+    const fitW = window.innerWidth / bw
+    const fitH = (window.innerHeight - 60) / bh
+    return Math.min(fitW, fitH, 1)
+  })
   const [spaceHeld, setSpaceHeld] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
   const [touchPanning, setTouchPanning] = useState(false)
@@ -960,7 +968,7 @@ export default function GameBoard({
 
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
-  const targetZoomRef = useRef(0.34)
+  const targetZoomRef = useRef(zoom)
   const wheelAnimRef = useRef(null)
   const wheelCursorRef = useRef({ clientX: 0, clientY: 0 })
 
