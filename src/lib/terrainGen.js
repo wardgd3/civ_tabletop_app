@@ -1722,6 +1722,25 @@ export function generateSpaceTerrain(rows, cols, seed) {
     }
   }
 
+  // Smooth all asteroid cluster edges: remove tiles with <=1 asteroid neighbor
+  const asteroidTypes = new Set(['asteroid', 'large_asteroid'])
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const t = tileAt(r, c)
+        if (!asteroidTypes.has(t.terrain)) continue
+        const neighbors = hexNeighbors(r, c, rows, cols)
+        const asteroidNeighborCount = neighbors.filter(([nr, nc]) => asteroidTypes.has(tileAt(nr, nc).terrain)).length
+        if (asteroidNeighborCount <= 1) {
+          t.terrain = 'void'
+          changed = true
+        }
+      }
+    }
+    if (!changed) break
+  }
+
   placeSpaceResources(tiles, rand)
 
   const centerR = Math.floor(rows / 2)
