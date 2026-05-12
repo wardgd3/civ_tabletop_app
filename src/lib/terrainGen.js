@@ -1195,6 +1195,7 @@ function placeSandBanks(tiles, rows, cols, rand) {
 }
 
 function placeResources(tiles, rows, cols, rand) {
+  return // ore placement disabled
   const resourceList = Object.values(RESOURCES)
   for (const tile of tiles) {
     if (tile.resource) continue
@@ -1229,6 +1230,7 @@ function placeResources(tiles, rows, cols, rand) {
 }
 
 function placeSpaceResources(tiles, rand) {
+  return // ore placement disabled
   const ores = Object.values(SPACE_RESOURCES)
   for (const tile of tiles) {
     if (tile.terrain !== 'asteroid' && tile.terrain !== 'large_asteroid') continue
