@@ -1480,6 +1480,24 @@ function generateNebulaFlow(tiles, rows, cols, rand, noise) {
     const [r, c] = k.split('-').map(Number)
     tileAt(r, c).terrain = 'nebula_hotspot'
   }
+
+  // Fill void holes inside nebula: any void tile with 4+ nebula neighbors becomes nebula
+  const nebulaTerrains = new Set(['nebula', 'nebula_core', 'nebula_bright', 'nebula_hotspot'])
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (tileAt(r, c).terrain !== 'void') continue
+        const neighbors = hexNeighbors(r, c, rows, cols)
+        const nebCount = neighbors.filter(([nr, nc]) => nebulaTerrains.has(tileAt(nr, nc).terrain)).length
+        if (nebCount >= 4) {
+          tileAt(r, c).terrain = 'nebula'
+          changed = true
+        }
+      }
+    }
+    if (!changed) break
+  }
 }
 
 export function generateSpaceTerrain(rows, cols, seed) {
