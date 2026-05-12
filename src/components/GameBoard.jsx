@@ -1027,6 +1027,7 @@ export default function GameBoard({
     const inner = boardInnerRef.current
     const wrapper = wrapperRef.current
     if (!inner) return
+    inner.style.zoom = finalZoom
     inner.style.transform = ''
     inner.style.transformOrigin = ''
     if (wrapper) {
