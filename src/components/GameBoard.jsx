@@ -137,6 +137,8 @@ export default function GameBoard({
   const velocityRef = useRef({ vx: 0, vy: 0 })
   const lastMoveRef = useRef({ x: 0, y: 0, t: 0 })
   const inertiaRef = useRef(null)
+  const viewportRafRef = useRef(null)
+  const [viewportRect, setViewportRect] = useState(null)
 
   const selectedUnit = selectedUnitId ? units.find(u => u.id === selectedUnitId) || null : null
   const inspectedUnit = inspectedUnitId ? units.find(u => u.id === inspectedUnitId) || null : null
@@ -177,6 +179,40 @@ export default function GameBoard({
 
   const boardPixelW = cols * HEX_W + HEX_W / 2 + GAP
   const boardPixelH = (rows - 1) * ROW_H + HEX_H + GAP
+
+  useEffect(() => {
+    const el = boardRef.current
+    if (!el) return
+    function updateViewport() {
+      const inner = boardInnerRef.current
+      if (!inner) return
+      const innerRect = inner.getBoundingClientRect()
+      const elRect = el.getBoundingClientRect()
+      const pad = Math.max(HEX_W, HEX_H) * 2
+      setViewportRect({
+        left: (elRect.left - innerRect.left) / zoom - pad,
+        top: (elRect.top - innerRect.top) / zoom - pad,
+        right: (elRect.right - innerRect.left) / zoom + pad,
+        bottom: (elRect.bottom - innerRect.top) / zoom + pad,
+      })
+    }
+    updateViewport()
+    function onScroll() {
+      if (viewportRafRef.current) return
+      viewportRafRef.current = requestAnimationFrame(() => {
+        viewportRafRef.current = null
+        updateViewport()
+      })
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    const ro = new ResizeObserver(updateViewport)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      ro.disconnect()
+      if (viewportRafRef.current) cancelAnimationFrame(viewportRafRef.current)
+    }
+  }, [zoom])
 
   const tileMap = useMemo(() => {
     const map = new Map()
@@ -1941,6 +1977,16 @@ export default function GameBoard({
             {Array.from({ length: rows * cols }, (_, i) => {
               const row = Math.floor(i / cols)
               const col = i % cols
+
+              if (viewportRect) {
+                const tx = col * HEX_W + (row & 1 ? HEX_W / 2 : 0)
+                const ty = row * ROW_H
+                if (tx + RENDER_W < viewportRect.left || tx > viewportRect.right ||
+                    ty + RENDER_H < viewportRect.top || ty > viewportRect.bottom) {
+                  return null
+                }
+              }
+
               const unit = getUnitAt(row, col)
               const cellKey = `${row}-${col}`
               const isVisible = visibleTiles.has(cellKey)
