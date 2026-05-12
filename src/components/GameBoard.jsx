@@ -924,72 +924,52 @@ export default function GameBoard({
     }
   }, [])
 
-  const targetZoomRef = useRef(zoom)
-  const wheelAnimRef = useRef(null)
-  const wheelCursorRef = useRef({ clientX: 0, clientY: 0 })
-
-  const wheelSettleTimer = useRef(null)
-
-  function tickWheelZoom() {
-    const el = boardRef.current
-    if (!el) return
-    const current = zoomRef.current
-    const target = targetZoomRef.current
-    const diff = target - current
-    if (Math.abs(diff) < 0.001) {
-      zoomRef.current = target
-      wheelAnimRef.current = null
-      return
-    }
-    const { clientX, clientY } = wheelCursorRef.current
-    const rect = el.getBoundingClientRect()
-    const cursorInViewX = clientX - rect.left
-    const cursorInViewY = clientY - rect.top
-    const oldPadX = boardPixelW * current * wrapPad
-    const oldPadY = boardPixelH * current * wrapPad
-    const boardX = (el.scrollLeft + cursorInViewX - oldPadX) / current
-    const boardY = (el.scrollTop + cursorInViewY - oldPadY) / current
-    const next = current + diff * 0.18
-    zoomRef.current = next
-    applyZoomDirect(next)
-    const newPadX = boardPixelW * next * wrapPad
-    const newPadY = boardPixelH * next * wrapPad
-    el.scrollLeft = newPadX + boardX * next - cursorInViewX
-    el.scrollTop = newPadY + boardY * next - cursorInViewY
-    wheelAnimRef.current = requestAnimationFrame(tickWheelZoom)
-  }
-
-  function commitWheelZoom() {
-    const el = boardRef.current
-    if (!el) return
-    const finalZoom = zoomRef.current
-    const vw = el.clientWidth
-    const vh = el.clientHeight
-    const padX = boardPixelW * finalZoom * wrapPad
-    const padY = boardPixelH * finalZoom * wrapPad
-    const cx = (el.scrollLeft + vw / 2 - padX) / finalZoom
-    const cy = (el.scrollTop + vh / 2 - padY) / finalZoom
-    commitZoom(finalZoom)
-    setZoom(finalZoom)
-    requestAnimationFrame(() => {
-      const np = boardPixelW * finalZoom * wrapPad
-      const npy = boardPixelH * finalZoom * wrapPad
-      el.scrollLeft = np + cx * finalZoom - vw / 2
-      el.scrollTop = npy + cy * finalZoom - vh / 2
-    })
-  }
+  const wheelRafRef = useRef(null)
+  const wheelPendingRef = useRef(null)
 
   const handleWheel = useCallback((e) => {
     e.preventDefault()
-    wheelCursorRef.current = { clientX: e.clientX, clientY: e.clientY }
-    const factor = e.deltaY > 0 ? 0.93 : 1.08
-    targetZoomRef.current = Math.min(1.5, Math.max(minZoom, targetZoomRef.current * factor))
-    if (!wheelAnimRef.current) {
-      wheelAnimRef.current = requestAnimationFrame(tickWheelZoom)
+    const el = boardRef.current
+    if (!el) return
+    const factor = e.deltaY > 0 ? 0.94 : 1.065
+    const current = zoomRef.current
+    const newZoom = Math.min(1.5, Math.max(minZoom, current * factor))
+    if (newZoom === current) return
+
+    const rect = el.getBoundingClientRect()
+    const cursorInViewX = e.clientX - rect.left
+    const cursorInViewY = e.clientY - rect.top
+
+    wheelPendingRef.current = { newZoom, cursorInViewX, cursorInViewY }
+
+    if (!wheelRafRef.current) {
+      wheelRafRef.current = requestAnimationFrame(() => {
+        wheelRafRef.current = null
+        const pending = wheelPendingRef.current
+        if (!pending) return
+        wheelPendingRef.current = null
+        const { newZoom: nz, cursorInViewX: cvx, cursorInViewY: cvy } = pending
+        const cur = zoomRef.current
+        const oldPadX = boardPixelW * cur * wrapPad
+        const oldPadY = boardPixelH * cur * wrapPad
+        const boardX = (el.scrollLeft + cvx - oldPadX) / cur
+        const boardY = (el.scrollTop + cvy - oldPadY) / cur
+
+        zoomRef.current = nz
+        baseZoomRef.current = nz
+        const inner = boardInnerRef.current
+        const wrapper = wrapperRef.current
+        if (inner) inner.style.zoom = nz
+        if (wrapper) wrapper.style.padding = `${boardPixelH * nz * wrapPad}px ${boardPixelW * nz * wrapPad}px`
+
+        const newPadX = boardPixelW * nz * wrapPad
+        const newPadY = boardPixelH * nz * wrapPad
+        el.scrollLeft = newPadX + boardX * nz - cvx
+        el.scrollTop = newPadY + boardY * nz - cvy
+        setZoom(nz)
+      })
     }
-    if (wheelSettleTimer.current) clearTimeout(wheelSettleTimer.current)
-    wheelSettleTimer.current = setTimeout(commitWheelZoom, 200)
-  }, [])
+  }, [boardPixelW, boardPixelH, wrapPad, minZoom])
 
   const pinchRef = useRef(null)
   const touchVelocityRef = useRef({ vx: 0, vy: 0 })
