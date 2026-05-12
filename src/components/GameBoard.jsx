@@ -180,7 +180,7 @@ export default function GameBoard({
   const boardPixelW = cols * HEX_W + HEX_W / 2 + GAP
   const boardPixelH = (rows - 1) * ROW_H + HEX_H + GAP
   const isMobileView = isFullscreen || (typeof window !== 'undefined' && window.innerWidth < 768)
-  const wrapPad = isMobileView ? 0.15 : 0.6
+  const wrapPad = isFullscreen ? 0 : isMobileView ? 0.15 : 0.6
   const minZoom = isMobileView
     ? Math.min(window.innerWidth / boardPixelW, window.innerHeight / boardPixelH, 0.5)
     : 0.1
