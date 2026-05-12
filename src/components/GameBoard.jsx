@@ -132,6 +132,7 @@ export default function GameBoard({
   const wrapperRef = useRef(null)
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
+  const baseZoomRef = useRef(zoom)
   const panStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
   const touchPanRef = useRef(null)
   const panningRef = useRef(false)
@@ -935,6 +936,7 @@ export default function GameBoard({
     const diff = target - current
     if (Math.abs(diff) < 0.002) {
       zoomRef.current = target
+      commitZoom(target)
       setZoom(target)
       wheelAnimRef.current = null
       return
@@ -949,7 +951,7 @@ export default function GameBoard({
     const boardY = (el.scrollTop + cursorInViewY - oldPadY) / current
     const next = current + diff * 0.25
     zoomRef.current = next
-    setZoom(next)
+    applyZoomDirect(next)
     const newPadX = boardPixelW * next * wrapPad
     const newPadY = boardPixelH * next * wrapPad
     el.scrollLeft = newPadX + boardX * next - cursorInViewX
@@ -1013,9 +1015,26 @@ export default function GameBoard({
     const inner = boardInnerRef.current
     const wrapper = wrapperRef.current
     if (!inner || !wrapper) return
-    inner.style.zoom = newZoom
+    const base = baseZoomRef.current
+    inner.style.transform = `scale(${newZoom / base})`
+    inner.style.transformOrigin = '0 0'
+    wrapper.style.width = `${boardPixelW * newZoom}px`
+    wrapper.style.height = `${boardPixelH * newZoom}px`
     wrapper.style.padding = `${boardPixelH * newZoom * wrapPad}px ${boardPixelW * newZoom * wrapPad}px`
   }, [boardPixelW, boardPixelH, wrapPad])
+
+  const commitZoom = useCallback((finalZoom) => {
+    const inner = boardInnerRef.current
+    const wrapper = wrapperRef.current
+    if (!inner) return
+    inner.style.transform = ''
+    inner.style.transformOrigin = ''
+    if (wrapper) {
+      wrapper.style.width = ''
+      wrapper.style.height = ''
+    }
+    baseZoomRef.current = finalZoom
+  }, [])
 
   const handleTouchMove = useCallback((e) => {
     if (e.touches.length === 2 && pinchRef.current !== null) {
@@ -1104,7 +1123,9 @@ export default function GameBoard({
     if (pinchRef.current !== null) {
       if (pinchAnimRef.current) cancelAnimationFrame(pinchAnimRef.current)
       pinchAnimRef.current = null
-      setZoom(zoomRef.current)
+      const finalZoom = zoomRef.current
+      commitZoom(finalZoom)
+      setZoom(finalZoom)
       pinchRef.current = null
     }
     if (touchPanRef.current?.moved) {
@@ -1133,6 +1154,7 @@ export default function GameBoard({
         z = Math.max(fitW, fitH, 0.15)
         z = Math.min(z, 1)
         zoomRef.current = z
+        baseZoomRef.current = z
         setZoom(z)
       }
       const padX = boardPixelW * z * wrapPad
