@@ -1013,9 +1013,7 @@ export default function GameBoard({
     const inner = boardInnerRef.current
     const wrapper = wrapperRef.current
     if (!inner || !wrapper) return
-    inner.style.transform = `scale(${newZoom})`
-    wrapper.style.width = `${boardPixelW * newZoom}px`
-    wrapper.style.height = `${boardPixelH * newZoom}px`
+    inner.style.zoom = newZoom
     wrapper.style.padding = `${boardPixelH * newZoom * wrapPad}px ${boardPixelW * newZoom * wrapPad}px`
   }, [boardPixelW, boardPixelH, wrapPad])
 
@@ -1990,10 +1988,7 @@ export default function GameBoard({
         onMouseDown={handleBoardMouseDown}
       >
         <div ref={wrapperRef} style={{
-          width: boardPixelW * zoom,
-          height: boardPixelH * zoom,
           padding: `${boardPixelH * zoom * wrapPad}px ${boardPixelW * zoom * wrapPad}px`,
-          boxSizing: 'content-box',
         }}>
           <div
             ref={boardInnerRef}
@@ -2001,9 +1996,7 @@ export default function GameBoard({
             style={{
               width: boardPixelW,
               height: boardPixelH,
-              transform: `scale(${zoom})`,
-              transformOrigin: '0 0',
-              willChange: 'transform',
+              zoom: zoom,
             }}
           >
             {Array.from({ length: rows * cols }, (_, i) => {
