@@ -1585,11 +1585,36 @@ export function generateSpaceTerrain(rows, cols, seed) {
     }
   }
 
-  // Place 3-4 large asteroid clusters
+  const isLargeMap = cols > 48
+  const minSpacing = 20
+  const clusterCenters = []
+
+  function tooClose(r, c) {
+    if (!isLargeMap) return false
+    for (const [pr, pc] of clusterCenters) {
+      const dr = r - pr
+      const dc = c - pc
+      if (Math.sqrt(dr * dr + dc * dc) < minSpacing) return true
+    }
+    return false
+  }
+
+  function pickCenter(margin, maxAttempts) {
+    for (let a = 0; a < maxAttempts; a++) {
+      const r = margin + Math.floor(rand() * (rows - margin * 2))
+      const c = margin + Math.floor(rand() * (cols - margin * 2))
+      if (!tooClose(r, c)) return [r, c]
+    }
+    return null
+  }
+
+  // Place 3-4 medium asteroid clusters
   const clusterCount = 3 + (rand() < 0.5 ? 1 : 0)
   for (let i = 0; i < clusterCount; i++) {
-    const cr = 4 + Math.floor(rand() * (rows - 8))
-    const cc = 4 + Math.floor(rand() * (cols - 8))
+    const center = pickCenter(4, 30)
+    if (!center) continue
+    const [cr, cc] = center
+    clusterCenters.push([cr, cc])
     const clusterSize = 12 + Math.floor(rand() * 10)
     const cluster = [[cr, cc]]
     const used = new Set([`${cr}-${cc}`])
@@ -1614,12 +1639,12 @@ export function generateSpaceTerrain(rows, cols, seed) {
     }
   }
 
-
-
-  const hugeCount = cols > 48 ? 2 : 1
+  const hugeCount = isLargeMap ? 2 : 1
   for (let i = 0; i < hugeCount; i++) {
-    const hr = 6 + Math.floor(rand() * (rows - 12))
-    const hc = 6 + Math.floor(rand() * (cols - 12))
+    const center = pickCenter(6, 30)
+    if (!center) continue
+    const [hr, hc] = center
+    clusterCenters.push([hr, hc])
     const size = 25 + Math.floor(rand() * 15)
     const cluster = [[hr, hc]]
     const used = new Set([`${hr}-${hc}`])
@@ -1640,9 +1665,11 @@ export function generateSpaceTerrain(rows, cols, seed) {
   }
 
   // Super large asteroid on large maps (100-120 tiles)
-  if (cols > 48) {
-    const slr = 8 + Math.floor(rand() * (rows - 16))
-    const slc = 8 + Math.floor(rand() * (cols - 16))
+  if (isLargeMap) {
+    const center = pickCenter(8, 30)
+    if (center) {
+    const [slr, slc] = center
+    clusterCenters.push([slr, slc])
     const slSize = 100 + Math.floor(rand() * 21)
     const slCluster = [[slr, slc]]
     const slUsed = new Set([`${slr}-${slc}`])
@@ -1660,12 +1687,15 @@ export function generateSpaceTerrain(rows, cols, seed) {
     for (const [ar, ac] of slCluster) {
       tileAt(ar, ac).terrain = 'large_asteroid'
     }
+    }
   }
 
   // Massive asteroid for large maps (350-450 tiles)
-  if (cols > 48) {
-    const mr = 10 + Math.floor(rand() * (rows - 20))
-    const mc = 10 + Math.floor(rand() * (cols - 20))
+  if (isLargeMap) {
+    const center = pickCenter(10, 30)
+    if (center) {
+    const [mr, mc] = center
+    clusterCenters.push([mr, mc])
     const mSize = 350 + Math.floor(rand() * 101)
     const mCluster = [[mr, mc]]
     const mUsed = new Set([`${mr}-${mc}`])
@@ -1686,6 +1716,7 @@ export function generateSpaceTerrain(rows, cols, seed) {
       } else {
         tileAt(ar, ac).terrain = 'asteroid'
       }
+    }
     }
   }
 
