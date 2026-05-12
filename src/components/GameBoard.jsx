@@ -2170,25 +2170,7 @@ export default function GameBoard({
                       }}
                     />
                   )}
-                  {!showUnit && (isVisible || isDiscovered) && (() => {
-                    const tile = tileMap.get(cellKey)
-                    if (!tile?.resource) return null
-                    if (tile.resource === 'space_guild') return null
-                    const res = RESOURCE_BY_ID[tile.resource]
-                    if (!res?.icon) return null
-                    return (
-                      <img
-                        src={`/assets/${res.icon}`}
-                        alt={res.name}
-                        className="absolute object-contain pointer-events-none z-[5]"
-                        style={{
-                          width: RENDER_W * 0.55,
-                          height: RENDER_H * 0.55,
-                          opacity: isVisible ? 0.85 : 0.45,
-                        }}
-                      />
-                    )
-                  })()}
+                  {/* ore icons disabled */}
                   {showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' && (() => {
                     const pColor = getPlayerColor(unit.owner_id, unit)
                     const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
