@@ -193,13 +193,9 @@ export default function GameBoard({
   const wrapMul = isMobileView ? 1.3 : 2.2
 
   const getVisualOffset = useCallback((z) => {
-    const wW = boardPixelW * z * wrapMul
-    const wH = boardPixelH * z * wrapMul
-    const layoutLeft = (wW - boardPixelW) / 2
-    const layoutTop = (wH - boardPixelH) / 2
     return {
-      x: layoutLeft + boardPixelW * (1 - z) / 2,
-      y: layoutTop + boardPixelH * (1 - z) / 2,
+      x: (boardPixelW * z * wrapMul - boardPixelW * z) / 2,
+      y: (boardPixelH * z * wrapMul - boardPixelH * z) / 2,
     }
   }, [boardPixelW, boardPixelH, wrapMul])
 
@@ -1068,10 +1064,14 @@ export default function GameBoard({
     const inner = boardInnerRef.current
     const wrapper = wrapperRef.current
     if (!inner || !wrapper) return
+    const wW = boardPixelW * newZoom * wrapMul
+    const wH = boardPixelH * newZoom * wrapMul
     inner.style.transform = `scale(${newZoom})`
-    wrapper.style.width = `${boardPixelW * newZoom * wrapMul}px`
-    wrapper.style.height = `${boardPixelH * newZoom * wrapMul}px`
-  }, [boardPixelW, boardPixelH])
+    inner.style.left = `${(wW - boardPixelW * newZoom) / 2}px`
+    inner.style.top = `${(wH - boardPixelH * newZoom) / 2}px`
+    wrapper.style.width = `${wW}px`
+    wrapper.style.height = `${wH}px`
+  }, [boardPixelW, boardPixelH, wrapMul])
 
   const handleTouchMove = useCallback((e) => {
     if (e.touches.length === 2 && pinchRef.current !== null) {
@@ -2033,18 +2033,18 @@ export default function GameBoard({
         <div ref={wrapperRef} style={{
           width: boardPixelW * zoom * wrapMul,
           height: boardPixelH * zoom * wrapMul,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          position: 'relative',
         }}>
           <div
             ref={boardInnerRef}
-            className="relative shrink-0"
+            className="absolute"
             style={{
               width: boardPixelW,
               height: boardPixelH,
               transform: `scale(${zoom})`,
-              transformOrigin: 'center center',
+              transformOrigin: '0 0',
+              left: (boardPixelW * zoom * wrapMul - boardPixelW * zoom) / 2,
+              top: (boardPixelH * zoom * wrapMul - boardPixelH * zoom) / 2,
               willChange: 'transform',
             }}
           >
