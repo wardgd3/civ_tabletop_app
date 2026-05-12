@@ -22,6 +22,7 @@ export const TERRAIN = {
   NEBULA_HOTSPOT:  { id: 'nebula_hotspot',  name: 'Nebula Hotspot',  color: '#7a3868', darkColor: '#4a2040' },
   ASTEROID:        { id: 'asteroid',        name: 'Asteroid',        color: '#3a3228', darkColor: '#252018' },
   LARGE_ASTEROID:  { id: 'large_asteroid',  name: 'Large Asteroid',  color: '#4a4238', darkColor: '#302a20' },
+  BG_ASTEROID:     { id: 'bg_asteroid',     name: 'Background Asteroid', color: '#1a1610', darkColor: '#12100a' },
   STAR:            { id: 'star',            name: 'Star',            color: '#e8e0c8', darkColor: '#a09880' },
   DUST:            { id: 'dust',            name: 'Dust Cloud',      color: '#0e121a', darkColor: '#0a0e12' },
   SPACE:           { id: 'space',           name: 'Space',           color: '#0a0e12', darkColor: '#0a0e12' },
@@ -1547,6 +1548,43 @@ export function generateSpaceTerrain(rows, cols, seed) {
 
     for (const [ar, ac] of slCluster) {
       tileAt(ar, ac).terrain = 'large_asteroid'
+    }
+  }
+
+  // Massive asteroid for large maps (350-450 tiles)
+  if (cols > 48) {
+    const mr = 10 + Math.floor(rand() * (rows - 20))
+    const mc = 10 + Math.floor(rand() * (cols - 20))
+    const mSize = 350 + Math.floor(rand() * 101)
+    const mCluster = [[mr, mc]]
+    const mUsed = new Set([`${mr}-${mc}`])
+
+    for (let step = 0; step < mSize * 4 && mCluster.length < mSize; step++) {
+      const [sr, sc] = mCluster[Math.floor(rand() * mCluster.length)]
+      const neighbors = hexNeighbors(sr, sc, rows, cols)
+      const candidates = neighbors.filter(([nr, nc]) => !mUsed.has(`${nr}-${nc}`))
+      if (candidates.length === 0) continue
+      const [nr, nc] = candidates[Math.floor(rand() * candidates.length)]
+      mUsed.add(`${nr}-${nc}`)
+      mCluster.push([nr, nc])
+    }
+
+    for (const [ar, ac] of mCluster) {
+      if (rand() < 0.4) {
+        tileAt(ar, ac).terrain = 'large_asteroid'
+      } else {
+        tileAt(ar, ac).terrain = 'asteroid'
+      }
+    }
+  }
+
+  // Scatter background asteroids on empty space tiles
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const t = tileAt(r, c).terrain
+      if ((t === 'void' || t === 'space' || t === 'dust') && rand() < 0.06) {
+        tileAt(r, c).terrain = 'bg_asteroid'
+      }
     }
   }
 
