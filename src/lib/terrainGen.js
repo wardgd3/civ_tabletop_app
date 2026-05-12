@@ -10,8 +10,8 @@ export const TERRAIN = {
   SNOW:            { id: 'snow',            name: 'Snow',            color: '#606870', darkColor: '#404548' },
   HILLS:           { id: 'hills',           name: 'Hills',           color: '#554e38', darkColor: '#353020' },
   MOUNTAIN:        { id: 'mountain',        name: 'Mountain',        color: '#504840', darkColor: '#332e28' },
-  FOREST:          { id: 'forest',          name: 'Forest',          color: '#264826', darkColor: '#1a301a' },
-  JUNGLE:          { id: 'jungle',          name: 'Jungle',          color: '#1e4a1e', darkColor: '#163016' },
+  FOREST:          { id: 'forest',          name: 'Forest',          color: '#1e3a1e', darkColor: '#152615' },
+  JUNGLE:          { id: 'jungle',          name: 'Jungle',          color: '#183b18', darkColor: '#112611' },
   LAKE:            { id: 'lake',            name: 'Lake',            color: '#18365a', darkColor: '#0e2237' },
   RIVER:           { id: 'river',           name: 'River',           color: '#18365a', darkColor: '#0e2237' },
   SAND:            { id: 'sand',            name: 'Sand',            color: '#807550', darkColor: '#554d34' },
@@ -857,6 +857,20 @@ function generateMainRiver(tiles, rows, cols, elevMap, rand) {
     }
   }
 
+  // Smoothing pass: remove isolated land tiles surrounded by river on most sides
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (riverTiles.has(`${r}-${c}`)) continue
+      const neighbors = hexNeighbors(r, c, rows, cols)
+      const riverCount = neighbors.filter(([nr, nc]) => riverTiles.has(`${nr}-${nc}`)).length
+      if (riverCount >= 4) {
+        tileAt(r, c).terrain = 'river'
+        tileAt(r, c).hasRiver = true
+        riverTiles.add(`${r}-${c}`)
+      }
+    }
+  }
+
   return { path, riverTiles }
 }
 
@@ -1544,6 +1558,33 @@ export function generateSpaceTerrain(rows, cols, seed) {
     }
   }
 
+  // Place 5-6 background asteroid chunks (behind foreground, in front of nebula)
+  const bgAsteroidCount = 5 + (rand() < 0.5 ? 1 : 0)
+  for (let i = 0; i < bgAsteroidCount; i++) {
+    const cr = 3 + Math.floor(rand() * (rows - 6))
+    const cc = 3 + Math.floor(rand() * (cols - 6))
+    const size = 15 + Math.floor(rand() * 20)
+    const cluster = [[cr, cc]]
+    const used = new Set([`${cr}-${cc}`])
+
+    for (let step = 0; step < size * 3 && cluster.length < size; step++) {
+      const [sr, sc] = cluster[Math.floor(rand() * cluster.length)]
+      const neighbors = hexNeighbors(sr, sc, rows, cols)
+      const candidates = neighbors.filter(([nr, nc]) => !used.has(`${nr}-${nc}`))
+      if (candidates.length === 0) continue
+      const [nr, nc] = candidates[Math.floor(rand() * candidates.length)]
+      used.add(`${nr}-${nc}`)
+      cluster.push([nr, nc])
+    }
+
+    for (const [ar, ac] of cluster) {
+      const t = tileAt(ar, ac).terrain
+      if (t === 'void' || t === 'space' || t === 'dust' || t === 'nebula' || t === 'nebula_core') {
+        tileAt(ar, ac).terrain = 'bg_asteroid'
+      }
+    }
+  }
+
   // Place 3-4 large asteroid clusters
   const clusterCount = 3 + (rand() < 0.5 ? 1 : 0)
   for (let i = 0; i < clusterCount; i++) {
@@ -1644,16 +1685,6 @@ export function generateSpaceTerrain(rows, cols, seed) {
         tileAt(ar, ac).terrain = 'large_asteroid'
       } else {
         tileAt(ar, ac).terrain = 'asteroid'
-      }
-    }
-  }
-
-  // Scatter background asteroids on empty space tiles
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const t = tileAt(r, c).terrain
-      if ((t === 'void' || t === 'space' || t === 'dust') && rand() < 0.06) {
-        tileAt(r, c).terrain = 'bg_asteroid'
       }
     }
   }
