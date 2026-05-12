@@ -2096,21 +2096,38 @@ export default function GameBoard({
               }
 
               let voidStarBg = null
-              if (tileData?.terrain === 'void' && (isVisible || isDiscovered)) {
+              if (tileData && SPACE_EMPTY.has(tileData.terrain) && (isVisible || isDiscovered)) {
+                const grads = []
                 const h1 = tileHash(row, col)
-                const starCount = h1 > 0.85 ? 2 : (h1 > 0.7 ? 1 : 0)
-                if (starCount > 0) {
-                  const grads = []
-                  for (let s = 0; s < starCount; s++) {
-                    const h2 = tileHash(row + s * 97, col + s * 53)
-                    const h3 = tileHash(row + s * 31, col + s * 71)
-                    const cx = 15 + (h2 % 70)
-                    const cy = 20 + (h3 % 60)
-                    const size = 1 + (h2 % 3) * 0.5
-                    const opacity = 0.25 + (h3 % 40) * 0.01
-                    grads.push(`radial-gradient(circle ${size}px at ${cx}% ${cy}%, rgba(220,225,240,${opacity}) 0%, transparent 100%)`)
-                  }
-                  voidStarBg = grads.join(', ')
+                const starCount = h1 > 0.82 ? 3 : (h1 > 0.65 ? 2 : (h1 > 0.45 ? 1 : 0))
+                for (let s = 0; s < starCount; s++) {
+                  const h2 = tileHash(row + s * 97, col + s * 53)
+                  const h3 = tileHash(row + s * 31, col + s * 71)
+                  const cx = 10 + (h2 % 80)
+                  const cy = 10 + (h3 % 80)
+                  const isBright = h2 > 0.82
+                  const size = isBright ? 2 + (h3 % 3) : 1 + (h2 % 3) * 0.5
+                  const opacity = isBright ? 0.55 + (h3 % 20) * 0.02 : 0.2 + (h3 % 40) * 0.01
+                  const color = isBright ? '255,255,255' : '220,225,240'
+                  grads.push(`radial-gradient(circle ${size}px at ${cx}% ${cy}%, rgba(${color},${opacity}) 0%, transparent 100%)`)
+                }
+                const bgAstHash = tileHash(row + 7, col + 13)
+                if (bgAstHash > 0.75) {
+                  const ax = 15 + ((bgAstHash * 317) % 65)
+                  const ay = 15 + ((bgAstHash * 523) % 65)
+                  const aSize = 2 + (bgAstHash % 3)
+                  grads.push(`radial-gradient(circle ${aSize}px at ${ax}% ${ay}%, rgba(50,40,30,0.6) 0%, rgba(35,28,20,0.3) 60%, transparent 100%)`)
+                }
+                if (grads.length > 0) voidStarBg = grads.join(', ')
+              }
+              if (tileData && SPACE_DENSE.has(tileData.terrain) && (isVisible || isDiscovered)) {
+                const bgAstHash = tileHash(row + 11, col + 19)
+                if (bgAstHash > 0.8) {
+                  const ax = 20 + ((bgAstHash * 271) % 55)
+                  const ay = 20 + ((bgAstHash * 431) % 55)
+                  const aSize = 2.5 + (bgAstHash % 3)
+                  const grad = `radial-gradient(circle ${aSize}px at ${ax}% ${ay}%, rgba(55,42,32,0.5) 0%, rgba(40,30,22,0.25) 60%, transparent 100%)`
+                  voidStarBg = voidStarBg ? `${voidStarBg}, ${grad}` : grad
                 }
               }
 
