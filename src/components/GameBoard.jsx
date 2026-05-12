@@ -2032,6 +2032,7 @@ export default function GameBoard({
         onMouseDown={handleBoardMouseDown}
       >
         <div ref={wrapperRef} style={{
+          display: 'inline-block',
           padding: `${boardPixelH * zoom * wrapPad}px ${boardPixelW * zoom * wrapPad}px`,
         }}>
           <div
