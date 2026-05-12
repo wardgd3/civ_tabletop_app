@@ -192,28 +192,34 @@ export default function GameBoard({
   const isMobileView = isFullscreen || (typeof window !== 'undefined' && window.innerWidth < 768)
   const wrapMul = isMobileView ? 1.3 : 2.2
 
+  const getVisualOffset = useCallback((z) => {
+    const wW = boardPixelW * z * wrapMul
+    const wH = boardPixelH * z * wrapMul
+    const layoutLeft = (wW - boardPixelW) / 2
+    const layoutTop = (wH - boardPixelH) / 2
+    return {
+      x: layoutLeft + boardPixelW * (1 - z) / 2,
+      y: layoutTop + boardPixelH * (1 - z) / 2,
+    }
+  }, [boardPixelW, boardPixelH, wrapMul])
+
   const updateViewportNow = useCallback(() => {
     const el = boardRef.current
     if (!el) return
     const z = zoomRef.current
-    const wrapW = boardPixelW * z * wrapMul
-    const wrapH = boardPixelH * z * wrapMul
-    const scaledW = boardPixelW * z
-    const scaledH = boardPixelH * z
-    const offsetX = (wrapW - scaledW) / 2
-    const offsetY = (wrapH - scaledH) / 2
+    const off = getVisualOffset(z)
     const pad = Math.max(HEX_W, HEX_H) * 3
     const sl = el.scrollLeft
     const st = el.scrollTop
     const vw = el.clientWidth
     const vh = el.clientHeight
     setViewportRect({
-      left: (sl - offsetX) / z - pad,
-      top: (st - offsetY) / z - pad,
-      right: (sl + vw - offsetX) / z + pad,
-      bottom: (st + vh - offsetY) / z + pad,
+      left: (sl - off.x) / z - pad,
+      top: (st - off.y) / z - pad,
+      right: (sl + vw - off.x) / z + pad,
+      bottom: (st + vh - off.y) / z + pad,
     })
-  }, [boardPixelW, boardPixelH])
+  }, [getVisualOffset])
 
   useEffect(() => {
     const el = boardRef.current
@@ -992,14 +998,17 @@ export default function GameBoard({
     }
     const rect = el.getBoundingClientRect()
     const { clientX, clientY } = wheelCursorRef.current
-    const anchorX = clientX - rect.left + el.scrollLeft
-    const anchorY = clientY - rect.top + el.scrollTop
+    const cursorInViewX = clientX - rect.left
+    const cursorInViewY = clientY - rect.top
+    const oldOff = getVisualOffset(current)
+    const boardX = (el.scrollLeft + cursorInViewX - oldOff.x) / current
+    const boardY = (el.scrollTop + cursorInViewY - oldOff.y) / current
     const next = current + diff * 0.25
-    const ratio = next / current
     zoomRef.current = next
     setZoom(next)
-    el.scrollLeft = anchorX * ratio - (clientX - rect.left)
-    el.scrollTop = anchorY * ratio - (clientY - rect.top)
+    const newOff = getVisualOffset(next)
+    el.scrollLeft = newOff.x + boardX * next - cursorInViewX
+    el.scrollTop = newOff.y + boardY * next - cursorInViewY
     wheelAnimRef.current = requestAnimationFrame(tickWheelZoom)
   }
 
@@ -1093,11 +1102,14 @@ export default function GameBoard({
           const target = targetPinchZoomRef.current
           const diff = target - current
           const newZoom = Math.abs(diff) < 0.001 ? target : current + diff * 0.35
-          const ratio = newZoom / current
 
           const elRect = el.getBoundingClientRect()
-          const scrollCenterX = el.scrollLeft + (p.midX - elRect.left)
-          const scrollCenterY = el.scrollTop + (p.midY - elRect.top)
+          const cursorInViewX = p.midX - elRect.left
+          const cursorInViewY = p.midY - elRect.top
+
+          const oldOff = getVisualOffset(current)
+          const boardX = (el.scrollLeft + cursorInViewX - oldOff.x) / current
+          const boardY = (el.scrollTop + cursorInViewY - oldOff.y) / current
 
           const panDx = p.midX - p.lastMidX
           const panDy = p.midY - p.lastMidY
@@ -1106,8 +1118,10 @@ export default function GameBoard({
 
           zoomRef.current = newZoom
           applyZoomDirect(newZoom)
-          el.scrollLeft = scrollCenterX * ratio - (p.midX - elRect.left) - panDx
-          el.scrollTop = scrollCenterY * ratio - (p.midY - elRect.top) - panDy
+
+          const newOff = getVisualOffset(newZoom)
+          el.scrollLeft = newOff.x + boardX * newZoom - cursorInViewX - panDx
+          el.scrollTop = newOff.y + boardY * newZoom - cursorInViewY - panDy
           updateViewportNow()
 
           if (Math.abs(targetPinchZoomRef.current - newZoom) > 0.001 || p) {
@@ -1165,15 +1179,12 @@ export default function GameBoard({
     hasCentered.current = true
     requestAnimationFrame(() => {
       const cc = myCommandCenter
+      const off = getVisualOffset(zoom)
       if (cc) {
         const ccX = cc.grid_col * HEX_W + (cc.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
         const ccY = cc.grid_row * ROW_H + RENDER_H / 2
-        const wrapW = boardPixelW * zoom * wrapMul
-        const wrapH = boardPixelH * zoom * wrapMul
-        const offsetX = (wrapW - boardPixelW * zoom) / 2
-        const offsetY = (wrapH - boardPixelH * zoom) / 2
-        el.scrollLeft = offsetX + ccX * zoom - el.clientWidth / 2
-        el.scrollTop = offsetY + ccY * zoom - el.clientHeight / 2
+        el.scrollLeft = off.x + ccX * zoom - el.clientWidth / 2
+        el.scrollTop = off.y + ccY * zoom - el.clientHeight / 2
       } else {
         el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2
         el.scrollTop = (el.scrollHeight - el.clientHeight) / 2
