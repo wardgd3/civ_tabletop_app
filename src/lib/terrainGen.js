@@ -16,10 +16,10 @@ export const TERRAIN = {
   RIVER:           { id: 'river',           name: 'River',           color: '#18365a', darkColor: '#0e2237' },
   SAND:            { id: 'sand',            name: 'Sand',            color: '#807550', darkColor: '#554d34' },
   VOID:            { id: 'void',            name: 'Void',            color: '#0a0e12', darkColor: '#0a0e12' },
-  NEBULA:          { id: 'nebula',          name: 'Nebula',          color: '#130c28', darkColor: '#0a0618' },
-  NEBULA_CORE:     { id: 'nebula_core',     name: 'Nebula Core',     color: '#2c1236', darkColor: '#180a24' },
-  NEBULA_BRIGHT:   { id: 'nebula_bright',   name: 'Nebula Bright',   color: '#441e4e', darkColor: '#281034' },
-  NEBULA_HOTSPOT:  { id: 'nebula_hotspot',  name: 'Nebula Hotspot',  color: '#7a3868', darkColor: '#4a2040' },
+  NEBULA:          { id: 'nebula',          name: 'Nebula',          color: '#1a0c22', darkColor: '#100614' },
+  NEBULA_CORE:     { id: 'nebula_core',     name: 'Nebula Core',     color: '#381230', darkColor: '#220a1c' },
+  NEBULA_BRIGHT:   { id: 'nebula_bright',   name: 'Nebula Bright',   color: '#561e42', darkColor: '#34102a' },
+  NEBULA_HOTSPOT:  { id: 'nebula_hotspot',  name: 'Nebula Hotspot',  color: '#8a3858', darkColor: '#5a2034' },
   ASTEROID:        { id: 'asteroid',        name: 'Asteroid',        color: '#3a3228', darkColor: '#252018' },
   LARGE_ASTEROID:  { id: 'large_asteroid',  name: 'Large Asteroid',  color: '#4a4238', darkColor: '#302a20' },
   BG_ASTEROID:     { id: 'bg_asteroid',     name: 'Background Asteroid', color: '#1a1610', darkColor: '#12100a' },
@@ -265,34 +265,60 @@ function generateCoastalWaters(tiles, rows, cols, rand, mainRiver) {
   const riverEnd = mainRiver.path[mainRiver.path.length - 1]
   const [endR, endC] = riverEnd
 
-  const nearBottom = endR > rows / 2
-  const nearRight = endC > cols / 2
-  const edgeSide = nearBottom ? 'bottom' : 'top'
-  const cornerC = nearRight ? cols - 1 : 0
+  const distTop = endR
+  const distBottom = rows - 1 - endR
+  const distLeft = endC
+  const distRight = cols - 1 - endC
+  const minDist = Math.min(distTop, distBottom, distLeft, distRight)
+  let edgeSide
+  if (minDist === distTop) edgeSide = 'top'
+  else if (minDist === distBottom) edgeSide = 'bottom'
+  else if (minDist === distLeft) edgeSide = 'left'
+  else edgeSide = 'right'
 
-  const centerC = Math.round(endC * 0.6 + cornerC * 0.4)
-  const centerR = edgeSide === 'bottom' ? rows - 1 : 0
+  const isVerticalEdge = edgeSide === 'left' || edgeSide === 'right'
 
-  const spanW = Math.floor(cols * (0.25 + rand() * 0.15))
-  const spanH = Math.floor(rows * (0.12 + rand() * 0.08))
+  let centerR, centerC
+  if (isVerticalEdge) {
+    centerC = edgeSide === 'right' ? cols - 1 : 0
+    const cornerR = endR > rows / 2 ? rows - 1 : 0
+    centerR = Math.round(endR * 0.6 + cornerR * 0.4)
+  } else {
+    centerR = edgeSide === 'bottom' ? rows - 1 : 0
+    const cornerC = endC > cols / 2 ? cols - 1 : 0
+    centerC = Math.round(endC * 0.6 + cornerC * 0.4)
+  }
+
+  const spanAlong = isVerticalEdge
+    ? Math.floor(rows * (0.25 + rand() * 0.15))
+    : Math.floor(cols * (0.25 + rand() * 0.15))
+  const spanDepth = isVerticalEdge
+    ? Math.floor(cols * (0.12 + rand() * 0.08))
+    : Math.floor(rows * (0.12 + rand() * 0.08))
 
   const waterSet = new Set()
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const distC = (c - centerC) / spanW
-      let distR
+      let distAlong, distInward
       if (edgeSide === 'bottom') {
-        distR = (rows - 1 - r) / spanH
-        if (r > rows - 1) continue
+        distAlong = (c - centerC) / spanAlong
+        distInward = (rows - 1 - r) / spanDepth
+      } else if (edgeSide === 'top') {
+        distAlong = (c - centerC) / spanAlong
+        distInward = r / spanDepth
+      } else if (edgeSide === 'right') {
+        distAlong = (r - centerR) / spanAlong
+        distInward = (cols - 1 - c) / spanDepth
       } else {
-        distR = r / spanH
+        distAlong = (r - centerR) / spanAlong
+        distInward = c / spanDepth
       }
-      if (distR < 0) continue
+      if (distInward < 0) continue
 
       const seed1 = Math.sin(r * 5.1 + c * 8.7) * 43758.5453
       const edgeNoise = (seed1 - Math.floor(seed1) - 0.5) * 0.4
-      const ellipse = distR * distR + distC * distC + edgeNoise
+      const ellipse = distInward * distInward + distAlong * distAlong + edgeNoise
 
       if (ellipse < 1) {
         waterSet.add(`${r}-${c}`)
@@ -658,63 +684,107 @@ function generateMainRiver(tiles, rows, cols, elevMap, rand) {
     return t !== 'mountain'
   }
 
-  // Rivers flow north to south (top to bottom)
-  const topEdge = [], bottomEdge = []
+  const edges = []
+  const topEdge = [], bottomEdge = [], leftEdge = [], rightEdge = []
   for (let c = 0; c < cols; c++) {
     if (isLand(0, c)) topEdge.push([0, c])
     if (isLand(rows - 1, c)) bottomEdge.push([rows - 1, c])
   }
+  for (let r = 0; r < rows; r++) {
+    if (isLand(r, 0)) leftEdge.push([r, 0])
+    if (isLand(r, cols - 1)) rightEdge.push([r, cols - 1])
+  }
+  if (topEdge.length > 0) edges.push({ side: 'top', tiles: topEdge })
+  if (bottomEdge.length > 0) edges.push({ side: 'bottom', tiles: bottomEdge })
+  if (leftEdge.length > 0) edges.push({ side: 'left', tiles: leftEdge })
+  if (rightEdge.length > 0) edges.push({ side: 'right', tiles: rightEdge })
 
-  if (topEdge.length === 0 || bottomEdge.length === 0) return
+  if (edges.length < 2) return
 
-  const [sr, sc] = topEdge[Math.floor(rand() * topEdge.length)]
-  const [er, ec] = bottomEdge[Math.floor(rand() * bottomEdge.length)]
+  const opposite = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' }
+  const startEdge = edges[Math.floor(rand() * edges.length)]
+  const endCandidates = edges.filter(e => e.side === opposite[startEdge.side])
+  if (endCandidates.length === 0) return
+  const endEdge = endCandidates[0]
 
-  const noiseScale = 0.15
-  const wanderStrength = 6
+  const pickDiagonal = (edgeTiles, side, farSide) => {
+    const sorted = [...edgeTiles]
+    if (side === 'top' || side === 'bottom') {
+      sorted.sort((a, b) => farSide === 'right' ? b[1] - a[1] : a[1] - b[1])
+    } else {
+      sorted.sort((a, b) => farSide === 'bottom' ? b[0] - a[0] : a[0] - b[0])
+    }
+    const quarter = Math.max(1, Math.floor(sorted.length * 0.3))
+    return sorted[Math.floor(rand() * quarter)]
+  }
 
-  const INF = 1e9
-  const dist = new Float64Array(rows * cols).fill(INF)
-  const prev = new Int32Array(rows * cols).fill(-1)
-  dist[key(sr, sc)] = 0
+  const isHorizontal = startEdge.side === 'left' || startEdge.side === 'right'
+  const startFar = rand() < 0.5
+    ? (isHorizontal ? 'bottom' : 'right')
+    : (isHorizontal ? 'top' : 'left')
+  const endFar = startFar === 'bottom' ? 'top' : startFar === 'top' ? 'bottom' : startFar === 'left' ? 'right' : 'left'
 
-  const heap = [[0, sr, sc]]
-  while (heap.length > 0) {
-    heap.sort((a, b) => a[0] - b[0])
-    const [d, cr, cc] = heap.shift()
-    if (cr === er && cc === ec) break
-    if (d > dist[key(cr, cc)]) continue
+  const [sr, sc] = pickDiagonal(startEdge.tiles, startEdge.side, startFar)
+  const [er, ec] = pickDiagonal(endEdge.tiles, endEdge.side, endFar)
 
-    for (const [nr, nc] of hexNeighbors(cr, cc, rows, cols)) {
-      const t = tileAt(nr, nc).terrain
-      let cost = 1
-      if (t === 'mountain') cost = 12
-      else if (t === 'hills') cost = 3
+  const midR = Math.floor(rows / 2)
+  const midC = Math.floor(cols / 2)
+  const wp1r = Math.floor(sr * 0.6 + er * 0.4 + (rand() - 0.5) * rows * 0.3)
+  const wp1c = Math.floor(sc * 0.6 + ec * 0.4 + (rand() - 0.5) * cols * 0.3)
+  const wp2r = Math.floor(sr * 0.35 + er * 0.65 + (rand() - 0.5) * rows * 0.3)
+  const wp2c = Math.floor(sc * 0.35 + ec * 0.65 + (rand() - 0.5) * cols * 0.3)
+  const w1r = Math.max(2, Math.min(rows - 3, wp1r))
+  const w1c = Math.max(2, Math.min(cols - 3, wp1c))
+  const w2r = Math.max(2, Math.min(rows - 3, wp2r))
+  const w2c = Math.max(2, Math.min(cols - 3, wp2c))
 
-      const seed1 = Math.sin(nr * 7.3 + nc * 13.7) * 43758.5453
-      const wander = (Math.sin(seed1 + nr * noiseScale + nc * noiseScale * 2.3) + 1) * wanderStrength
-      cost += wander
+  const waypoints = [[sr, sc], [w1r, w1c], [w2r, w2c], [er, ec]]
 
-      const nd = d + cost
-      if (nd < dist[key(nr, nc)]) {
-        dist[key(nr, nc)] = nd
-        prev[key(nr, nc)] = key(cr, cc)
-        heap.push([nd, nr, nc])
+  function dijkstra(fromR, fromC, toR, toC) {
+    const INF = 1e9
+    const dist = new Float64Array(rows * cols).fill(INF)
+    const prev = new Int32Array(rows * cols).fill(-1)
+    dist[key(fromR, fromC)] = 0
+    const heap = [[0, fromR, fromC]]
+    while (heap.length > 0) {
+      heap.sort((a, b) => a[0] - b[0])
+      const [d, cr, cc] = heap.shift()
+      if (cr === toR && cc === toC) break
+      if (d > dist[key(cr, cc)]) continue
+      for (const [nr, nc] of hexNeighbors(cr, cc, rows, cols)) {
+        const t = tileAt(nr, nc).terrain
+        let cost = 1
+        if (t === 'mountain') cost = 12
+        else if (t === 'hills') cost = 3
+        const seed1 = Math.sin(nr * 7.3 + nc * 13.7) * 43758.5453
+        const wander = (Math.sin(seed1 + nr * 0.15 + nc * 0.15 * 2.3) + 1) * 4
+        cost += wander
+        const nd = d + cost
+        if (nd < dist[key(nr, nc)]) {
+          dist[key(nr, nc)] = nd
+          prev[key(nr, nc)] = key(cr, cc)
+          heap.push([nd, nr, nc])
+        }
       }
     }
+    if (dist[key(toR, toC)] >= INF) return null
+    const seg = []
+    let cur = key(toR, toC)
+    while (cur !== -1) {
+      seg.push([Math.floor(cur / cols), cur % cols])
+      cur = prev[cur]
+    }
+    seg.reverse()
+    return seg
   }
-
-  if (dist[key(er, ec)] >= INF) return
 
   const path = []
-  let cur = key(er, ec)
-  while (cur !== -1) {
-    const r = Math.floor(cur / cols)
-    const c = cur % cols
-    path.push([r, c])
-    cur = prev[cur]
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const seg = dijkstra(waypoints[i][0], waypoints[i][1], waypoints[i + 1][0], waypoints[i + 1][1])
+    if (!seg) return
+    if (i > 0) seg.shift()
+    path.push(...seg)
   }
-  path.reverse()
 
   const riverTiles = new Set(path.map(([r, c]) => `${r}-${c}`))
 
