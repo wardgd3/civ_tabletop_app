@@ -180,9 +180,9 @@ export default function GameBoard({
   const boardPixelW = cols * HEX_W + HEX_W / 2 + GAP
   const boardPixelH = (rows - 1) * ROW_H + HEX_H + GAP
   const isMobileView = isFullscreen || (typeof window !== 'undefined' && window.innerWidth < 768)
-  const wrapPad = isFullscreen ? 0 : isMobileView ? 0.15 : 0.6
+  const wrapPad = isMobileView ? 0.05 : 0.6
   const minZoom = isMobileView
-    ? Math.min(window.innerWidth / boardPixelW, window.innerHeight / boardPixelH, 0.5)
+    ? Math.max(window.innerWidth / boardPixelW, window.innerHeight / boardPixelH)
     : 0.1
 
   const tileMap = useMemo(() => {
@@ -1014,6 +1014,8 @@ export default function GameBoard({
     const wrapper = wrapperRef.current
     if (!inner || !wrapper) return
     inner.style.transform = `scale(${newZoom})`
+    wrapper.style.width = `${boardPixelW * newZoom}px`
+    wrapper.style.height = `${boardPixelH * newZoom}px`
     wrapper.style.padding = `${boardPixelH * newZoom * wrapPad}px ${boardPixelW * newZoom * wrapPad}px`
   }, [boardPixelW, boardPixelH, wrapPad])
 
@@ -1988,8 +1990,9 @@ export default function GameBoard({
         onMouseDown={handleBoardMouseDown}
       >
         <div ref={wrapperRef} style={{
+          width: boardPixelW * zoom,
+          height: boardPixelH * zoom,
           padding: `${boardPixelH * zoom * wrapPad}px ${boardPixelW * zoom * wrapPad}px`,
-          display: 'inline-block',
         }}>
           <div
             ref={boardInnerRef}
