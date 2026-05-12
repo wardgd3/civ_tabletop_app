@@ -138,6 +138,8 @@ export default function GameBoard({
   const boardRef = useRef(null)
   const boardInnerRef = useRef(null)
   const wrapperRef = useRef(null)
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
   const panStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
   const touchPanRef = useRef(null)
   const panningRef = useRef(false)
@@ -188,45 +190,49 @@ export default function GameBoard({
   const boardPixelW = cols * HEX_W + HEX_W / 2 + GAP
   const boardPixelH = (rows - 1) * ROW_H + HEX_H + GAP
 
-  useEffect(() => {
+  const updateViewportNow = useCallback(() => {
     const el = boardRef.current
     if (!el) return
-    const wrapW = boardPixelW * zoom * 2.2
-    const wrapH = boardPixelH * zoom * 2.2
-    const scaledW = boardPixelW * zoom
-    const scaledH = boardPixelH * zoom
+    const z = zoomRef.current
+    const wrapW = boardPixelW * z * 2.2
+    const wrapH = boardPixelH * z * 2.2
+    const scaledW = boardPixelW * z
+    const scaledH = boardPixelH * z
     const offsetX = (wrapW - scaledW) / 2
     const offsetY = (wrapH - scaledH) / 2
     const pad = Math.max(HEX_W, HEX_H) * 3
-    function updateViewport() {
-      const sl = el.scrollLeft
-      const st = el.scrollTop
-      const vw = el.clientWidth
-      const vh = el.clientHeight
-      setViewportRect({
-        left: (sl - offsetX) / zoom - pad,
-        top: (st - offsetY) / zoom - pad,
-        right: (sl + vw - offsetX) / zoom + pad,
-        bottom: (st + vh - offsetY) / zoom + pad,
-      })
-    }
-    updateViewport()
+    const sl = el.scrollLeft
+    const st = el.scrollTop
+    const vw = el.clientWidth
+    const vh = el.clientHeight
+    setViewportRect({
+      left: (sl - offsetX) / z - pad,
+      top: (st - offsetY) / z - pad,
+      right: (sl + vw - offsetX) / z + pad,
+      bottom: (st + vh - offsetY) / z + pad,
+    })
+  }, [boardPixelW, boardPixelH])
+
+  useEffect(() => {
+    const el = boardRef.current
+    if (!el) return
+    updateViewportNow()
     function onScroll() {
       if (viewportRafRef.current) return
       viewportRafRef.current = requestAnimationFrame(() => {
         viewportRafRef.current = null
-        updateViewport()
+        updateViewportNow()
       })
     }
     el.addEventListener('scroll', onScroll, { passive: true })
-    const ro = new ResizeObserver(updateViewport)
+    const ro = new ResizeObserver(updateViewportNow)
     ro.observe(el)
     return () => {
       el.removeEventListener('scroll', onScroll)
       ro.disconnect()
       if (viewportRafRef.current) cancelAnimationFrame(viewportRafRef.current)
     }
-  }, [zoom, boardPixelW, boardPixelH])
+  }, [zoom, updateViewportNow])
 
   const tileMap = useMemo(() => {
     const map = new Map()
@@ -966,8 +972,6 @@ export default function GameBoard({
     }
   }, [])
 
-  const zoomRef = useRef(zoom)
-  zoomRef.current = zoom
   const targetZoomRef = useRef(zoom)
   const wheelAnimRef = useRef(null)
   const wheelCursorRef = useRef({ clientX: 0, clientY: 0 })
@@ -1010,11 +1014,14 @@ export default function GameBoard({
   const pinchRef = useRef(null)
   const touchVelocityRef = useRef({ vx: 0, vy: 0 })
   const touchLastMoveRef = useRef({ x: 0, y: 0, t: 0 })
+  const pinchAnimRef = useRef(null)
+  const targetPinchZoomRef = useRef(null)
 
   const handleTouchStart = useCallback((e) => {
     if (e.touches.length === 2) {
       e.preventDefault()
       stopInertia()
+      if (pinchAnimRef.current) cancelAnimationFrame(pinchAnimRef.current)
       touchPanRef.current = null
       setTouchPanning(false)
       const dx = e.touches[0].clientX - e.touches[1].clientX
@@ -1022,15 +1029,15 @@ export default function GameBoard({
       const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2
       const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2
       const el = boardRef.current
-      const rect = el.getBoundingClientRect()
       pinchRef.current = {
         initialDist: Math.hypot(dx, dy),
         initialZoom: zoomRef.current,
-        anchorX: midX - rect.left + el.scrollLeft,
-        anchorY: midY - rect.top + el.scrollTop,
         lastMidX: midX,
         lastMidY: midY,
+        midX,
+        midY,
       }
+      targetPinchZoomRef.current = zoomRef.current
     } else if (e.touches.length === 1) {
       stopInertia()
       const el = boardRef.current
@@ -1060,7 +1067,6 @@ export default function GameBoard({
       e.preventDefault()
       const el = boardRef.current
       if (!el) return
-      const rect = el.getBoundingClientRect()
       const dx = e.touches[0].clientX - e.touches[1].clientX
       const dy = e.touches[0].clientY - e.touches[1].clientY
       const dist = Math.hypot(dx, dy)
@@ -1068,23 +1074,48 @@ export default function GameBoard({
       const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2
 
       const scale = dist / pinchRef.current.initialDist
-      const newZoom = Math.min(1.5, Math.max(0.1, pinchRef.current.initialZoom * scale))
-      const ratio = newZoom / zoomRef.current
+      const rawTarget = pinchRef.current.initialZoom * scale
+      targetPinchZoomRef.current = Math.min(1.5, Math.max(0.1, rawTarget))
 
-      const scrollCenterX = el.scrollLeft + (midX - rect.left)
-      const scrollCenterY = el.scrollTop + (midY - rect.top)
-      const newScrollX = scrollCenterX * ratio - (midX - rect.left)
-      const newScrollY = scrollCenterY * ratio - (midY - rect.top)
+      pinchRef.current.midX = midX
+      pinchRef.current.midY = midY
 
-      const panDx = midX - pinchRef.current.lastMidX
-      const panDy = midY - pinchRef.current.lastMidY
-      pinchRef.current.lastMidX = midX
-      pinchRef.current.lastMidY = midY
+      if (!pinchAnimRef.current) {
+        function tickPinch() {
+          const p = pinchRef.current
+          if (!p) { pinchAnimRef.current = null; return }
+          const el = boardRef.current
+          if (!el) { pinchAnimRef.current = null; return }
 
-      zoomRef.current = newZoom
-      applyZoomDirect(newZoom)
-      el.scrollLeft = newScrollX - panDx
-      el.scrollTop = newScrollY - panDy
+          const current = zoomRef.current
+          const target = targetPinchZoomRef.current
+          const diff = target - current
+          const newZoom = Math.abs(diff) < 0.001 ? target : current + diff * 0.35
+          const ratio = newZoom / current
+
+          const elRect = el.getBoundingClientRect()
+          const scrollCenterX = el.scrollLeft + (p.midX - elRect.left)
+          const scrollCenterY = el.scrollTop + (p.midY - elRect.top)
+
+          const panDx = p.midX - p.lastMidX
+          const panDy = p.midY - p.lastMidY
+          p.lastMidX = p.midX
+          p.lastMidY = p.midY
+
+          zoomRef.current = newZoom
+          applyZoomDirect(newZoom)
+          el.scrollLeft = scrollCenterX * ratio - (p.midX - elRect.left) - panDx
+          el.scrollTop = scrollCenterY * ratio - (p.midY - elRect.top) - panDy
+          updateViewportNow()
+
+          if (Math.abs(targetPinchZoomRef.current - newZoom) > 0.001 || p) {
+            pinchAnimRef.current = requestAnimationFrame(tickPinch)
+          } else {
+            pinchAnimRef.current = null
+          }
+        }
+        pinchAnimRef.current = requestAnimationFrame(tickPinch)
+      }
     } else if (e.touches.length === 1 && touchPanRef.current) {
       const dx = e.touches[0].clientX - touchPanRef.current.x
       const dy = e.touches[0].clientY - touchPanRef.current.y
@@ -1106,10 +1137,12 @@ export default function GameBoard({
         touchLastMoveRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: now }
       }
     }
-  }, [applyZoomDirect])
+  }, [applyZoomDirect, updateViewportNow])
 
   const handleTouchEnd = useCallback(() => {
     if (pinchRef.current !== null) {
+      if (pinchAnimRef.current) cancelAnimationFrame(pinchAnimRef.current)
+      pinchAnimRef.current = null
       setZoom(zoomRef.current)
       pinchRef.current = null
     }
