@@ -936,8 +936,20 @@ export default function GameBoard({
     const diff = target - current
     if (Math.abs(diff) < 0.002) {
       zoomRef.current = target
+      const vw = el.clientWidth
+      const vh = el.clientHeight
+      const padX = boardPixelW * target * wrapPad
+      const padY = boardPixelH * target * wrapPad
+      const cx = (el.scrollLeft + vw / 2 - padX) / target
+      const cy = (el.scrollTop + vh / 2 - padY) / target
       commitZoom(target)
       setZoom(target)
+      requestAnimationFrame(() => {
+        const np = boardPixelW * target * wrapPad
+        const npy = boardPixelH * target * wrapPad
+        el.scrollLeft = np + cx * target - vw / 2
+        el.scrollTop = npy + cy * target - vh / 2
+      })
       wheelAnimRef.current = null
       return
     }
@@ -1124,9 +1136,28 @@ export default function GameBoard({
     if (pinchRef.current !== null) {
       if (pinchAnimRef.current) cancelAnimationFrame(pinchAnimRef.current)
       pinchAnimRef.current = null
+      const el = boardRef.current
       const finalZoom = zoomRef.current
-      commitZoom(finalZoom)
-      setZoom(finalZoom)
+      const oldBase = baseZoomRef.current
+      if (el && oldBase !== finalZoom) {
+        const vw = el.clientWidth
+        const vh = el.clientHeight
+        const oldPadX = boardPixelW * finalZoom * wrapPad
+        const oldPadY = boardPixelH * finalZoom * wrapPad
+        const centerBoardX = (el.scrollLeft + vw / 2 - oldPadX) / finalZoom
+        const centerBoardY = (el.scrollTop + vh / 2 - oldPadY) / finalZoom
+        commitZoom(finalZoom)
+        setZoom(finalZoom)
+        requestAnimationFrame(() => {
+          const newPadX = boardPixelW * finalZoom * wrapPad
+          const newPadY = boardPixelH * finalZoom * wrapPad
+          el.scrollLeft = newPadX + centerBoardX * finalZoom - vw / 2
+          el.scrollTop = newPadY + centerBoardY * finalZoom - vh / 2
+        })
+      } else {
+        commitZoom(finalZoom)
+        setZoom(finalZoom)
+      }
       pinchRef.current = null
     }
     if (touchPanRef.current?.moved) {
