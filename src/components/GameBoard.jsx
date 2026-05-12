@@ -114,15 +114,7 @@ export default function GameBoard({
   const [mode, setMode] = useState('select')
   const [error, setError] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
-  const [zoom, setZoom] = useState(() => {
-    const isMobile = window.innerWidth < 768
-    if (!isMobile) return 0.34
-    const bw = game.grid_cols * HEX_W + HEX_W / 2 + GAP
-    const bh = (game.grid_rows - 1) * ROW_H + HEX_H + GAP
-    const fitW = window.innerWidth / bw
-    const fitH = (window.innerHeight - 60) / bh
-    return Math.min(fitW, fitH, 1)
-  })
+  const [zoom, setZoom] = useState(0.34)
   const [spaceHeld, setSpaceHeld] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
   const [touchPanning, setTouchPanning] = useState(false)
@@ -189,6 +181,9 @@ export default function GameBoard({
   const boardPixelH = (rows - 1) * ROW_H + HEX_H + GAP
   const isMobileView = isFullscreen || (typeof window !== 'undefined' && window.innerWidth < 768)
   const wrapPad = isMobileView ? 0.15 : 0.6
+  const minZoom = isMobileView
+    ? Math.min(window.innerWidth / boardPixelW, window.innerHeight / boardPixelH, 0.5)
+    : 0.1
 
   const tileMap = useMemo(() => {
     const map = new Map()
@@ -966,7 +961,7 @@ export default function GameBoard({
     e.preventDefault()
     wheelCursorRef.current = { clientX: e.clientX, clientY: e.clientY }
     const factor = e.deltaY > 0 ? 0.85 : 1.18
-    targetZoomRef.current = Math.min(1.5, Math.max(0.1, targetZoomRef.current * factor))
+    targetZoomRef.current = Math.min(1.5, Math.max(minZoom, targetZoomRef.current * factor))
     if (!wheelAnimRef.current) {
       wheelAnimRef.current = requestAnimationFrame(tickWheelZoom)
     }
@@ -1035,7 +1030,7 @@ export default function GameBoard({
 
       const scale = dist / pinchRef.current.initialDist
       const rawTarget = pinchRef.current.initialZoom * scale
-      targetPinchZoomRef.current = Math.min(1.5, Math.max(0.1, rawTarget))
+      targetPinchZoomRef.current = Math.min(1.5, Math.max(minZoom, rawTarget))
 
       pinchRef.current.midX = midX
       pinchRef.current.midY = midY
@@ -1128,17 +1123,29 @@ export default function GameBoard({
     if (!el || hasCentered.current) return
     hasCentered.current = true
     requestAnimationFrame(() => {
+      const vw = el.clientWidth
+      const vh = el.clientHeight
+      const isMobile = vw < 1024 || 'ontouchstart' in window
+      let z = zoom
+      if (isMobile) {
+        const fitW = vw / boardPixelW
+        const fitH = vh / boardPixelH
+        z = Math.max(fitW, fitH, 0.15)
+        z = Math.min(z, 1)
+        zoomRef.current = z
+        setZoom(z)
+      }
+      const padX = boardPixelW * z * wrapPad
+      const padY = boardPixelH * z * wrapPad
       const cc = myCommandCenter
-      const padX = boardPixelW * zoom * wrapPad
-      const padY = boardPixelH * zoom * wrapPad
       if (cc) {
         const ccX = cc.grid_col * HEX_W + (cc.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
         const ccY = cc.grid_row * ROW_H + RENDER_H / 2
-        el.scrollLeft = padX + ccX * zoom - el.clientWidth / 2
-        el.scrollTop = padY + ccY * zoom - el.clientHeight / 2
+        el.scrollLeft = padX + ccX * z - vw / 2
+        el.scrollTop = padY + ccY * z - vh / 2
       } else {
-        el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2
-        el.scrollTop = (el.scrollHeight - el.clientHeight) / 2
+        el.scrollLeft = padX + boardPixelW * z / 2 - vw / 2
+        el.scrollTop = padY + boardPixelH * z / 2 - vh / 2
       }
     })
   })
