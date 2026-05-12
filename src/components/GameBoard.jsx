@@ -130,6 +130,7 @@ export default function GameBoard({
   const boardRef = useRef(null)
   const boardInnerRef = useRef(null)
   const wrapperRef = useRef(null)
+  const clipRef = useRef(null)
   const zoomRef = useRef(zoom)
   zoomRef.current = zoom
   const panStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
@@ -182,7 +183,7 @@ export default function GameBoard({
   const isMobileView = isFullscreen || (typeof window !== 'undefined' && window.innerWidth < 768)
   const wrapPad = isMobileView ? 0.05 : 0.6
   const minZoom = isMobileView
-    ? Math.max(window.innerWidth / boardPixelW, window.innerHeight / boardPixelH)
+    ? Math.max(window.innerWidth / boardPixelW, window.innerHeight / boardPixelH) * 0.85
     : 0.1
 
   const tileMap = useMemo(() => {
@@ -1012,10 +1013,13 @@ export default function GameBoard({
   const applyZoomDirect = useCallback((newZoom) => {
     const inner = boardInnerRef.current
     const wrapper = wrapperRef.current
+    const clip = clipRef.current
     if (!inner || !wrapper) return
     inner.style.transform = `scale(${newZoom})`
-    wrapper.style.width = `${boardPixelW * newZoom}px`
-    wrapper.style.height = `${boardPixelH * newZoom}px`
+    if (clip) {
+      clip.style.width = `${boardPixelW * newZoom}px`
+      clip.style.height = `${boardPixelH * newZoom}px`
+    }
     wrapper.style.padding = `${boardPixelH * newZoom * wrapPad}px ${boardPixelW * newZoom * wrapPad}px`
   }, [boardPixelW, boardPixelH, wrapPad])
 
@@ -1990,10 +1994,13 @@ export default function GameBoard({
         onMouseDown={handleBoardMouseDown}
       >
         <div ref={wrapperRef} style={{
-          width: boardPixelW * zoom,
-          height: boardPixelH * zoom,
           padding: `${boardPixelH * zoom * wrapPad}px ${boardPixelW * zoom * wrapPad}px`,
         }}>
+          <div ref={clipRef} style={{
+            width: boardPixelW * zoom,
+            height: boardPixelH * zoom,
+            overflow: 'hidden',
+          }}>
           <div
             ref={boardInnerRef}
             className="relative"
@@ -2003,7 +2010,6 @@ export default function GameBoard({
               transform: `scale(${zoom})`,
               transformOrigin: '0 0',
               willChange: 'transform',
-              contain: 'layout style paint',
             }}
           >
             {Array.from({ length: rows * cols }, (_, i) => {
@@ -2355,6 +2361,7 @@ export default function GameBoard({
             })()}
           </div>
         </div>
+      </div>
       </div>
 
       {isFullscreen && (
