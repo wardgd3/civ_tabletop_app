@@ -517,7 +517,7 @@ export default function GameBoard({
     if (miningAffectedTiles.has(`${row}-${col}`) && isVisible) {
       const h = tileHash(row, col)
       const jitter = (h - 0.5) * 0.12
-      const [br, bg, bb] = parseHex('#8a9488')
+      const [br, bg, bb] = parseHex('#7c857a')
       return toHex(br * (1 + jitter), bg * (1 + jitter), bb * (1 + jitter))
     }
     if (tile.has_road) {
