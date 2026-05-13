@@ -1492,7 +1492,7 @@ export default function GameBoard({
         </div>
         <div className="flex gap-2 text-[10px] mt-0.5" style={{ color: '#4a5568' }}>
           <span>{inspectedUnit.isNPC ? 'Hostile Creature' : (allPlayers || players).find(p => p.player_id === inspectedUnit.owner_id)?.wg_profiles?.display_name}</span>
-          <span className="font-mono">X{inspectedUnit.grid_col}/Y{inspectedUnit.grid_row}</span>
+          <span className="font-mono">X{inspectedUnit.grid_row}/Y{inspectedUnit.grid_col}</span>
         </div>
         {inspectedUnit.upgrades?.loadedUnits?.length > 0 && (
           <div className="flex items-center gap-1 mt-0.5">
@@ -2440,7 +2440,7 @@ export default function GameBoard({
                         )}
                       </div>
                     )}
-                    <div className="text-[9px] font-mono text-center" style={{ color: '#4a5568' }}>X{hc}/Y{hr}</div>
+                    <div className="text-[9px] font-mono text-center" style={{ color: '#4a5568' }}>X{hr}/Y{hc}</div>
                   </div>
                 </div>
               )
@@ -2605,7 +2605,7 @@ export default function GameBoard({
                   )}
                 </div>
               )}
-              <div className="text-[8px] font-mono" style={{ color: '#4a5568' }}>X{tc}/Y{tr}</div>
+              <div className="text-[8px] font-mono" style={{ color: '#4a5568' }}>X{tr}/Y{tc}</div>
             </div>
           </div>
         )
@@ -2638,7 +2638,7 @@ export default function GameBoard({
             </div>
             <div className="flex gap-2 text-xs mt-0.5" style={{ color: '#4a5568' }}>
               <span>{inspectedUnit.isNPC ? 'Hostile Creature' : (allPlayers || players).find(p => p.player_id === inspectedUnit.owner_id)?.wg_profiles?.display_name}</span>
-              <span className="font-mono">X{inspectedUnit.grid_col}/Y{inspectedUnit.grid_row}</span>
+              <span className="font-mono">X{inspectedUnit.grid_row}/Y{inspectedUnit.grid_col}</span>
             </div>
             {inspectedUnit.upgrades?.loadedUnits?.length > 0 && (
               <div className="flex items-center gap-1.5 mt-1">
