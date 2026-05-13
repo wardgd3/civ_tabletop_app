@@ -284,7 +284,7 @@ export default function SpaceGuildPanel({
           <div className="flex flex-col gap-1 mb-2">
             {availableUnitTypes.map(ut => {
               const canAfford = teamGold >= ut.cost
-              const docked = allGuildConvoys.find(gc => !gc.inTransit)
+              const docked = (expandedGuildConvoy != null && !allGuildConvoys[expandedGuildConvoy]?.inTransit) ? allGuildConvoys[expandedGuildConvoy] : allGuildConvoys.find(gc => !gc.inTransit)
               return (
                 <button
                   key={ut.id}
