@@ -2085,10 +2085,16 @@ export default function GameBoard({
                 const lightDim = isTundra ? 0.88 : 0.92
                 const lightColor = toHex(lr * lightDim * (1 + lightJitter), lg * lightDim * (1 + lightJitter), lb * lightDim * (1 + lightJitter))
                 const [mr, mg, mb] = parseHex(tileBg)
-                const shadowR = (isTundra ? mr : lr) * (isTundra ? 0.95 : 0.72)
-                const shadowG = (isTundra ? mg : lg) * (isTundra ? 1.0 : 0.69)
-                const shadowB = (isTundra ? mb : lb) * (isTundra ? 1.22 : 0.67)
-                const darkColor = toHex(shadowR * (1 + darkJitter), shadowG * (1 + darkJitter), shadowB * (1 + darkJitter))
+                const shadowR = (isTundra ? mr : lr) * (isTundra ? 0.80 : 0.72)
+                const shadowG = (isTundra ? mg : lg) * (isTundra ? 0.95 : 0.69)
+                const shadowB = (isTundra ? mb : lb) * (isTundra ? 1.35 : 0.67)
+                let shadowMul = 1
+                if (isTundra) {
+                  const h2 = ((h * 13 + 0.7) % 1)
+                  if (h2 < 0.3) shadowMul = 1.12
+                  else if (h2 > 0.88) shadowMul = 0.78
+                }
+                const darkColor = toHex(shadowR * (1 + darkJitter) * shadowMul, shadowG * (1 + darkJitter) * shadowMul, shadowB * (1 + darkJitter) * shadowMul)
                 if (isMountainPeak) {
                   mountainBg = `linear-gradient(to bottom, ${lightColor} 50%, ${darkColor} 50%)`
                 } else if (isTundra && h < 0.4) {
