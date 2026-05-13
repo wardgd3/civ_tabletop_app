@@ -2098,7 +2098,8 @@ export default function GameBoard({
                 }
                 const darkColor = toHex(shadowR * (1 + darkJitter) * shadowMul, shadowG * (1 + darkJitter) * shadowMul, shadowB * (1 + darkJitter) * shadowMul)
                 if (isMountainPeak) {
-                  mountainBg = `linear-gradient(to bottom, ${lightColor} 50%, ${darkColor} 50%)`
+                  const lightPct = isTundra ? Math.floor(25 + ((h * 11 + 0.2) % 1) * 25) : 50
+                  mountainBg = `linear-gradient(to bottom, ${lightColor} ${lightPct}%, ${darkColor} ${lightPct}%)`
                 } else if (isTundra && h < 0.4) {
                   const snowJitter = (h - 0.2) * 0.08
                   mountainBg = toHex(0.92 * (1 + snowJitter), 0.90 * (1 + snowJitter), 0.86 * (1 + snowJitter))
