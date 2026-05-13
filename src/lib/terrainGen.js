@@ -15,7 +15,7 @@ export const TERRAIN = {
   LAKE:            { id: 'lake',            name: 'Lake',            color: '#18365a', darkColor: '#0e2237' },
   RIVER:           { id: 'river',           name: 'River',           color: '#18365a', darkColor: '#0e2237' },
   SAND:            { id: 'sand',            name: 'Sand',            color: '#807550', darkColor: '#554d34' },
-  VOID:            { id: 'void',            name: 'Void',            color: '#0a0e12', darkColor: '#0a0e12' },
+  VOID:            { id: 'void',            name: 'Void',            color: '#090d10', darkColor: '#090d10' },
   NEBULA:          { id: 'nebula',          name: 'Nebula',          color: '#1a0c22', darkColor: '#100614' },
   NEBULA_CORE:     { id: 'nebula_core',     name: 'Nebula Core',     color: '#381230', darkColor: '#220a1c' },
   NEBULA_BRIGHT:   { id: 'nebula_bright',   name: 'Nebula Bright',   color: '#561e42', darkColor: '#34102a' },

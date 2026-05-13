@@ -489,22 +489,24 @@ export default function GameBoard({
   const miningAffectedTiles = useMemo(() => {
     const GROUND_EXCLUDED = new Set(['ocean', 'lake', 'river', 'mountain'])
     const SPACE_EXCLUDED = new Set(['void', 'nebula', 'nebula_core', 'nebula_bright', 'nebula_hotspot', 'star'])
-    const set = new Set()
+    const map = new Map()
     for (const u of units) {
       const m = u.upgrades?.mining
       if (m && m.active && m.layer >= 1) {
         const isSpace = (u.board || 'ground') === 'space'
         const excluded = isSpace ? SPACE_EXCLUDED : GROUND_EXCLUDED
         for (const [nr, nc] of hexNeighborsBoard(m.centerRow, m.centerCol, rows, cols)) {
-          const td = tileMap.get(`${nr}-${nc}`)
+          const key = `${nr}-${nc}`
+          if (map.has(key)) continue
+          const td = tileMap.get(key)
           if (!td) continue
           if (td.has_road && !isSpace) continue
           if (excluded.has(td.terrain)) continue
-          set.add(`${nr}-${nc}`)
+          map.set(key, isSpace ? 'space' : 'ground')
         }
       }
     }
-    return set
+    return map
   }, [units, rows, cols, tileMap])
 
   function getTileColor(row, col, isVisible, isDiscovered) {
@@ -514,10 +516,12 @@ export default function GameBoard({
     if (!tile) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : fogColor
     const terrain = TERRAIN_BY_ID[tile.terrain]
     if (!terrain) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : fogColor
-    if (miningAffectedTiles.has(`${row}-${col}`) && isVisible) {
+    const miningBoard = miningAffectedTiles.get(`${row}-${col}`)
+    if (miningBoard && isVisible) {
       const h = tileHash(row, col)
       const jitter = (h - 0.5) * 0.12
-      const [br, bg, bb] = parseHex('#7c857a')
+      const baseColor = miningBoard === 'space' ? '#1a1610' : '#7c857a'
+      const [br, bg, bb] = parseHex(baseColor)
       return toHex(br * (1 + jitter), bg * (1 + jitter), bb * (1 + jitter))
     }
     if (tile.has_road) {
@@ -2237,7 +2241,8 @@ export default function GameBoard({
                   {showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' && (() => {
                     const pColor = getPlayerColor(unit.owner_id, unit)
                     const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
-                    const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * 1.032
+                    const sizeMultiplier = unit.wg_unit_types?.name === 'Battleship' ? 1.24 : 1.032
+                    const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * sizeMultiplier
                     return (
                       <div className="relative flex items-center justify-center z-10" style={{ width: tokenSize, height: tokenSize }}>
                         <div
@@ -2285,7 +2290,7 @@ export default function GameBoard({
               const sgR = spaceGuildTile.grid_row, sgC = spaceGuildTile.grid_col
               const sgX = sgC * HEX_W + (sgR & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
               const sgY = sgR * ROW_H + RENDER_H / 2
-              const sgSize = HEX_W * 1.907
+              const sgSize = HEX_W * 2.479
               const sgVisible = visibleTiles.has(`${sgR}-${sgC}`)
               return (
                 <div
