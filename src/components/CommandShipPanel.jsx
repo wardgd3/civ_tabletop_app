@@ -1502,12 +1502,16 @@ export default function CommandShipPanel({
   onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay, onProduceUnit,
   onLoadCargo, onUnloadCargo,
   onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
-  onBuyMissile,
+  onBuyMissile, onFireMissile,
   onDeployFromHangar, onProduceToHangar, onTransferHangar,
   groundUnits, unitTypes, teamGold, playerResources, allUnits,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
+  const [selectedMissile, setSelectedMissile] = useState(null)
+  const [ipbmTarget, setIpbmTarget] = useState('space')
+  const [ipbmRow, setIpbmRow] = useState('')
+  const [ipbmCol, setIpbmCol] = useState('')
   const upgrades = unit.upgrades || {}
   const unitName = unit.wg_unit_types?.name || 'Command Ship'
   const compartments = getCompartments(unitName)
@@ -1843,12 +1847,101 @@ export default function CommandShipPanel({
                 const munitions = upgrades.munitions || { tactical: 0, cruise: 0, ipbm: 0 }
                 const missileLevel = slots[0] || 0
                 const MISSILE_TYPES = [
-                  { key: 'tactical', name: 'Tactical', color: '#8b949e', cost: 5, reqLevel: 1 },
-                  { key: 'cruise', name: 'Cruise', color: '#3fb950', cost: 10, reqLevel: 2 },
-                  { key: 'ipbm', name: 'IPBM', color: '#d29922', cost: 20, reqLevel: 3 },
+                  { key: 'tactical', name: 'Tactical', color: '#8b949e', cost: 5, reqLevel: 1, range: 5 },
+                  { key: 'cruise', name: 'Cruise', color: '#3fb950', cost: 10, reqLevel: 2, range: 8 },
+                  { key: 'ipbm', name: 'IPBM', color: '#d29922', cost: 20, reqLevel: 3, range: '∞' },
                 ]
+                const selMissile = MISSILE_TYPES.find(m => m.key === selectedMissile)
+                const canFire = selMissile && (munitions[selMissile.key] || 0) > 0
+                const isIpbmGround = selectedMissile === 'ipbm' && ipbmTarget === 'ground'
+
                 return (
                   <div className="mt-3">
+                    <button
+                      onClick={() => {
+                        if (!canFire) return
+                        if (isIpbmGround) {
+                          const r = parseInt(ipbmRow, 10)
+                          const c = parseInt(ipbmCol, 10)
+                          if (isNaN(r) || isNaN(c)) return
+                          onFireMissile(unit.id, selectedMissile, r, c, 'ground')
+                          setSelectedMissile(null)
+                          setIpbmRow('')
+                          setIpbmCol('')
+                        } else {
+                          onFireMissile(unit.id, selectedMissile, null, null, 'space')
+                          setSelectedMissile(null)
+                        }
+                      }}
+                      disabled={!canFire || (isIpbmGround && (!ipbmRow || !ipbmCol))}
+                      className="w-full py-2 mb-3 text-[11px] font-bold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-25 disabled:cursor-default"
+                      style={{
+                        backgroundColor: canFire ? '#e0505030' : '#21262d',
+                        color: canFire ? '#e05050' : '#4a5568',
+                        border: `1px solid ${canFire ? '#e05050' : '#30363d'}`,
+                      }}
+                    >
+                      {canFire
+                        ? isIpbmGround ? 'Launch IPBM (Strikes Next Turn)' : 'Fire Missile — Select Target'
+                        : 'Fire Missile'}
+                    </button>
+
+                    {selectedMissile === 'ipbm' && (
+                      <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #d2992240' }}>
+                        <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#d29922' }}>
+                          IPBM Target
+                        </div>
+                        <div className="flex gap-1 mb-2">
+                          {['space', 'ground'].map(b => (
+                            <button
+                              key={b}
+                              onClick={() => setIpbmTarget(b)}
+                              className="flex-1 py-1 text-[10px] font-semibold uppercase rounded cursor-pointer"
+                              style={{
+                                backgroundColor: ipbmTarget === b ? (b === 'space' ? '#2a1a3a' : '#1c3043') : '#21262d',
+                                color: ipbmTarget === b ? (b === 'space' ? '#c080e0' : '#6cb4e6') : '#4a5568',
+                                border: `1px solid ${ipbmTarget === b ? (b === 'space' ? '#c080e0' : '#6cb4e6') : '#30363d'}`,
+                              }}
+                            >
+                              {b}
+                            </button>
+                          ))}
+                        </div>
+                        {ipbmTarget === 'ground' && (
+                          <div className="flex gap-2 items-center">
+                            <div className="flex-1">
+                              <label className="text-[8px] uppercase tracking-widest" style={{ color: '#6e7681' }}>X (Row)</label>
+                              <input
+                                type="number"
+                                value={ipbmRow}
+                                onChange={e => setIpbmRow(e.target.value)}
+                                className="w-full px-2 py-1 rounded text-[11px] font-mono"
+                                style={{ backgroundColor: '#161b22', color: '#c9d1d9', border: '1px solid #30363d', outline: 'none' }}
+                                placeholder="0"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <label className="text-[8px] uppercase tracking-widest" style={{ color: '#6e7681' }}>Y (Col)</label>
+                              <input
+                                type="number"
+                                value={ipbmCol}
+                                onChange={e => setIpbmCol(e.target.value)}
+                                className="w-full px-2 py-1 rounded text-[11px] font-mono"
+                                style={{ backgroundColor: '#161b22', color: '#c9d1d9', border: '1px solid #30363d', outline: 'none' }}
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {ipbmTarget === 'space' && (
+                          <div className="text-[9px]" style={{ color: '#6e7681' }}>Click Fire then select target on space board</div>
+                        )}
+                        <div className="text-[8px] mt-1.5" style={{ color: '#6e7681' }}>
+                          DMG: 20 center · 10 adjacent · 5 outer ring
+                        </div>
+                      </div>
+                    )}
+
                     <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
                       Munitions
                     </div>
@@ -1856,11 +1949,24 @@ export default function CommandShipPanel({
                       {MISSILE_TYPES.map(m => {
                         const locked = missileLevel < m.reqLevel
                         const count = munitions[m.key] || 0
+                        const isSelected = selectedMissile === m.key
                         return (
-                          <div key={m.key} style={{ opacity: locked ? 0.35 : 1 }}>
+                          <div
+                            key={m.key}
+                            onClick={() => {
+                              if (!locked && count > 0) setSelectedMissile(isSelected ? null : m.key)
+                            }}
+                            className="rounded p-1.5 transition-all"
+                            style={{
+                              opacity: locked ? 0.35 : 1,
+                              cursor: !locked && count > 0 ? 'pointer' : 'default',
+                              backgroundColor: isSelected ? m.color + '15' : 'transparent',
+                              border: `1px solid ${isSelected ? m.color : 'transparent'}`,
+                            }}
+                          >
                             <div className="flex items-center justify-between mb-0.5">
                               <span className="text-[9px] font-semibold" style={{ color: locked ? '#4a5568' : m.color }}>
-                                {m.name}{locked ? ` (Lv${m.reqLevel})` : ''}
+                                {m.name}{locked ? ` (Lv${m.reqLevel})` : ''}{!locked ? ` — Range: ${m.range}` : ''}
                               </span>
                               <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>{locked ? '—' : `${count}/10`}</span>
                             </div>

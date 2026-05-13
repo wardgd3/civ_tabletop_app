@@ -858,6 +858,186 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  const MISSILE_DAMAGE = { tactical: 8, cruise: 15, ipbm: 20 }
+  const MISSILE_RANGE = { tactical: 5, cruise: 8, ipbm: 999 }
+
+  async function fireMissile(shipId, missileType, targetRow, targetCol, targetBoard) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+
+    const upgrades = ship.upgrades || {}
+    const munitions = { ...(upgrades.munitions || {}) }
+    if ((munitions[missileType] || 0) <= 0) throw new Error('No munitions of this type')
+
+    const board = targetBoard || 'space'
+
+    if (missileType !== 'ipbm' && board === 'ground') throw new Error('Only IPBM can strike ground targets')
+
+    if (board === 'space') {
+      const range = MISSILE_RANGE[missileType]
+      const dist = hexDistance(ship.grid_row, ship.grid_col, targetRow, targetCol)
+      if (dist > range) throw new Error('Target out of range')
+    }
+
+    munitions[missileType] = (munitions[missileType] || 0) - 1
+    const damage = MISSILE_DAMAGE[missileType]
+
+    if (board === 'ground') {
+      const pendingStrikes = [...(upgrades.pendingStrikes || [])]
+      pendingStrikes.push({ row: targetRow, col: targetCol, damage, missileType })
+      const newUpgrades = { ...upgrades, munitions, pendingStrikes }
+      await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+
+      await addBattleLogEntry({
+        type: 'missile_launch',
+        attackerId: userId,
+        attackerUnit: ship.wg_unit_types?.name,
+        attackerPlayerName: getPlayerName(userId),
+        missileType,
+        targetBoard: 'ground',
+        targetRow, targetCol,
+        message: `${missileType.toUpperCase()} launched at ground X${targetRow}/Y${targetCol} — strikes next turn`,
+      })
+
+      await fetchAll()
+      return
+    }
+
+    const boardUnits = units.filter(u => (u.board || 'ground') === 'space')
+    const hitUnits = []
+    for (const u of boardUnits) {
+      if (u.id === shipId) continue
+      if (u.owner_id === userId) continue
+      const d = hexDistance(targetRow, targetCol, u.grid_row, u.grid_col)
+      let dmg = 0
+      if (d === 0) dmg = damage
+      else if (d === 1) dmg = Math.floor(damage / 2)
+      else if (d === 2) dmg = Math.floor(damage / 4)
+      if (dmg > 0) hitUnits.push({ unit: u, dmg, dist: d })
+    }
+
+    for (const { unit: target, dmg } of hitUnits) {
+      if (target.isNPC) {
+        const { data: freshGame } = await supabase.from('wg_games').select('settings').eq('id', gameId).single()
+        const settings = freshGame?.settings || {}
+        let npcUnits = settings.npcUnits || []
+        const npc = npcUnits.find(n => n.id === target.id)
+        if (npc) {
+          const newHp = (npc.current_hp || target.wg_unit_types?.hp || 0) - dmg
+          if (newHp <= 0) {
+            npcUnits = npcUnits.filter(n => n.id !== target.id)
+          } else {
+            npcUnits = npcUnits.map(n => n.id === target.id ? { ...n, current_hp: newHp } : n)
+          }
+          await supabase.from('wg_games').update({ settings: { ...settings, npcUnits } }).eq('id', gameId)
+        }
+      } else {
+        const shield = getShieldHp(target.upgrades)
+        const shieldAbsorbed = Math.min(shield.current, dmg)
+        const hpDamage = dmg - shieldAbsorbed
+        const newShieldHp = shield.current - shieldAbsorbed
+        const newHp = target.current_hp - hpDamage
+        const shieldUpdate = shield.max > 0 ? { upgrades: { ...target.upgrades, shieldHp: newShieldHp, shieldMaxHp: shield.max } } : {}
+        if (newHp <= 0) {
+          await supabase.from('wg_units').update({ current_hp: 0, is_alive: false, ...shieldUpdate }).eq('id', target.id)
+        } else {
+          await supabase.from('wg_units').update({ current_hp: newHp, ...shieldUpdate }).eq('id', target.id)
+        }
+      }
+    }
+
+    const newUpgrades = { ...upgrades, munitions }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+
+    await addBattleLogEntry({
+      type: 'missile_strike',
+      attackerId: userId,
+      attackerUnit: ship.wg_unit_types?.name,
+      attackerPlayerName: getPlayerName(userId),
+      missileType,
+      targetBoard: 'space',
+      targetRow, targetCol,
+      unitsHit: hitUnits.length,
+      damage,
+    })
+
+    await fetchAll()
+  }
+
+  async function processMissileStrikes() {
+    const STRIKE_SHIPS = new Set(['Command Ship', 'Battleship'])
+    const myShips = units.filter(u => u.owner_id === userId && STRIKE_SHIPS.has(u.wg_unit_types?.name))
+
+    for (const ship of myShips) {
+      const upgrades = ship.upgrades || {}
+      const pendingStrikes = upgrades.pendingStrikes || []
+      if (pendingStrikes.length === 0) continue
+
+      const groundUnits = units.filter(u => (u.board || 'ground') === 'ground')
+      const { data: freshGame } = await supabase.from('wg_games').select('settings').eq('id', gameId).single()
+      const settings = freshGame?.settings || {}
+      let npcUnits = [...(settings.npcUnits || [])]
+      let npcChanged = false
+
+      for (const strike of pendingStrikes) {
+        const { row, col, damage } = strike
+
+        for (const target of groundUnits) {
+          if (target.owner_id === userId) continue
+          const d = hexDistance(row, col, target.grid_row, target.grid_col)
+          let dmg = 0
+          if (d === 0) dmg = damage
+          else if (d === 1) dmg = Math.floor(damage / 2)
+          else if (d === 2) dmg = Math.floor(damage / 4)
+          if (dmg <= 0) continue
+
+          if (target.isNPC) {
+            const npc = npcUnits.find(n => n.id === target.id)
+            if (npc) {
+              const newHp = (npc.current_hp || target.wg_unit_types?.hp || 0) - dmg
+              if (newHp <= 0) {
+                npcUnits = npcUnits.filter(n => n.id !== target.id)
+              } else {
+                npcUnits = npcUnits.map(n => n.id === target.id ? { ...n, current_hp: newHp } : n)
+              }
+              npcChanged = true
+            }
+          } else {
+            const shield = getShieldHp(target.upgrades)
+            const shieldAbsorbed = Math.min(shield.current, dmg)
+            const hpDamage = dmg - shieldAbsorbed
+            const newShieldHp = shield.current - shieldAbsorbed
+            const newHp = target.current_hp - hpDamage
+            const shieldUpdate = shield.max > 0 ? { upgrades: { ...target.upgrades, shieldHp: newShieldHp, shieldMaxHp: shield.max } } : {}
+            if (newHp <= 0) {
+              await supabase.from('wg_units').update({ current_hp: 0, is_alive: false, ...shieldUpdate }).eq('id', target.id)
+            } else {
+              await supabase.from('wg_units').update({ current_hp: newHp, ...shieldUpdate }).eq('id', target.id)
+            }
+          }
+        }
+
+        await addBattleLogEntry({
+          type: 'missile_impact',
+          attackerId: userId,
+          attackerUnit: ship.wg_unit_types?.name,
+          attackerPlayerName: getPlayerName(userId),
+          missileType: strike.missileType,
+          targetBoard: 'ground',
+          targetRow: row, targetCol: col,
+          damage,
+        })
+      }
+
+      if (npcChanged) {
+        await supabase.from('wg_games').update({ settings: { ...settings, npcUnits } }).eq('id', gameId)
+      }
+
+      const newUpgrades = { ...upgrades, pendingStrikes: [] }
+      await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', ship.id)
+    }
+  }
+
   function getGuildConvoys(upgrades) {
     if (upgrades.guildConvoys) return [...upgrades.guildConvoys]
     if (upgrades.guildConvoy) return [upgrades.guildConvoy]
@@ -2022,6 +2202,7 @@ export function useGameState(gameId) {
 
     await processConvoyTicks()
     await processMiningTicks()
+    await processMissileStrikes()
     await processNPCTicks()
 
     const { data, error } = await supabase.functions.invoke('end-turn', {
@@ -2084,7 +2265,7 @@ export function useGameState(gameId) {
     game, players, units, unitTypes, tiles, discoveredTiles, loading,
     currentPlayer, isMyTurn, isAdmin, battleLog,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-    excavate, upgradeShipCompartment, levelUpUnit, buyMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
+    excavate, upgradeShipCompartment, levelUpUnit, buyMissile, fireMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
     setAutoPath, clearAutoPath,
