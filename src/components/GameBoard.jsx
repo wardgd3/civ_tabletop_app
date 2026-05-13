@@ -2085,9 +2085,10 @@ export default function GameBoard({
                 const lightDim = isTundra ? 0.88 : 0.92
                 const lightColor = toHex(lr * lightDim * (1 + lightJitter), lg * lightDim * (1 + lightJitter), lb * lightDim * (1 + lightJitter))
                 const [mr, mg, mb] = parseHex(tileBg)
-                const shadowR = (isTundra ? mr : lr) * (isTundra ? 0.80 : 0.72)
-                const shadowG = (isTundra ? mg : lg) * (isTundra ? 0.95 : 0.69)
-                const shadowB = (isTundra ? mb : lb) * (isTundra ? 1.35 : 0.67)
+                const [gr, gg, gb] = isTundra ? parseHex('#3a7080') : [0, 0, 0]
+                const shadowR = isTundra ? gr * 0.55 : lr * 0.72
+                const shadowG = isTundra ? gg * 0.55 : lg * 0.69
+                const shadowB = isTundra ? gb * 0.55 : lb * 0.67
                 let shadowMul = 1
                 if (isTundra) {
                   const h2 = ((h * 13 + 0.7) % 1)
