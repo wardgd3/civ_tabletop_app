@@ -63,6 +63,16 @@ function seededRandFromHash(seed) {
 
 export const SHIELD_HP = [0, 5, 10, 20]
 
+function getShieldHp(upgrades) {
+  if (!upgrades) return { current: 0, max: 0 }
+  const shieldSlots = upgrades.shields || []
+  const maxTier = Math.max(...shieldSlots.filter(s => s > 0), 0)
+  if (maxTier === 0) return { current: 0, max: 0 }
+  const max = SHIELD_HP[maxTier] || 0
+  const current = upgrades.shieldHp !== undefined ? upgrades.shieldHp : max
+  return { current, max }
+}
+
 const NPC_UNIT_TYPES = {
   test1: {
     id: 'npc-test1',
@@ -465,10 +475,10 @@ export function useGameState(gameId) {
     if (dist > attacker.wg_unit_types.attack_range) throw new Error('Out of range')
 
     const rawDamage = Math.max(1, attacker.wg_unit_types.attack - target.wg_unit_types.defense)
-    const targetShieldHp = target.upgrades?.shieldHp || 0
-    const shieldAbsorbed = Math.min(targetShieldHp, rawDamage)
+    const shield = getShieldHp(target.upgrades)
+    const shieldAbsorbed = Math.min(shield.current, rawDamage)
     const hpDamage = rawDamage - shieldAbsorbed
-    const newShieldHp = targetShieldHp - shieldAbsorbed
+    const newShieldHp = shield.current - shieldAbsorbed
     const newHp = target.current_hp - hpDamage
 
     const attackerName = attacker.wg_unit_types?.name || 'Unit'
@@ -505,7 +515,7 @@ export function useGameState(gameId) {
       return
     }
 
-    const shieldUpdate = targetShieldHp > 0 ? { upgrades: { ...target.upgrades, shieldHp: newShieldHp } } : {}
+    const shieldUpdate = shield.max > 0 ? { upgrades: { ...target.upgrades, shieldHp: newShieldHp, shieldMaxHp: shield.max } } : {}
 
     if (newHp <= 0) {
       const { error } = await supabase.from('wg_units').update({ current_hp: 0, is_alive: false, ...shieldUpdate }).eq('id', targetId)
@@ -1747,7 +1757,8 @@ export function useGameState(gameId) {
     let npcUnits = [...(settings.npcUnits || [])]
     if (npcUnits.length === 0) return
 
-    const playerUnits = units.filter(u => u.owner_id && u.is_alive !== false)
+    const { data: freshUnits } = await supabase.from('wg_units').select('*, wg_unit_types(*)').eq('game_id', gameId).eq('is_alive', true)
+    const playerUnits = (freshUnits || []).filter(u => u.owner_id)
     if (playerUnits.length === 0) return
 
     const spaceImpassable = new Set(['asteroid', 'large_asteroid', 'star'])
@@ -1779,10 +1790,10 @@ export function useGameState(gameId) {
 
       if (closest.dist <= attackRange) {
         const damage = Math.max(1, npcDef.attack - (closest.unit.wg_unit_types?.defense || 0))
-        const targetShieldHp = closest.unit.upgrades?.shieldHp || 0
-        const shieldAbsorbed = Math.min(targetShieldHp, damage)
+        const shield = getShieldHp(closest.unit.upgrades)
+        const shieldAbsorbed = Math.min(shield.current, damage)
         const hpDamage = damage - shieldAbsorbed
-        const newShieldHp = targetShieldHp - shieldAbsorbed
+        const newShieldHp = shield.current - shieldAbsorbed
         const newHp = closest.unit.current_hp - hpDamage
         const killed = newHp <= 0
 
@@ -1801,7 +1812,7 @@ export function useGameState(gameId) {
           timestamp: Date.now(),
         }]
 
-        const shieldUpdate = targetShieldHp > 0 ? { upgrades: { ...closest.unit.upgrades, shieldHp: newShieldHp } } : {}
+        const shieldUpdate = shield.max > 0 ? { upgrades: { ...closest.unit.upgrades, shieldHp: newShieldHp, shieldMaxHp: shield.max } } : {}
         if (killed) {
           await supabase.from('wg_units').update({ current_hp: 0, is_alive: false, ...shieldUpdate }).eq('id', closest.unit.id)
         } else {
@@ -1862,10 +1873,10 @@ export function useGameState(gameId) {
       const newDist = hexDistance(curR, curC, closest.unit.grid_row, closest.unit.grid_col)
       if (newDist <= attackRange) {
         const damage = Math.max(1, npcDef.attack - (closest.unit.wg_unit_types?.defense || 0))
-        const targetShieldHp = closest.unit.upgrades?.shieldHp || 0
-        const shieldAbsorbed = Math.min(targetShieldHp, damage)
+        const shield = getShieldHp(closest.unit.upgrades)
+        const shieldAbsorbed = Math.min(shield.current, damage)
         const hpDamage = damage - shieldAbsorbed
-        const newShieldHp = targetShieldHp - shieldAbsorbed
+        const newShieldHp = shield.current - shieldAbsorbed
         const newHp = closest.unit.current_hp - hpDamage
         const killed = newHp <= 0
 
@@ -1884,7 +1895,7 @@ export function useGameState(gameId) {
           timestamp: Date.now(),
         }]
 
-        const shieldUpdate = targetShieldHp > 0 ? { upgrades: { ...closest.unit.upgrades, shieldHp: newShieldHp } } : {}
+        const shieldUpdate = shield.max > 0 ? { upgrades: { ...closest.unit.upgrades, shieldHp: newShieldHp, shieldMaxHp: shield.max } } : {}
         if (killed) {
           await supabase.from('wg_units').update({ current_hp: 0, is_alive: false, ...shieldUpdate }).eq('id', closest.unit.id)
         } else {
