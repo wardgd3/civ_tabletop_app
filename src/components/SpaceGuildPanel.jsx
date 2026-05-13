@@ -105,14 +105,18 @@ export default function SpaceGuildPanel({
         const isExpanded = expandedGuildConvoy === flatIdx
 
         return (
-          <div key={flatIdx} className="p-2 rounded mb-2" style={{ backgroundColor: '#0d1117', border: '1px solid #6cb4e640' }}>
+          <div key={flatIdx} className="p-2 rounded mb-2 transition-all" style={{
+            backgroundColor: isExpanded ? '#0d1117' : '#0d1117',
+            border: isExpanded ? '1px solid #3fb95080' : '1px solid #6cb4e640',
+            boxShadow: isExpanded ? '0 0 8px #3fb95015, inset 0 0 12px #3fb95008' : 'none',
+          }}>
             <div
               onClick={() => setExpandedGuildConvoy(isExpanded ? null : flatIdx)}
               className="flex items-center justify-between cursor-pointer"
               style={{ marginBottom: isExpanded ? 6 : 0 }}
             >
               <span className="text-[10px] font-semibold" style={{ color: '#3fb950' }}>
-                Convoy — Docked
+                {isExpanded ? '● ' : ''}Convoy — Docked
                 <span className="text-[8px] font-normal ml-1" style={{ color: '#6e7681' }}>({gc.shipName})</span>
               </span>
               <span className="text-[9px]" style={{ color: '#6e7681' }}>
@@ -279,23 +283,24 @@ export default function SpaceGuildPanel({
             Purchase Units
           </div>
           <div className="text-[9px] mb-1.5" style={{ color: '#6e7681' }}>
-            Units are loaded directly into a docked convoy.
+            Units are loaded into the selected convoy. Expand a convoy above to select it.
           </div>
           <div className="flex flex-col gap-1 mb-2">
             {availableUnitTypes.map(ut => {
               const canAfford = teamGold >= ut.cost
-              const docked = (expandedGuildConvoy != null && !allGuildConvoys[expandedGuildConvoy]?.inTransit) ? allGuildConvoys[expandedGuildConvoy] : allGuildConvoys.find(gc => !gc.inTransit)
+              const docked = (expandedGuildConvoy != null && allGuildConvoys[expandedGuildConvoy] && !allGuildConvoys[expandedGuildConvoy].inTransit) ? allGuildConvoys[expandedGuildConvoy] : null
+              const noDocked = !docked
               return (
                 <button
                   key={ut.id}
                   onClick={() => canAfford && docked && onBuyUnit(docked.shipId, docked.gcIdx, ut.id)}
-                  disabled={!canAfford}
+                  disabled={!canAfford || noDocked}
                   className="flex items-center justify-between p-1.5 rounded transition-colors"
                   style={{
-                    backgroundColor: canAfford ? '#1a2a3a10' : '#0d1117',
-                    border: `1px solid ${canAfford ? '#6cb4e640' : '#2a3140'}`,
-                    cursor: canAfford ? 'pointer' : 'default',
-                    opacity: canAfford ? 1 : 0.4,
+                    backgroundColor: canAfford && !noDocked ? '#1a2a3a10' : '#0d1117',
+                    border: `1px solid ${canAfford && !noDocked ? '#6cb4e640' : '#2a3140'}`,
+                    cursor: canAfford && !noDocked ? 'pointer' : 'default',
+                    opacity: canAfford && !noDocked ? 1 : 0.4,
                   }}
                 >
                   <div className="flex items-center gap-2">
@@ -332,20 +337,21 @@ export default function SpaceGuildPanel({
         ]
         const available = MISSILE_TYPES.filter(m => effectiveLevel >= m.reqLevel)
         if (available.length === 0) return null
-        const docked = allGuildConvoys.find(gc => !gc.inTransit)
+        const docked = (expandedGuildConvoy != null && allGuildConvoys[expandedGuildConvoy] && !allGuildConvoys[expandedGuildConvoy].inTransit) ? allGuildConvoys[expandedGuildConvoy] : null
         return (
           <>
             <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5 mt-3" style={{ color: '#4a5568' }}>
               Purchase Munitions
             </div>
             <div className="text-[9px] mb-1.5" style={{ color: '#6e7681' }}>
-              Munitions are loaded into the convoy and deposited on return.
+              Munitions are loaded into the selected convoy. Expand a convoy above to select it.
             </div>
             <div className="flex gap-1.5 mb-2">
               {MISSILE_TYPES.map(m => {
                 const locked = effectiveLevel < m.reqLevel
                 const canAfford = teamGold >= m.cost
-                const disabled = locked || !canAfford
+                const noDocked = !docked
+                const disabled = locked || !canAfford || noDocked
                 return (
                   <button
                     key={m.key}
