@@ -579,7 +579,8 @@ export default function GameBoard({
   function getMoveRange(unit) {
     if (!unit?.wg_unit_types) return new Set()
     const unitName = unit.wg_unit_types.name
-    const baseRange = unit.wg_unit_types.movement
+    const unitBoard = unit.board || 'ground'
+    const baseRange = unit.wg_unit_types.movement + (unitBoard === 'space' ? 3 : 0)
     const usedSoFar = unit.moves_used || 0
     const sourceTile = tileMap.get(`${unit.grid_row}-${unit.grid_col}`)
     const sourceHasRoad = sourceTile?.has_road
@@ -1929,9 +1930,15 @@ export default function GameBoard({
       })()}
 
       {spaceGuildOpen && (() => {
+        const GUILD_SHIPS = new Set(['Command Ship', 'Battleship'])
         const myShip = allUnits.find(u =>
           u.owner_id === currentPlayer?.player_id &&
-          u.wg_unit_types?.name === 'Command Ship' &&
+          GUILD_SHIPS.has(u.wg_unit_types?.name) &&
+          u.is_alive &&
+          spaceGuildTile && hexDistance(u.grid_row, u.grid_col, spaceGuildTile.grid_row, spaceGuildTile.grid_col) <= 3
+        ) || allUnits.find(u =>
+          u.owner_id === currentPlayer?.player_id &&
+          GUILD_SHIPS.has(u.wg_unit_types?.name) &&
           u.is_alive
         )
         return (

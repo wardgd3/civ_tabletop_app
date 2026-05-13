@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GROUND_ORES, SPACE_ORES } from '../hooks/useGameState'
+import { GROUND_ORES, SPACE_ORES, SHIELD_HP } from '../hooks/useGameState'
 
 const ICON_STYLE = { width: 14, height: 14, fill: 'none', stroke: '#8b949e', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }
 
@@ -106,9 +106,9 @@ const COMMAND_SHIP_COMPARTMENTS = [
     color: '#40a0e0',
     slots: 1,
     tiers: [
-      { name: 'Deflector Array', desc: 'Basic shielding' },
-      { name: 'Adaptive Matrix', desc: 'Regenerating shields' },
-      { name: 'Phase Shields', desc: 'Maximum protection' },
+      { name: 'Deflector Array', desc: '5 shield HP' },
+      { name: 'Adaptive Matrix', desc: '10 shield HP' },
+      { name: 'Phase Shields', desc: '20 shield HP' },
     ],
   },
   {
@@ -188,9 +188,9 @@ const COMMAND_CENTER_COMPARTMENTS = [
     color: '#40a0e0',
     slots: 1,
     tiers: [
-      { name: 'Perimeter Barrier', desc: 'Basic shielding' },
-      { name: 'Defense Grid', desc: 'Layered defense' },
-      { name: 'Quantum Barrier', desc: 'Maximum shielding' },
+      { name: 'Perimeter Barrier', desc: '5 shield HP' },
+      { name: 'Defense Grid', desc: '10 shield HP' },
+      { name: 'Quantum Barrier', desc: '20 shield HP' },
     ],
   },
   {
@@ -304,9 +304,9 @@ const BATTLESHIP_COMPARTMENTS = [
     color: '#40a0e0',
     slots: 1,
     tiers: [
-      { name: 'Deflector Array', desc: 'Basic shielding' },
-      { name: 'Adaptive Matrix', desc: 'Regenerating shields' },
-      { name: 'Phase Shields', desc: 'Maximum protection' },
+      { name: 'Deflector Array', desc: '5 shield HP' },
+      { name: 'Adaptive Matrix', desc: '10 shield HP' },
+      { name: 'Phase Shields', desc: '20 shield HP' },
     ],
   },
   {
@@ -1286,7 +1286,8 @@ export default function CommandShipPanel({
       return comps.some(c => c.special === 'transport')
     })
     .map(u => ({ id: u.id, label: u.wg_unit_types?.name }))
-  const spaceGuildDest = unitName === 'Command Ship' ? [{ id: 'space_guild', label: 'Space Guild' }] : []
+  const isSpaceUnit = unit.board === 'space'
+  const spaceGuildDest = isSpaceUnit ? [{ id: 'space_guild', label: 'Space Guild' }] : []
   const allDestinations = [...destinations, ...spaceGuildDest]
 
   const comp = selectedComp ? compartments.find(c => c.id === selectedComp) : null
@@ -1414,6 +1415,31 @@ export default function CommandShipPanel({
             <span className="text-xs font-semibold" style={{ color: comp.color }}>{comp.name}</span>
           </div>
           <div className="text-[10px] mb-2" style={{ color: '#8b949e' }}>{comp.description}</div>
+
+          {comp.id === 'shields' && (() => {
+            const shieldTier = Math.max(...(upgrades.shields || []).filter(s => s > 0), 0)
+            if (shieldTier === 0) return null
+            const maxHp = SHIELD_HP[shieldTier] || 0
+            const currentHp = upgrades.shieldHp ?? maxHp
+            const ratio = maxHp > 0 ? currentHp / maxHp : 0
+            return (
+              <div className="mb-2 p-1.5 rounded" style={{ backgroundColor: '#111820', border: '1px solid #1a3050' }}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#40a0e0' }}>Shield HP</span>
+                  <span className="text-[10px] font-mono font-bold" style={{ color: ratio > 0.5 ? '#40a0e0' : ratio > 0 ? '#e0a040' : '#e05050' }}>
+                    {currentHp} / {maxHp}
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#1a2030' }}>
+                  <div className="h-full rounded-full transition-all" style={{
+                    width: `${ratio * 100}%`,
+                    backgroundColor: ratio > 0.5 ? '#40a0e0' : ratio > 0 ? '#e0a040' : '#e05050',
+                    boxShadow: `0 0 6px ${ratio > 0.5 ? '#40a0e040' : '#e0a04040'}`,
+                  }} />
+                </div>
+              </div>
+            )
+          })()}
 
           {comp.special === 'transport' ? (
             <TransportPanel
