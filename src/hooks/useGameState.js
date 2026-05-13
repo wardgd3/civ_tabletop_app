@@ -1090,6 +1090,22 @@ export function useGameState(gameId) {
           }
         }
 
+        if (hasWarhead) {
+          const craterRadius = strikeWarhead === 'thermonuclear' ? 5 : 3
+          const groundTiles = tiles.filter(t => (t.board || 'ground') === 'ground')
+          for (const tile of groundTiles) {
+            const d = hexDistance(row, col, tile.grid_row, tile.grid_col)
+            if (d > craterRadius) continue
+            const newTerrain = d === craterRadius ? 'crater_outer' : 'crater_inner'
+            await supabase.from('wg_game_tiles')
+              .update({ terrain: newTerrain, resource: null, has_road: false })
+              .eq('game_id', gameId)
+              .eq('grid_row', tile.grid_row)
+              .eq('grid_col', tile.grid_col)
+              .eq('board', 'ground')
+          }
+        }
+
         await addBattleLogEntry({
           type: 'missile_impact',
           attackerId: userId,
