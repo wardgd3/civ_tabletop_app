@@ -2492,13 +2492,10 @@ export default function GameBoard({
                     />
                   )}
                   {/* ore icons disabled */}
-                  {showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' && !slidingUnits.has(unit.id) && (() => {
+                  {showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' && unit.wg_unit_types?.name !== 'Battleship' && unit.wg_unit_types?.icon !== 'hostilebattleship.png' && !slidingUnits.has(unit.id) && (() => {
                     const pColor = getPlayerColor(unit.owner_id, unit)
                     const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
-                    const uName = unit.wg_unit_types?.name
-                    const npcIcon = unit.wg_unit_types?.icon
-                    const isWarship = npcIcon === 'hostilebattleship.png'
-                    const sizeMultiplier = uName === 'Battleship' ? 1.488 : isWarship ? 1.238 : 1.032
+                    const sizeMultiplier = 1.032
                     const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * sizeMultiplier
                     const fadeIn = unitAnimations.get(unit.id)?.type === 'fadeIn'
                     return (
@@ -2612,13 +2609,68 @@ export default function GameBoard({
                 </div>
               )
             })}
+            {units.filter(u => (u.wg_unit_types?.name === 'Battleship' || u.wg_unit_types?.icon === 'hostilebattleship.png') && !slidingUnits.has(u.id) && (u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`))).map(bs => {
+              const bsX = bs.grid_col * HEX_W + (bs.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
+              const bsY = bs.grid_row * ROW_H + RENDER_H / 2
+              const isBattleship = bs.wg_unit_types?.name === 'Battleship'
+              const bsSize = HEX_W * (isBattleship ? 1.8 : 1.5)
+              const hpRatio = bs.current_hp / bs.wg_unit_types?.hp
+              const pColor = getPlayerColor(bs.owner_id, bs)
+              const bsFadeIn = unitAnimations.get(bs.id)?.type === 'fadeIn'
+              return (
+                <div
+                  key={`bs-overlay-${bs.id}`}
+                  className="absolute pointer-events-none z-10"
+                  style={{
+                    left: bsX - bsSize / 2,
+                    top: bsY - bsSize / 2,
+                    width: bsSize,
+                    height: bsSize,
+                    ...(bsFadeIn ? { animation: 'unitFadeIn 0.4s ease' } : {}),
+                  }}
+                >
+                  <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `3px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
+                    <img
+                      src={getUnitIcon(bs.wg_unit_types, bs)}
+                      alt={bs.wg_unit_types?.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 rounded-full z-20"
+                    style={{
+                      bottom: 3,
+                      height: 4,
+                      width: `${hpRatio * 60}%`,
+                      backgroundColor: hpRatio > 0.5 ? '#4a8060' : '#804a4a',
+                      minWidth: 6,
+                      boxShadow: '0 0 2px #000',
+                    }}
+                  />
+                  {(bs.upgrades?.level || 0) > 0 && (
+                    <div
+                      className="absolute -top-0.5 -left-0.5 flex items-center justify-center rounded-full z-20"
+                      style={{
+                        width: 18, height: 18,
+                        backgroundColor: '#1a1a0d',
+                        border: '2px solid #cca43b',
+                        fontSize: 12, fontWeight: 'bold',
+                        color: '#cca43b', lineHeight: 1,
+                      }}
+                    >
+                      {bs.upgrades.level}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
             {[...slidingUnits.entries()].map(([id, sl]) => {
               const u = sl.unit
               const pColor = getPlayerColor(u.owner_id, u)
               const isCC = u.wg_unit_types?.name === 'Command Ship' || u.wg_unit_types?.name === 'Command Center'
+              const isBattleship = u.wg_unit_types?.name === 'Battleship'
               const isWarship = u.wg_unit_types?.icon === 'hostilebattleship.png'
-              const sizeMultiplier = u.wg_unit_types?.name === 'Battleship' ? 1.488 : isCC ? 0 : isWarship ? 1.238 : 1.032
-              const tokenSize = isCC ? HEX_W * 2.288 : (Math.min(RENDER_W, RENDER_H) - 4) * sizeMultiplier
+              const tokenSize = isCC ? HEX_W * 2.288 : isBattleship ? HEX_W * 1.8 : isWarship ? HEX_W * 1.5 : (Math.min(RENDER_W, RENDER_H) - 4) * 1.032
               const hpRatio = u.current_hp / u.wg_unit_types?.hp
               return (
                 <div
@@ -2632,7 +2684,7 @@ export default function GameBoard({
                     marginTop: -tokenSize / 2,
                   }}
                 >
-                  <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `${isCC ? '2.4px' : '3px'} solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
+                  <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `${isCC ? '3.8px' : '3px'} solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
                     <img src={getUnitIcon(u.wg_unit_types, u)} alt="" className="w-full h-full object-cover pointer-events-none" />
                   </div>
                   <div
@@ -2668,8 +2720,9 @@ export default function GameBoard({
               const duY = du.row * ROW_H + RENDER_H / 2
               const pColor = getPlayerColor(du.ownerId, du.unit)
               const isCC = du.unitType?.name === 'Command Ship' || du.unitType?.name === 'Command Center'
+              const isBattleship = du.unitType?.name === 'Battleship'
               const isWarship = du.unitType?.icon === 'hostilebattleship.png'
-              const size = isCC ? HEX_W * 2.288 : (Math.min(RENDER_W, RENDER_H) - 4) * (du.unitType?.name === 'Battleship' ? 1.488 : isWarship ? 1.238 : 1.032)
+              const size = isCC ? HEX_W * 2.288 : isBattleship ? HEX_W * 1.8 : isWarship ? HEX_W * 1.5 : (Math.min(RENDER_W, RENDER_H) - 4) * 1.032
               return (
                 <div
                   key={`dead-${du.id}`}
@@ -2682,7 +2735,7 @@ export default function GameBoard({
                     animation: 'unitFadeOut 0.5s ease forwards',
                   }}
                 >
-                  <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `${isCC ? '2.4px' : '3px'} solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
+                  <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `${isCC ? '3.8px' : '3px'} solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
                     <img src={getUnitIcon(du.unitType, du.unit)} alt="" className="w-full h-full object-cover pointer-events-none" />
                   </div>
                 </div>

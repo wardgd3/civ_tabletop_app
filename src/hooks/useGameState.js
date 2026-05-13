@@ -1098,12 +1098,27 @@ export function useGameState(gameId) {
         if (hasWarhead) {
           const craterRadius = strikeWarhead === 'thermonuclear' ? 5 : 3
           const groundTiles = tiles.filter(t => (t.board || 'ground') === 'ground')
+          let seed = (row * 7919 + col * 104729 + Date.now()) & 0x7fffffff
+          const craterRand = () => { seed = (seed * 1664525 + 1013904223) & 0x7fffffff; return seed / 0x7fffffff }
+
+          const craterTiles = []
           for (const tile of groundTiles) {
             const d = hexDistance(row, col, tile.grid_row, tile.grid_col)
-            if (d > craterRadius) continue
-            const newTerrain = d === craterRadius ? 'crater_outer' : 'crater_inner'
+            if (d > craterRadius + 1) continue
+            if (d <= craterRadius - 2) {
+              craterTiles.push({ tile, terrain: 'crater_inner' })
+            } else if (d === craterRadius - 1) {
+              craterTiles.push({ tile, terrain: craterRand() < 0.7 ? 'crater_inner' : 'crater_outer' })
+            } else if (d === craterRadius) {
+              craterTiles.push({ tile, terrain: craterRand() < 0.55 ? 'crater_outer' : null })
+            } else if (d === craterRadius + 1) {
+              if (craterRand() < 0.2) craterTiles.push({ tile, terrain: 'crater_outer' })
+            }
+          }
+          for (const { tile, terrain } of craterTiles) {
+            if (!terrain) continue
             await supabase.from('wg_game_tiles')
-              .update({ terrain: newTerrain, resource: null, has_road: false })
+              .update({ terrain, resource: null, has_road: false })
               .eq('game_id', gameId)
               .eq('grid_row', tile.grid_row)
               .eq('grid_col', tile.grid_col)

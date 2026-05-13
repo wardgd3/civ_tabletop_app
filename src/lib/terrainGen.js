@@ -26,8 +26,8 @@ export const TERRAIN = {
   STAR:            { id: 'star',            name: 'Star',            color: '#e8e0c8', darkColor: '#a09880' },
   DUST:            { id: 'dust',            name: 'Dust Cloud',      color: '#0e121a', darkColor: '#0a0e12' },
   SPACE:           { id: 'space',           name: 'Space',           color: '#0a0e12', darkColor: '#0a0e12' },
-  CRATER_OUTER:    { id: 'crater_outer',    name: 'Crater Rim',      color: '#8a7e70', darkColor: '#5e554a' },
-  CRATER_INNER:    { id: 'crater_inner',    name: 'Crater',           color: '#b0a898', darkColor: '#7a7268' },
+  CRATER_OUTER:    { id: 'crater_outer',    name: 'Crater Rim',      color: '#4a5258', darkColor: '#333a3e' },
+  CRATER_INNER:    { id: 'crater_inner',    name: 'Crater',           color: '#5c6468', darkColor: '#3e474b' },
 }
 
 export const TERRAIN_THEMES = {
