@@ -6,13 +6,13 @@ const RESOURCE_VALUES = {
 }
 
 export default function SpaceGuildPanel({
-  commandShip, onClose, onSendToGuild, onSellAtGuild, onReturnFromGuild, onBuyUnit, onBuyMunition,
+  guildShips, onClose, onSendToGuild, onSellAtGuild, onReturnFromGuild, onBuyUnit, onBuyMunition,
   playerResources, teamGold, availableUnitTypes, commandShipUpgrades,
 }) {
   const [sellResult, setSellResult] = useState(null)
   const [expandedGuildConvoy, setExpandedGuildConvoy] = useState(null)
 
-  if (!commandShip) {
+  if (!guildShips || guildShips.length === 0) {
     return (
       <div className="p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
         <div className="flex items-center justify-between mb-2">
@@ -31,15 +31,23 @@ export default function SpaceGuildPanel({
     )
   }
 
-  const upgrades = commandShip.upgrades || {}
-  const convoys = upgrades.convoys || []
-  const guildConvoys = upgrades.guildConvoys || (upgrades.guildConvoy ? [upgrades.guildConvoy] : [])
+  const allGuildConvoys = []
+  const allAvailableConvoys = []
+  for (const ship of guildShips) {
+    const upgrades = ship.upgrades || {}
+    const gcs = upgrades.guildConvoys || (upgrades.guildConvoy ? [upgrades.guildConvoy] : [])
+    for (let i = 0; i < gcs.length; i++) {
+      allGuildConvoys.push({ ...gcs[i], shipId: ship.id, shipName: ship.wg_unit_types?.name, gcIdx: i })
+    }
+    const convoys = upgrades.convoys || []
+    for (let i = 0; i < convoys.length; i++) {
+      if (!convoys[i].inTransit) {
+        allAvailableConvoys.push({ ...convoys[i], shipId: ship.id, shipName: ship.wg_unit_types?.name, index: i })
+      }
+    }
+  }
 
-  const availableConvoys = convoys
-    .map((c, i) => ({ ...c, index: i }))
-    .filter(c => !c.inTransit)
-
-  const canSendMore = guildConvoys.length < 2 && !guildConvoys.some(gc => gc.inTransit)
+  const canSendMore = allGuildConvoys.length < 2 && !allGuildConvoys.some(gc => gc.inTransit)
 
   return (
     <div className="p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
@@ -57,15 +65,18 @@ export default function SpaceGuildPanel({
       </div>
 
       <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-        Convoy Bay ({guildConvoys.length}/2)
+        Convoy Bay ({allGuildConvoys.length}/2)
       </div>
 
-      {guildConvoys.map((gc, gcIdx) => {
+      {allGuildConvoys.map((gc, flatIdx) => {
         if (gc.inTransit) {
           return (
-            <div key={gcIdx} className="p-2 rounded mb-2" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
+            <div key={flatIdx} className="p-2 rounded mb-2" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold" style={{ color: '#d29922' }}>Convoy {gcIdx + 1} — In Transit</span>
+                <span className="text-[10px] font-semibold" style={{ color: '#d29922' }}>
+                  Convoy — In Transit
+                  <span className="text-[8px] font-normal ml-1" style={{ color: '#6e7681' }}>({gc.shipName})</span>
+                </span>
                 <span className="text-[9px] font-mono" style={{ color: '#8b949e' }}>
                   {gc.turnsLeft} turn{gc.turnsLeft !== 1 ? 's' : ''} remaining
                 </span>
@@ -91,16 +102,19 @@ export default function SpaceGuildPanel({
         const munCount = Object.values(gc.munitions || {}).filter(v => v > 0).length
         const goldAmount = gc.cargo?.gold || 0
         const totalItems = unitCount + resCount + munCount + (goldAmount > 0 ? 1 : 0)
-        const isExpanded = expandedGuildConvoy === gcIdx
+        const isExpanded = expandedGuildConvoy === flatIdx
 
         return (
-          <div key={gcIdx} className="p-2 rounded mb-2" style={{ backgroundColor: '#0d1117', border: '1px solid #6cb4e640' }}>
+          <div key={flatIdx} className="p-2 rounded mb-2" style={{ backgroundColor: '#0d1117', border: '1px solid #6cb4e640' }}>
             <div
-              onClick={() => setExpandedGuildConvoy(isExpanded ? null : gcIdx)}
+              onClick={() => setExpandedGuildConvoy(isExpanded ? null : flatIdx)}
               className="flex items-center justify-between cursor-pointer"
               style={{ marginBottom: isExpanded ? 6 : 0 }}
             >
-              <span className="text-[10px] font-semibold" style={{ color: '#3fb950' }}>Convoy {gcIdx + 1} — Docked</span>
+              <span className="text-[10px] font-semibold" style={{ color: '#3fb950' }}>
+                Convoy — Docked
+                <span className="text-[8px] font-normal ml-1" style={{ color: '#6e7681' }}>({gc.shipName})</span>
+              </span>
               <span className="text-[9px]" style={{ color: '#6e7681' }}>
                 {totalItems > 0 ? `${totalItems} item${totalItems !== 1 ? 's' : ''}` : 'Empty'} {isExpanded ? '▴' : '▾'}
               </span>
@@ -115,7 +129,7 @@ export default function SpaceGuildPanel({
                     <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{u.typeName}</span>
                     <button
                       onClick={async () => {
-                        const earned = await onSellAtGuild(commandShip.id, gcIdx, [idx], null)
+                        const earned = await onSellAtGuild(gc.shipId, gc.gcIdx, [idx], null)
                         if (earned) setSellResult(`+${earned}g`)
                         setTimeout(() => setSellResult(null), 2000)
                       }}
@@ -146,7 +160,7 @@ export default function SpaceGuildPanel({
                         <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{key}: {amount}</span>
                         <button
                           onClick={async () => {
-                            const earned = await onSellAtGuild(commandShip.id, gcIdx, null, { [key]: amount })
+                            const earned = await onSellAtGuild(gc.shipId, gc.gcIdx, null, { [key]: amount })
                             if (earned) setSellResult(`+${earned}g`)
                             setTimeout(() => setSellResult(null), 2000)
                           }}
@@ -203,34 +217,34 @@ export default function SpaceGuildPanel({
             )}
 
             <button
-              onClick={() => onReturnFromGuild(commandShip.id, gcIdx)}
+              onClick={() => onReturnFromGuild(gc.shipId, gc.gcIdx)}
               className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded cursor-pointer"
               style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
             >
-              Return Convoy to Ship
+              Return to {gc.shipName}
             </button>
           </div>
         )
       })}
 
-      {canSendMore && guildConvoys.length < 2 && (
+      {canSendMore && allGuildConvoys.length < 2 && (
         <div className="mb-2">
-          {availableConvoys.length === 0 ? (
+          {allAvailableConvoys.length === 0 ? (
             <div className="p-2 rounded text-center" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
               <div className="text-[10px]" style={{ color: '#4a5568' }}>
-                No convoys available. Build one in your Command Ship's Convoy Bay.
+                No convoys available. Build one in your ship's Convoy Bay.
               </div>
             </div>
           ) : (
             <div className="flex flex-col gap-1">
-              {availableConvoys.map(c => {
+              {allAvailableConvoys.map((c, i) => {
                 const unitCount = (c.units || []).length
                 const hasResources = Object.values(c.cargo?.resources || {}).some(v => v > 0)
                 const hasCargo = unitCount > 0 || hasResources || (c.cargo?.gold || 0) > 0
                 return (
                   <button
-                    key={c.index}
-                    onClick={() => onSendToGuild(commandShip.id, c.index)}
+                    key={i}
+                    onClick={() => onSendToGuild(c.shipId, c.index)}
                     className="flex items-center justify-between p-2 rounded cursor-pointer"
                     style={{
                       backgroundColor: hasCargo ? '#6cb4e610' : '#0d1117',
@@ -240,6 +254,7 @@ export default function SpaceGuildPanel({
                     <div className="text-left">
                       <div className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
                         Convoy {c.index + 1}
+                        <span className="text-[8px] font-normal ml-1" style={{ color: '#6e7681' }}>({c.shipName})</span>
                       </div>
                       <div className="text-[9px]" style={{ color: '#6e7681' }}>
                         {unitCount > 0 ? `${unitCount} unit${unitCount !== 1 ? 's' : ''}` : ''}
@@ -248,7 +263,7 @@ export default function SpaceGuildPanel({
                       </div>
                     </div>
                     <span className="text-[9px] font-semibold" style={{ color: '#6cb4e6' }}>
-                      Send (5 turns)
+                      Send (3 turns)
                     </span>
                   </button>
                 )
@@ -258,7 +273,7 @@ export default function SpaceGuildPanel({
         </div>
       )}
 
-      {guildConvoys.some(gc => !gc.inTransit) && availableUnitTypes && availableUnitTypes.length > 0 && (
+      {allGuildConvoys.some(gc => !gc.inTransit) && availableUnitTypes && availableUnitTypes.length > 0 && (
         <>
           <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5 mt-3" style={{ color: '#4a5568' }}>
             Purchase Units
@@ -269,11 +284,11 @@ export default function SpaceGuildPanel({
           <div className="flex flex-col gap-1 mb-2">
             {availableUnitTypes.map(ut => {
               const canAfford = teamGold >= ut.cost
-              const dockedIdx = guildConvoys.findIndex(gc => !gc.inTransit)
+              const docked = allGuildConvoys.find(gc => !gc.inTransit)
               return (
                 <button
                   key={ut.id}
-                  onClick={() => canAfford && dockedIdx >= 0 && onBuyUnit(commandShip.id, dockedIdx, ut.id)}
+                  onClick={() => canAfford && docked && onBuyUnit(docked.shipId, docked.gcIdx, ut.id)}
                   disabled={!canAfford}
                   className="flex items-center justify-between p-1.5 rounded transition-colors"
                   style={{
@@ -306,7 +321,7 @@ export default function SpaceGuildPanel({
         </>
       )}
 
-      {guildConvoys.some(gc => !gc.inTransit) && (() => {
+      {allGuildConvoys.some(gc => !gc.inTransit) && (() => {
         const missileLevel = (commandShipUpgrades || {}).missiles
         const mlSlots = Array.isArray(missileLevel) ? missileLevel : []
         const effectiveLevel = mlSlots.reduce((max, v) => Math.max(max, v || 0), 0)
@@ -317,7 +332,7 @@ export default function SpaceGuildPanel({
         ]
         const available = MISSILE_TYPES.filter(m => effectiveLevel >= m.reqLevel)
         if (available.length === 0) return null
-        const dockedIdx = guildConvoys.findIndex(gc => !gc.inTransit)
+        const docked = allGuildConvoys.find(gc => !gc.inTransit)
         return (
           <>
             <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5 mt-3" style={{ color: '#4a5568' }}>
@@ -334,7 +349,7 @@ export default function SpaceGuildPanel({
                 return (
                   <button
                     key={m.key}
-                    onClick={() => !disabled && dockedIdx >= 0 && onBuyMunition(commandShip.id, dockedIdx, m.key)}
+                    onClick={() => !disabled && docked && onBuyMunition(docked.shipId, docked.gcIdx, m.key)}
                     disabled={disabled}
                     className="flex-1 rounded p-1.5 text-center transition-all"
                     style={{

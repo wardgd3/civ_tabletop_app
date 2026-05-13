@@ -884,7 +884,7 @@ export function useGameState(gameId) {
       units: [...(convoy.units || [])],
       cargo: { ...(convoy.cargo || {}) },
       inTransit: true,
-      turnsLeft: 5,
+      turnsLeft: 3,
     })
 
     const newUpgrades = { ...upgrades, convoys, guildConvoys, guildConvoy: undefined }
@@ -1182,7 +1182,7 @@ export function useGameState(gameId) {
       units: [...(convoy.units || [])],
       cargo: { ...(convoy.cargo || {}) },
       inTransit: true,
-      turnsLeft: 5,
+      turnsLeft: 3,
     })
     await supabase.from('wg_units').update({ upgrades: { ...destUpgrades, convoys: destConvoys } }).eq('id', dest.id)
 

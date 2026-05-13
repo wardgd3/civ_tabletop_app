@@ -1989,19 +1989,14 @@ export default function GameBoard({
 
       {spaceGuildOpen && (() => {
         const GUILD_SHIPS = new Set(['Command Ship', 'Battleship'])
-        const myShip = allUnits.find(u =>
+        const myGuildShips = allUnits.filter(u =>
           u.owner_id === currentPlayer?.player_id &&
           GUILD_SHIPS.has(u.wg_unit_types?.name) &&
-          u.is_alive &&
-          spaceGuildTile && hexDistance(u.grid_row, u.grid_col, spaceGuildTile.grid_row, spaceGuildTile.grid_col) <= 3
-        ) || allUnits.find(u =>
-          u.owner_id === currentPlayer?.player_id &&
-          GUILD_SHIPS.has(u.wg_unit_types?.name) &&
-          u.is_alive
+          u.is_alive !== false
         )
         return (
           <SpaceGuildPanel
-            commandShip={myShip || null}
+            guildShips={myGuildShips}
             onClose={() => setSpaceGuildOpen(false)}
             onSendToGuild={async (shipId, convoyIdx) => {
               try { await sendConvoyToGuild(shipId, convoyIdx) } catch (err) { setError(err.message) }
