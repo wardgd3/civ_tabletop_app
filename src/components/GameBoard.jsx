@@ -4,6 +4,7 @@ import SpaceGuildPanel from './SpaceGuildPanel'
 import BattleLog from './BattleLog'
 import TeamChat from './TeamChat'
 import { TERRAIN, TERRAIN_THEMES, RESOURCES, SPACE_RESOURCES, LUXURY_RESOURCES } from '../lib/terrainGen'
+import { SHIELD_HP } from '../hooks/useGameState'
 
 const HEX_SIZE = 48
 const HEX_W = Math.round(Math.sqrt(3) * HEX_SIZE)
@@ -74,6 +75,15 @@ function getUnitIcon(unitType, unit) {
     return `/assets/${model}.png`
   }
   return `/assets/${encodeURIComponent(unitType.icon)}`
+}
+
+function getUnitShield(unit) {
+  const slots = unit?.upgrades?.shields || []
+  const maxTier = Math.max(...slots.filter(s => s > 0), 0)
+  if (maxTier === 0) return null
+  const max = SHIELD_HP[maxTier] || 0
+  const current = unit.upgrades?.shieldHp !== undefined ? unit.upgrades.shieldHp : max
+  return { current, max }
 }
 
 const GROUND_IMPASSABLE = new Set(['ocean', 'mountain', 'lake', 'river'])
@@ -1475,13 +1485,14 @@ export default function GameBoard({
         </div>
         <div className="flex gap-2 mt-0.5 text-[10px] font-mono" style={{ color: '#8b949e' }}>
           <span>HP {inspectedUnit.current_hp}/{inspectedUnit.wg_unit_types?.hp}</span>
+          {(() => { const s = getUnitShield(inspectedUnit); return s && <span style={{ color: '#40a0e0' }}>SH {s.current}/{s.max}</span> })()}
           <span>ATK {inspectedUnit.wg_unit_types?.attack}</span>
           <span>DEF {inspectedUnit.wg_unit_types?.defense}</span>
           <span>MOV {inspectedUnit.wg_unit_types?.movement}</span>
         </div>
         <div className="flex gap-2 text-[10px] mt-0.5" style={{ color: '#4a5568' }}>
           <span>{inspectedUnit.isNPC ? 'Hostile Creature' : (allPlayers || players).find(p => p.player_id === inspectedUnit.owner_id)?.wg_profiles?.display_name}</span>
-          <span className="font-mono">X{inspectedUnit.grid_row}/Y{inspectedUnit.grid_col}</span>
+          <span className="font-mono">X{inspectedUnit.grid_col}/Y{inspectedUnit.grid_row}</span>
         </div>
         {inspectedUnit.upgrades?.loadedUnits?.length > 0 && (
           <div className="flex items-center gap-1 mt-0.5">
@@ -2402,6 +2413,9 @@ export default function GameBoard({
                           )}
                         </div>
                         <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>HP {hu.current_hp}/{hu.wg_unit_types.hp}</div>
+                        {(() => { const s = getUnitShield(hu); return s && (
+                          <div className="text-[10px] font-mono" style={{ color: '#40a0e0' }}>Shield {s.current}/{s.max}</div>
+                        ) })()}
                         {hu.upgrades?.loadedUnits?.length > 0 && (
                           <div className="text-[10px] font-mono mt-1" style={{ color: '#8b949e' }}>{hu.upgrades.loadedUnits.length} unit{hu.upgrades.loadedUnits.length !== 1 ? 's' : ''} loaded</div>
                         )}
@@ -2426,7 +2440,7 @@ export default function GameBoard({
                         )}
                       </div>
                     )}
-                    <div className="text-[9px] font-mono text-center" style={{ color: '#4a5568' }}>X{hr}/Y{hc}</div>
+                    <div className="text-[9px] font-mono text-center" style={{ color: '#4a5568' }}>X{hc}/Y{hr}</div>
                   </div>
                 </div>
               )
@@ -2539,59 +2553,59 @@ export default function GameBoard({
         const tShowUnit = tu && (tu.owner_id === currentPlayer?.player_id || tVisible)
         const tInfo = (tVisible || tDiscovered) ? getTerrainInfo(tr, tc) : null
         if (!tInfo && !tShowUnit) return null
+        const tilePixelX = tc * HEX_W + (tr & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
+        const tilePixelY = tr * ROW_H
+        const el = boardRef.current
+        const scrollLeft = el ? el.scrollLeft : 0
+        const scrollTop = el ? el.scrollTop : 0
+        const screenX = tilePixelX * zoom - scrollLeft
+        const screenY = tilePixelY * zoom - scrollTop
         return (
           <div
-            className="lg:hidden fixed top-2 right-2 z-30 rounded-lg shadow-lg max-w-[180px]"
-            style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+            className="lg:hidden fixed z-30 pointer-events-auto"
+            style={{ left: Math.max(8, Math.min(screenX, window.innerWidth - 160)), top: Math.max(8, screenY - 8), transform: 'translate(-50%, -100%)' }}
           >
-            <button
-              onClick={() => setTappedTile(null)}
-              className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs cursor-pointer z-10"
-              style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+            <div
+              className="rounded-lg shadow-lg px-2 py-1 relative"
+              style={{ backgroundColor: '#161b22ee', border: '1px solid #2a3140', minWidth: 100 }}
             >
-              &times;
-            </button>
-            <div className="px-2 py-1.5">
+              <button
+                onClick={() => setTappedTile(null)}
+                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] cursor-pointer z-10"
+                style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+              >
+                &times;
+              </button>
               {tShowUnit && (
-                <div className="flex flex-col items-center gap-1 mb-1">
-                  <img
-                    src={getUnitIcon(tu.wg_unit_types, tu)}
-                    alt={tu.wg_unit_types.name}
-                    className="object-contain"
-                    style={{ maxHeight: 56, maxWidth: 56 }}
-                  />
-                  <div className="text-xs font-semibold text-center" style={{ color: '#c9d1d9' }}>
-                    {tu.wg_unit_types.name}
-                    {(tu.upgrades?.level || 0) > 0 && (
-                      <span className="ml-1 font-mono" style={{ color: '#cca43b' }}>Lv{tu.upgrades.level}</span>
-                    )}
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <img src={getUnitIcon(tu.wg_unit_types, tu)} alt={tu.wg_unit_types.name} className="w-6 h-6 object-contain shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-semibold truncate" style={{ color: '#c9d1d9' }}>
+                      {tu.wg_unit_types.name}
+                      {(tu.upgrades?.level || 0) > 0 && <span className="ml-1 font-mono" style={{ color: '#cca43b' }}>Lv{tu.upgrades.level}</span>}
+                    </div>
+                    <div className="flex gap-1.5 text-[9px] font-mono" style={{ color: '#8b949e' }}>
+                      <span>HP {tu.current_hp}/{tu.wg_unit_types.hp}</span>
+                      {(() => { const s = getUnitShield(tu); return s && <span style={{ color: '#40a0e0' }}>SH {s.current}/{s.max}</span> })()}
+                    </div>
                   </div>
-                  <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>HP {tu.current_hp}/{tu.wg_unit_types.hp}</div>
-                  {tu.upgrades?.loadedUnits?.length > 0 && (
-                    <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>{tu.upgrades.loadedUnits.length} unit{tu.upgrades.loadedUnits.length !== 1 ? 's' : ''} loaded</div>
-                  )}
                 </div>
               )}
               {tInfo?.resourceId === 'space_guild' && (
-                <div className="flex flex-col items-center gap-1 mb-1">
-                  <img src="/assets/spaceguild.png" alt="Space Guild" className="object-contain" style={{ maxHeight: 56, maxWidth: 56 }} />
-                  <div className="text-xs font-semibold text-center" style={{ color: '#6cb4e6' }}>Space Guild</div>
-                  <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>Trade Station</div>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <img src="/assets/spaceguild.png" alt="Space Guild" className="w-6 h-6 object-contain shrink-0" />
+                  <div className="text-[10px] font-semibold" style={{ color: '#6cb4e6' }}>Space Guild</div>
                 </div>
               )}
               {tInfo && (
-                <div className="text-center">
-                  <div className="text-[10px] font-semibold" style={{ color: '#8b949e' }}>
-                    {tInfo.terrain?.name}{tInfo.hasRiver ? ' (River)' : ''}
-                  </div>
+                <div className="text-[9px] font-mono" style={{ color: '#8b949e' }}>
+                  {tInfo.terrain?.name}{tInfo.hasRiver ? ' (River)' : ''}
                   {tInfo.resource && tInfo.resourceId !== 'space_guild' && (
-                    <div className="text-[10px] font-mono" style={{ color: '#cca43b' }}>
-                      {tInfo.resource.name}{tInfo.oreAmount ? ` (${tInfo.oreAmount})` : ''}{tInfo.resource.yield != null ? ` (+${tInfo.resource.yield}g/turn)` : ' (+1g/turn)'}
-                    </div>
+                    <span style={{ color: '#cca43b' }}> {tInfo.resource.name}{tInfo.oreAmount ? ` (${tInfo.oreAmount})` : ''}</span>
                   )}
                 </div>
               )}
-              <div className="text-[9px] font-mono text-center" style={{ color: '#4a5568' }}>X{tr}/Y{tc}</div>
+              <div className="text-[8px] font-mono" style={{ color: '#4a5568' }}>X{tc}/Y{tr}</div>
             </div>
           </div>
         )
@@ -2617,13 +2631,14 @@ export default function GameBoard({
             </div>
             <div className="flex gap-3 mt-1 text-xs font-mono" style={{ color: '#8b949e' }}>
               <span>HP {inspectedUnit.current_hp}/{inspectedUnit.wg_unit_types?.hp}</span>
+              {(() => { const s = getUnitShield(inspectedUnit); return s && <span style={{ color: '#40a0e0' }}>Shield {s.current}/{s.max}</span> })()}
               <span>ATK {inspectedUnit.wg_unit_types?.attack}</span>
               <span>DEF {inspectedUnit.wg_unit_types?.defense}</span>
               <span>MOV {inspectedUnit.wg_unit_types?.movement}</span>
             </div>
             <div className="flex gap-2 text-xs mt-0.5" style={{ color: '#4a5568' }}>
               <span>{inspectedUnit.isNPC ? 'Hostile Creature' : (allPlayers || players).find(p => p.player_id === inspectedUnit.owner_id)?.wg_profiles?.display_name}</span>
-              <span className="font-mono">X{inspectedUnit.grid_row}/Y{inspectedUnit.grid_col}</span>
+              <span className="font-mono">X{inspectedUnit.grid_col}/Y{inspectedUnit.grid_row}</span>
             </div>
             {inspectedUnit.upgrades?.loadedUnits?.length > 0 && (
               <div className="flex items-center gap-1.5 mt-1">
