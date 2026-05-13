@@ -111,7 +111,7 @@ export default function GameBoard({
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
   setAutoPath, clearAutoPath,
-  deployFromHangar, produceUnitToHangar, transferHangarUnit,
+  deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar,
   battleLog,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
@@ -132,6 +132,7 @@ export default function GameBoard({
   const [commandShipUnitId, setCommandShipUnitId] = useState(null)
   const [bayDeployInfo, setBayDeployInfo] = useState(null)
   const [hangarDeployInfo, setHangarDeployInfo] = useState(null)
+  const [hangarDeployAllInfo, setHangarDeployAllInfo] = useState(null)
   const [transportDeployInfo, setTransportDeployInfo] = useState(null)
   const [unitDeployFromTransportInfo, setUnitDeployFromTransportInfo] = useState(null)
   const [missileTargetInfo, setMissileTargetInfo] = useState(null)
@@ -154,6 +155,68 @@ export default function GameBoard({
   const velocityRef = useRef({ vx: 0, vy: 0 })
   const lastMoveRef = useRef({ x: 0, y: 0, t: 0 })
   const inertiaRef = useRef(null)
+
+  const prevUnitMapRef = useRef(null)
+  const prevBoardRef = useRef(activeBoard)
+  const [deadUnits, setDeadUnits] = useState([])
+
+  const unitAnimations = useMemo(() => {
+    const prev = prevUnitMapRef.current
+    if (!prev || prevBoardRef.current !== activeBoard) return new Map()
+    const anims = new Map()
+    for (const u of units) {
+      const p = prev.get(u.id)
+      if (!p) {
+        anims.set(u.id, { type: 'fadeIn' })
+      } else if (p.row !== u.grid_row || p.col !== u.grid_col) {
+        const dx = (p.col * HEX_W + (p.row & 1 ? HEX_W / 2 : 0)) - (u.grid_col * HEX_W + (u.grid_row & 1 ? HEX_W / 2 : 0))
+        const dy = p.row * ROW_H - u.grid_row * ROW_H
+        anims.set(u.id, { type: 'slide', dx, dy })
+      }
+    }
+    return anims
+  }, [units, activeBoard])
+
+  const slideKeyframes = useMemo(() => {
+    let css = ''
+    for (const [id, anim] of unitAnimations) {
+      if (anim.type === 'slide') {
+        css += `@keyframes slide-${id}{from{transform:translate(${anim.dx}px,${anim.dy}px)}to{transform:translate(0,0)}}`
+      }
+    }
+    return css
+  }, [unitAnimations])
+
+  useEffect(() => {
+    const prev = prevUnitMapRef.current
+    if (prev && prevBoardRef.current === activeBoard) {
+      const currentIds = new Set(units.map(u => u.id))
+      const dying = []
+      for (const [id, data] of prev) {
+        if (!currentIds.has(id)) {
+          dying.push({ ...data, removeAt: Date.now() + 500 })
+        }
+      }
+      if (dying.length > 0) setDeadUnits(p => [...p, ...dying])
+    }
+    prevBoardRef.current = activeBoard
+    const newMap = new Map()
+    for (const u of units) {
+      newMap.set(u.id, {
+        id: u.id, row: u.grid_row, col: u.grid_col,
+        unitType: u.wg_unit_types, unit: u, ownerId: u.owner_id,
+      })
+    }
+    prevUnitMapRef.current = newMap
+  }, [units, activeBoard])
+
+  useEffect(() => {
+    if (deadUnits.length === 0) return
+    const timer = setTimeout(() => {
+      setDeadUnits(p => p.filter(d => d.removeAt > Date.now()))
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [deadUnits])
 
   const selectedUnit = selectedUnitId ? units.find(u => u.id === selectedUnitId) || null : null
   const inspectedUnit = inspectedUnitId ? units.find(u => u.id === inspectedUnitId) || null : null
@@ -830,8 +893,9 @@ export default function GameBoard({
     return cells
   })() : new Set()
 
-  const hangarDeployRange = hangarDeployInfo ? (() => {
-    const cc = units.find(u => u.id === hangarDeployInfo.shipId)
+  const activeHangarDeploy = hangarDeployInfo || hangarDeployAllInfo
+  const hangarDeployRange = activeHangarDeploy ? (() => {
+    const cc = units.find(u => u.id === activeHangarDeploy.shipId)
     if (!cc) return new Set()
     const cells = new Set()
     const range = 3
@@ -1356,6 +1420,27 @@ export default function GameBoard({
         setError(err.message)
       }
       setHangarDeployInfo(null)
+      return
+    }
+
+    if (hangarDeployAllInfo) {
+      if (!hangarDeployRange.has(cellKey)) {
+        setHangarDeployAllInfo(null)
+        return
+      }
+      try {
+        await deployFromHangar(hangarDeployAllInfo.shipId, hangarDeployAllInfo.nextIndex, row, col)
+        const ship = units.find(u => u.id === hangarDeployAllInfo.shipId)
+        const hangar = ship?.upgrades?.hangar || []
+        if (hangar.length <= 1) {
+          setHangarDeployAllInfo(null)
+        } else {
+          setHangarDeployAllInfo({ shipId: hangarDeployAllInfo.shipId, nextIndex: 0 })
+        }
+      } catch (err) {
+        setError(err.message)
+        setHangarDeployAllInfo(null)
+      }
       return
     }
 
@@ -1989,6 +2074,16 @@ export default function GameBoard({
             onTransferHangar={async (fromShipId, hangarIdx, toShipId) => {
               try { await transferHangarUnit(fromShipId, hangarIdx, toShipId) } catch (err) { setError(err.message) }
             }}
+            onTransferAllHangar={async (fromShipId, toShipId) => {
+              try { await transferAllHangar(fromShipId, toShipId) } catch (err) { setError(err.message) }
+            }}
+            onDeployAllFromHangar={(shipId) => {
+              setHangarDeployAllInfo({ shipId, nextIndex: 0 })
+              setCommandShipUnitId(null)
+              setPanelOpen(false)
+            }}
+            isDeployAllActive={!!hangarDeployAllInfo}
+            onCancelDeployAll={() => setHangarDeployAllInfo(null)}
             onProduceUnit={async (shipId, unitTypeId, unitTypeName) => {
               try { await produceUnitToBay(shipId, unitTypeId, unitTypeName) } catch (err) { setError(err.message) }
             }}
@@ -2139,6 +2234,12 @@ export default function GameBoard({
   )
 
   return (
+    <>
+    <style>{`
+      @keyframes unitFadeIn{from{opacity:0;transform:scale(0.5)}to{opacity:1;transform:scale(1)}}
+      @keyframes unitFadeOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(0.5)}}
+      ${slideKeyframes}
+    `}</style>
     <div className={`flex flex-col lg:flex-row h-full ${isFullscreen ? 'gap-0' : 'gap-3 lg:gap-4'}`}>
       <div className="hidden lg:flex lg:flex-col lg:w-80 shrink-0 lg:max-h-[calc(100vh-5rem)]">
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -2354,8 +2455,14 @@ export default function GameBoard({
                     const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
                     const sizeMultiplier = unit.wg_unit_types?.name === 'Battleship' ? 1.24 : 1.032
                     const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * sizeMultiplier
+                    const anim = unitAnimations.get(unit.id)
+                    const animStyle = anim?.type === 'fadeIn'
+                      ? { animation: 'unitFadeIn 0.4s ease' }
+                      : anim?.type === 'slide'
+                      ? { animation: `slide-${unit.id} 0.3s ease` }
+                      : {}
                     return (
-                      <div className="relative flex items-center justify-center z-10" style={{ width: tokenSize, height: tokenSize }}>
+                      <div className="relative flex items-center justify-center z-10" style={{ width: tokenSize, height: tokenSize, ...animStyle }}>
                         <div
                           className="absolute inset-0 rounded-full overflow-hidden"
                           style={{ border: `3px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}
@@ -2431,6 +2538,12 @@ export default function GameBoard({
               const ccSize = HEX_W * 1.907
               const hpRatio = cc.current_hp / cc.wg_unit_types?.hp
               const pColor = getPlayerColor(cc.owner_id)
+              const ccAnim = unitAnimations.get(cc.id)
+              const ccAnimStyle = ccAnim?.type === 'fadeIn'
+                ? { animation: 'unitFadeIn 0.4s ease' }
+                : ccAnim?.type === 'slide'
+                ? { animation: `slide-${cc.id} 0.3s ease` }
+                : {}
               return (
                 <div
                   key={`cc-overlay-${cc.id}`}
@@ -2440,9 +2553,10 @@ export default function GameBoard({
                     top: ccY - ccSize / 2,
                     width: ccSize,
                     height: ccSize,
+                    ...ccAnimStyle,
                   }}
                 >
-                  <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `2px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
+                  <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `2.4px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
                     <img
                       src={getUnitIcon(cc.wg_unit_types, cc)}
                       alt={cc.wg_unit_types?.name}
@@ -2460,6 +2574,30 @@ export default function GameBoard({
                       boxShadow: '0 0 2px #000',
                     }}
                   />
+                </div>
+              )
+            })}
+            {deadUnits.map(du => {
+              const duX = du.col * HEX_W + (du.row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
+              const duY = du.row * ROW_H + RENDER_H / 2
+              const pColor = getPlayerColor(du.ownerId, du.unit)
+              const isCC = du.unitType?.name === 'Command Ship' || du.unitType?.name === 'Command Center'
+              const size = isCC ? HEX_W * 1.907 : (Math.min(RENDER_W, RENDER_H) - 4) * (du.unitType?.name === 'Battleship' ? 1.24 : 1.032)
+              return (
+                <div
+                  key={`dead-${du.id}`}
+                  className="absolute pointer-events-none z-10"
+                  style={{
+                    left: duX - size / 2,
+                    top: duY - size / 2,
+                    width: size,
+                    height: size,
+                    animation: 'unitFadeOut 0.5s ease forwards',
+                  }}
+                >
+                  <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `${isCC ? '2.4px' : '3px'} solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
+                    <img src={getUnitIcon(du.unitType, du.unit)} alt="" className="w-full h-full object-cover pointer-events-none" />
+                  </div>
                 </div>
               )
             })}
@@ -2886,5 +3024,6 @@ export default function GameBoard({
         </div>
       )}
     </div>
+    </>
   )
 }

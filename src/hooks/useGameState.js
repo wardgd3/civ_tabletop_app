@@ -1640,6 +1640,30 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function transferAllHangar(fromShipId, toShipId) {
+    const fromShip = units.find(u => u.id === fromShipId)
+    const toShip = units.find(u => u.id === toShipId)
+    if (!fromShip || !toShip) throw new Error('Ship not found')
+
+    const fromUpgrades = fromShip.upgrades || {}
+    const toUpgrades = toShip.upgrades || {}
+    const fromHangar = [...(fromUpgrades.hangar || [])]
+    const toHangar = [...(toUpgrades.hangar || [])]
+    const toCapacity = getHangarCapacity(toShip)
+    const slotsAvailable = toCapacity - toHangar.length
+    if (slotsAvailable <= 0) throw new Error('Destination hangar full')
+
+    const transferCount = Math.min(fromHangar.length, slotsAvailable)
+    const moved = fromHangar.splice(0, transferCount)
+    toHangar.push(...moved)
+
+    await Promise.all([
+      supabase.from('wg_units').update({ upgrades: { ...fromUpgrades, hangar: fromHangar } }).eq('id', fromShipId),
+      supabase.from('wg_units').update({ upgrades: { ...toUpgrades, hangar: toHangar } }).eq('id', toShipId),
+    ])
+    await fetchAll()
+  }
+
   async function buyAndLoadToTransport(structId, transportIndex, unitTypeId, unitTypeName) {
     const struct = units.find(u => u.id === structId)
     if (!struct) throw new Error('Structure not found')
@@ -2269,7 +2293,7 @@ export function useGameState(gameId) {
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
     setAutoPath, clearAutoPath,
-    deployFromHangar, produceUnitToHangar, transferHangarUnit,
+    deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar,
     persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
     refresh: fetchAll,
   }

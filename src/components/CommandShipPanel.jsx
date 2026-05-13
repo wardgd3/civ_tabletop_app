@@ -1044,10 +1044,11 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
 
 const HANGAR_UNIT_NAMES = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter'])
 
-function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, comp, unitTypes, teamGold, allUnits }) {
+function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, comp, unitTypes, teamGold, allUnits }) {
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [showProduceMenu, setShowProduceMenu] = useState(false)
   const [showTransferMenu, setShowTransferMenu] = useState(false)
+  const [showTransferAllMenu, setShowTransferAllMenu] = useState(false)
   const hangar = upgrades.hangar || []
   const capacity = comp.slots
   const isFull = hangar.length >= capacity
@@ -1073,7 +1074,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
 
       <div className="flex gap-1 mb-2">
         <button
-          onClick={() => { setShowProduceMenu(!showProduceMenu); setShowTransferMenu(false); setSelectedSlot(null) }}
+          onClick={() => { setShowProduceMenu(!showProduceMenu); setShowTransferMenu(false); setShowTransferAllMenu(false); setSelectedSlot(null) }}
           disabled={isFull}
           className="flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
           style={{
@@ -1084,7 +1085,72 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
         >
           {isFull ? 'Full' : showProduceMenu ? 'Close' : 'Produce'}
         </button>
+        {hangar.length > 0 && transferTargets.length > 0 && (
+          <button
+            onClick={() => { setShowTransferAllMenu(!showTransferAllMenu); setShowProduceMenu(false); setShowTransferMenu(false); setSelectedSlot(null) }}
+            className="flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+            style={{
+              backgroundColor: showTransferAllMenu ? '#1a3050' : '#21262d',
+              color: showTransferAllMenu ? '#6cb4e6' : '#8b949e',
+              border: `1px solid ${showTransferAllMenu ? '#6cb4e6' : '#30363d'}`,
+            }}
+          >
+            {showTransferAllMenu ? 'Close' : 'Transfer All'}
+          </button>
+        )}
+        {hangar.length > 0 && (
+          <button
+            onClick={() => {
+              if (isDeployAllActive) { onCancelDeployAll() }
+              else { onDeployAllFromHangar(unit.id); setShowProduceMenu(false); setShowTransferMenu(false); setShowTransferAllMenu(false); setSelectedSlot(null) }
+            }}
+            className="flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+            style={{
+              backgroundColor: isDeployAllActive ? '#3a1a1a' : '#21262d',
+              color: isDeployAllActive ? '#e05050' : '#8b949e',
+              border: `1px solid ${isDeployAllActive ? '#e05050' : '#30363d'}`,
+            }}
+          >
+            {isDeployAllActive ? 'Cancel' : 'Deploy All'}
+          </button>
+        )}
       </div>
+
+      {showTransferAllMenu && (
+        <div className="mb-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #1a3050' }}>
+          <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+            Transfer All To
+          </div>
+          <div className="flex flex-col gap-0.5">
+            {transferTargets.map(target => {
+              const targetUpgrades = target.upgrades || {}
+              const targetHangar = targetUpgrades.hangar || []
+              const targetComp = getCompartments(target.wg_unit_types?.name).find(c => c.special === 'hangar')
+              const targetCap = targetComp?.slots || 0
+              const targetFull = targetHangar.length >= targetCap
+              return (
+                <button
+                  key={target.id}
+                  onClick={() => { if (!targetFull) { onTransferAllHangar(unit.id, target.id); setShowTransferAllMenu(false) } }}
+                  disabled={targetFull}
+                  className="flex items-center justify-between p-1.5 rounded text-left transition-all"
+                  style={{
+                    backgroundColor: '#161b22',
+                    border: '1px solid #2a3140',
+                    opacity: targetFull ? 0.4 : 1,
+                    cursor: targetFull ? 'default' : 'pointer',
+                  }}
+                >
+                  <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{target.wg_unit_types?.name}</span>
+                  <span className="text-[9px] font-mono" style={{ color: targetFull ? '#e05050' : '#6e7681' }}>
+                    {targetHangar.length}/{targetCap}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className={`grid gap-1 mb-2`} style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
         {allSlots.map((stored, i) => {
@@ -1503,7 +1569,7 @@ export default function CommandShipPanel({
   onLoadCargo, onUnloadCargo,
   onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
   onBuyMissile, onFireMissile,
-  onDeployFromHangar, onProduceToHangar, onTransferHangar,
+  onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll,
   groundUnits, unitTypes, teamGold, playerResources, allUnits,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
@@ -1735,6 +1801,10 @@ export default function CommandShipPanel({
               onDeployFromHangar={onDeployFromHangar}
               onProduceToHangar={onProduceToHangar}
               onTransferHangar={onTransferHangar}
+              onTransferAllHangar={onTransferAllHangar}
+              onDeployAllFromHangar={onDeployAllFromHangar}
+              isDeployAllActive={isDeployAllActive}
+              onCancelDeployAll={onCancelDeployAll}
               comp={comp}
               unitTypes={unitTypes}
               teamGold={teamGold}
