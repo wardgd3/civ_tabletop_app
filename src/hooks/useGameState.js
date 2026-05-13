@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { LUXURY_RESOURCES } from '../lib/terrainGen'
+import { getCompartments } from '../components/CommandShipPanel'
 
 const LUXURY_BY_ID = Object.fromEntries(Object.values(LUXURY_RESOURCES).map(r => [r.id, r]))
 
@@ -327,6 +328,17 @@ export function useGameState(gameId) {
       await supabase.from('wg_units').update({ upgrades: ccUpgrades }).eq('id', ccForMaterials.id)
     }
 
+    const defaultUpgrades = {}
+    const compartments = getCompartments(unitType.name)
+    for (const comp of compartments) {
+      if (comp.tiers && comp.slots > 0 && !comp.special) {
+        const slots = new Array(comp.slots).fill(0)
+        slots[0] = 1
+        defaultUpgrades[comp.id] = slots
+      }
+    }
+    if (opts?.shipModel) defaultUpgrades.shipModel = opts.shipModel
+
     const insertData = {
       game_id: gameId,
       owner_id: userId,
@@ -336,8 +348,8 @@ export function useGameState(gameId) {
       current_hp: unitType.hp,
       board: unitBoard,
     }
-    if (opts?.shipModel) {
-      insertData.upgrades = { shipModel: opts.shipModel }
+    if (Object.keys(defaultUpgrades).length > 0) {
+      insertData.upgrades = defaultUpgrades
     }
     const { error: unitError } = await supabase.from('wg_units').insert(insertData)
     if (unitError) throw unitError
