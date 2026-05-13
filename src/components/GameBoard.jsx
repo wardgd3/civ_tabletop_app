@@ -127,6 +127,7 @@ export default function GameBoard({
   const [battleLogOpen, setBattleLogOpen] = useState(false)
   const [spaceGuildOpen, setSpaceGuildOpen] = useState(false)
   const [clickedTile, setClickedTile] = useState(null)
+  const [turnExpanded, setTurnExpanded] = useState(false)
   const boardRef = useRef(null)
   const boardInnerRef = useRef(null)
   const wrapperRef = useRef(null)
@@ -1499,7 +1500,7 @@ export default function GameBoard({
 
   const sidebarContent = (
     <div className="space-y-3">
-      <div className="p-3 rounded flex items-center justify-between lg:block" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+      <div className="p-3 rounded flex items-center justify-between lg:block cursor-pointer select-none" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }} onClick={() => setTurnExpanded(e => !e)}>
         <div>
           <div className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>Turn {game.turn_number}</div>
           <div className="font-semibold text-sm mt-0.5" style={{ color: '#c9d1d9' }}>
@@ -1513,8 +1514,8 @@ export default function GameBoard({
               </span>
             )}
           </div>
-          {economy && (
-            <div className="text-[9px] font-mono mt-0.5 hidden lg:block" style={{ color: '#6e7681' }}>
+          {turnExpanded && economy && (
+            <div className="text-[9px] font-mono mt-1" style={{ color: '#6e7681' }}>
               <span style={{ color: '#6a9a72' }}>+{economy.production} prod</span>
               {economy.excavationIncome > 0 && <span style={{ color: '#c080e0' }}> +{economy.excavationIncome} excav</span>}
               <span style={{ color: '#e07050' }}> -{economy.upkeep} upkeep</span>
