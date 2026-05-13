@@ -2075,11 +2075,13 @@ export default function GameBoard({
                   : { backgroundColor: '#0d1117', color: '#c9d1d9', border: '1px solid #2a3140' }}
               >
                 <img src={getUnitIcon(ut)} alt={ut.name} className="w-10 h-10 lg:w-16 lg:h-16 object-contain shrink-0" />
-                <span className="font-medium text-xs lg:text-sm truncate max-w-full">{ut.name}</span>
+                <div className="flex flex-col items-center lg:items-start min-w-0 flex-1">
+                  <span className="font-medium text-xs lg:text-sm truncate max-w-full">{ut.name}</span>
+                  {isBattleship && (
+                    <span className="text-[8px] lg:text-[10px] font-mono" style={{ color: '#6e7681' }}>1 uranium · 50 iron · 30 aluminum</span>
+                  )}
+                </div>
                 <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>⚒{ut.cost}</span>
-                {isBattleship && (
-                  <span className="text-[8px] lg:text-[10px] font-mono" style={{ color: '#6e7681' }}>1 uranium · 50 iron · 30 aluminum</span>
-                )}
               </button>
               )
             })}
