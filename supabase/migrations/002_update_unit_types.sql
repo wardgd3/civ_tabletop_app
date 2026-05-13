@@ -17,4 +17,5 @@ insert into wg_unit_types (name, description, cost, attack, defense, hp, movemen
   ('Convoy Ship',      'Naval transport. Moves troops across water.',             4,  1, 3,  6, 3, 1, 'convoy ship.png'),
   ('Mother Ship',      'Capital ship. Powerful and durable.',                     8,  6, 6, 10, 1, 3, 'mother ship.png'),
   ('Orbital Strike',   'Superweapon. Extreme damage, minimal defense.',          10, 12, 0,  2, 1, 4, 'orbital strike.png'),
-  ('Command Center',   'Base structure. Buffs nearby allies. Immobile.',          7,  1, 7, 12, 0, 1, 'command center.jpg');
+  ('Command Center',   'Base structure. Buffs nearby allies. Immobile.',          7,  1, 7, 12, 0, 1, 'command center.jpg'),
+  ('Fighter',          'Fast space interceptor. Cannon only.',                    4,  5, 2,  8, 4, 2, 'fighter.png');

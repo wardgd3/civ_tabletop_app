@@ -12,7 +12,12 @@
       "Bash(git add *)",
       "Bash(git stash *)",
       "Bash(git merge *)",
-      "PowerShell($src = \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\public\\\\assets\"; $dst = \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\.claude\\\\worktrees\\\\peaceful-goodall-397f3a\\\\public\\\\assets\"; foreach \\($f in @\\(\"amethyst.png\",\"ruby.png\",\"sapphire.png\",\"diamond.png\",\"aluminum.png\",\"coal.png\",\"iron.png\",\"tritium.png\",\"uranium.png\",\"quasicrystals.png\",\"miningstation.png\",\"mothership2.png\",\"command center.jpg\"\\)\\) { if \\(!\\(Test-Path \"$dst\\\\$f\"\\)\\) { Copy-Item \"$src\\\\$f\" \"$dst\\\\$f\" -ErrorAction SilentlyContinue } })"
+      "PowerShell($src = \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\public\\\\assets\"; $dst = \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\.claude\\\\worktrees\\\\peaceful-goodall-397f3a\\\\public\\\\assets\"; foreach \\($f in @\\(\"amethyst.png\",\"ruby.png\",\"sapphire.png\",\"diamond.png\",\"aluminum.png\",\"coal.png\",\"iron.png\",\"tritium.png\",\"uranium.png\",\"quasicrystals.png\",\"miningstation.png\",\"mothership2.png\",\"command center.jpg\"\\)\\) { if \\(!\\(Test-Path \"$dst\\\\$f\"\\)\\) { Copy-Item \"$src\\\\$f\" \"$dst\\\\$f\" -ErrorAction SilentlyContinue } })",
+      "Bash(xargs grep -l \"test1\\\\|npc.*behavior\\\\|npc.*ai\\\\|npc.*attack\\\\|npc.*move\")",
+      "Bash(git commit -m ' *)",
+      "Bash(git checkout *)",
+      "Bash(find \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\src\" -type f -name \"*CommandShip*\" -o -name \"*Compartment*\" | head -20)",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }

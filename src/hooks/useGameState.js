@@ -45,6 +45,10 @@ function getBarracksCapacity(unit) {
   return unit?.wg_unit_types?.name === 'Battleship' ? 6 : 12
 }
 
+function getHangarCapacity(unit) {
+  return unit?.wg_unit_types?.name === 'Battleship' ? 4 : 8
+}
+
 function getConvoySlots(unit) {
   if (unit?.wg_unit_types?.name === 'Battleship') return 1
   if (unit?.wg_unit_types?.name === 'Base') return 1
@@ -1353,6 +1357,98 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function deployFromHangar(shipId, hangarIndex, row, col) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+
+    if (row === ship.grid_row && col === ship.grid_col) throw new Error('Cannot deploy on the structure tile')
+    const shipBoard = ship.board || 'ground'
+    const occupied = units.find(u => u.grid_row === row && u.grid_col === col && (u.board || 'ground') === shipBoard)
+    if (occupied) throw new Error('Tile is occupied')
+
+    const upgrades = ship.upgrades || {}
+    const hangar = [...(upgrades.hangar || [])]
+    if (hangarIndex < 0 || hangarIndex >= hangar.length) throw new Error('Invalid hangar index')
+
+    const storedUnit = hangar.splice(hangarIndex, 1)[0]
+
+    const { error } = await supabase.from('wg_units').insert({
+      game_id: gameId,
+      owner_id: userId,
+      unit_type_id: storedUnit.typeId,
+      grid_row: row,
+      grid_col: col,
+      current_hp: storedUnit.hp,
+      board: shipBoard,
+      has_moved: true,
+      has_attacked: true,
+      moves_used: 99,
+      is_alive: true,
+    })
+    if (error) throw error
+
+    const newUpgrades = { ...upgrades, hangar }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
+  async function produceUnitToHangar(shipId, unitTypeId, unitTypeName) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+
+    const ut = unitTypes.find(t => t.id === unitTypeId)
+    if (!ut) throw new Error('Unit type not found')
+
+    const upgrades = ship.upgrades || {}
+    const hangar = [...(upgrades.hangar || [])]
+    if (hangar.length >= getHangarCapacity(ship)) throw new Error('Hangar full')
+
+    if (!isAdmin && teamGold < ut.cost) throw new Error('Not enough gold')
+
+    if (!isAdmin) {
+      const perPlayer = Math.ceil(ut.cost / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase
+          .from('wg_game_players')
+          .update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) })
+          .eq('id', tp.id)
+      }
+    }
+
+    hangar.push({
+      typeId: unitTypeId,
+      typeName: unitTypeName,
+      hp: ut.hp,
+    })
+
+    const newUpgrades = { ...upgrades, hangar }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
+  async function transferHangarUnit(fromShipId, hangarIndex, toShipId) {
+    const fromShip = units.find(u => u.id === fromShipId)
+    const toShip = units.find(u => u.id === toShipId)
+    if (!fromShip || !toShip) throw new Error('Ship not found')
+
+    const fromUpgrades = fromShip.upgrades || {}
+    const toUpgrades = toShip.upgrades || {}
+    const fromHangar = [...(fromUpgrades.hangar || [])]
+    const toHangar = [...(toUpgrades.hangar || [])]
+
+    if (hangarIndex < 0 || hangarIndex >= fromHangar.length) throw new Error('Invalid hangar index')
+    if (toHangar.length >= getHangarCapacity(toShip)) throw new Error('Destination hangar full')
+
+    const transferred = fromHangar.splice(hangarIndex, 1)[0]
+    toHangar.push(transferred)
+
+    await Promise.all([
+      supabase.from('wg_units').update({ upgrades: { ...fromUpgrades, hangar: fromHangar } }).eq('id', fromShipId),
+      supabase.from('wg_units').update({ upgrades: { ...toUpgrades, hangar: toHangar } }).eq('id', toShipId),
+    ])
+    await fetchAll()
+  }
+
   async function buyAndLoadToTransport(structId, transportIndex, unitTypeId, unitTypeName) {
     const struct = units.find(u => u.id === structId)
     if (!struct) throw new Error('Structure not found')
@@ -1981,6 +2077,7 @@ export function useGameState(gameId) {
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
     setAutoPath, clearAutoPath,
+    deployFromHangar, produceUnitToHangar, transferHangarUnit,
     persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
     refresh: fetchAll,
   }

@@ -111,6 +111,7 @@ export default function GameBoard({
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
   setAutoPath, clearAutoPath,
+  deployFromHangar, produceUnitToHangar, transferHangarUnit,
   battleLog,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
@@ -130,6 +131,7 @@ export default function GameBoard({
   const [touchPanning, setTouchPanning] = useState(false)
   const [commandShipUnitId, setCommandShipUnitId] = useState(null)
   const [bayDeployInfo, setBayDeployInfo] = useState(null)
+  const [hangarDeployInfo, setHangarDeployInfo] = useState(null)
   const [transportDeployInfo, setTransportDeployInfo] = useState(null)
   const [unitDeployFromTransportInfo, setUnitDeployFromTransportInfo] = useState(null)
   const [shipModelPicker, setShipModelPicker] = useState(null)
@@ -827,6 +829,26 @@ export default function GameBoard({
     return cells
   })() : new Set()
 
+  const hangarDeployRange = hangarDeployInfo ? (() => {
+    const cc = units.find(u => u.id === hangarDeployInfo.shipId)
+    if (!cc) return new Set()
+    const cells = new Set()
+    const range = 3
+    const rMin = Math.max(0, cc.grid_row - range)
+    const rMax = Math.min(rows - 1, cc.grid_row + range)
+    const cMin = Math.max(0, cc.grid_col - range)
+    const cMax = Math.min(cols - 1, cc.grid_col + range)
+    for (let r = rMin; r <= rMax; r++) {
+      for (let c = cMin; c <= cMax; c++) {
+        const d = hexDistance(cc.grid_row, cc.grid_col, r, c)
+        if (d > 0 && d <= range && !getUnitAt(r, c) && !isImpassable(r, c)) {
+          cells.add(`${r}-${c}`)
+        }
+      }
+    }
+    return cells
+  })() : new Set()
+
   const transportDeployRange = transportDeployInfo ? (() => {
     const struct = units.find(u => u.id === transportDeployInfo.structId)
     if (!struct) return new Set()
@@ -1298,6 +1320,20 @@ export default function GameBoard({
         setError(err.message)
       }
       setBayDeployInfo(null)
+      return
+    }
+
+    if (hangarDeployInfo) {
+      if (!hangarDeployRange.has(cellKey)) {
+        setHangarDeployInfo(null)
+        return
+      }
+      try {
+        await deployFromHangar(hangarDeployInfo.shipId, hangarDeployInfo.hangarIndex, row, col)
+      } catch (err) {
+        setError(err.message)
+      }
+      setHangarDeployInfo(null)
       return
     }
 
@@ -1897,6 +1933,17 @@ export default function GameBoard({
             onDeployFromBay={(shipId, bayIdx) => {
               setBayDeployInfo({ shipId, bayIndex: bayIdx })
             }}
+            onDeployFromHangar={(shipId, hangarIdx) => {
+              setHangarDeployInfo({ shipId, hangarIndex: hangarIdx })
+              setCommandShipUnitId(null)
+              setPanelOpen(false)
+            }}
+            onProduceToHangar={async (shipId, unitTypeId, unitTypeName) => {
+              try { await produceUnitToHangar(shipId, unitTypeId, unitTypeName) } catch (err) { setError(err.message) }
+            }}
+            onTransferHangar={async (fromShipId, hangarIdx, toShipId) => {
+              try { await transferHangarUnit(fromShipId, hangarIdx, toShipId) } catch (err) { setError(err.message) }
+            }}
             onProduceUnit={async (shipId, unitTypeId, unitTypeName) => {
               try { await produceUnitToBay(shipId, unitTypeId, unitTypeName) } catch (err) { setError(err.message) }
             }}
@@ -2127,6 +2174,7 @@ export default function GameBoard({
               const isInBuildRange = buildRange.has(cellKey)
               const isInDestroyRange = destroyRange.has(cellKey)
               const isInBayDeployRange = bayDeployRange.has(cellKey)
+              const isInHangarDeployRange = hangarDeployRange.has(cellKey)
               const isInTransportDeployRange = transportDeployRange.has(cellKey)
               const isInUnitFromTransportRange = unitFromTransportDeployRange.has(cellKey)
               const isOnAutoPath = autoPathTiles.has(cellKey)
@@ -2184,7 +2232,7 @@ export default function GameBoard({
               let bg
               let moveOverlay = false
               if (isSelected) bg = '#203348'
-              else if (isInBayDeployRange || isInTransportDeployRange || isInUnitFromTransportRange) bg = '#203320'
+              else if (isInBayDeployRange || isInHangarDeployRange || isInTransportDeployRange || isInUnitFromTransportRange) bg = '#203320'
               else if (isInDeployRange) bg = '#203320'
               else if (isInMoveRange) { bg = tileBg; moveOverlay = true }
               else if (isInAttackRange) bg = '#2a181d'

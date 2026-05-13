@@ -61,6 +61,14 @@ const ICONS = {
       <line x1="8" y1="8" x2="8" y2="12" />
     </svg>
   ),
+  hangar: (
+    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
+      <path d="M2 14 L2 6 L8 2 L14 6 L14 14" />
+      <line x1="2" y1="14" x2="14" y2="14" />
+      <rect x="5" y="10" width="6" height="4" />
+      <path d="M6 7 L10 7" />
+    </svg>
+  ),
   inventory: (
     <svg viewBox="0 0 16 16" style={ICON_STYLE}>
       <rect x="2" y="3" width="12" height="11" rx="1" />
@@ -169,6 +177,15 @@ const COMMAND_SHIP_COMPARTMENTS = [
     slots: 12,
   },
   {
+    id: 'hangar',
+    name: 'Hangar',
+    description: 'Store and deploy aircraft and space ships. Capacity: 8.',
+    icon: 'hangar',
+    color: '#7060c0',
+    special: 'hangar',
+    slots: 8,
+  },
+  {
     id: 'inventory',
     name: 'Inventory',
     description: 'Ores and minerals collected by mining stations.',
@@ -258,6 +275,15 @@ const COMMAND_CENTER_COMPARTMENTS = [
     color: '#6080a0',
     special: 'loading_bay',
     slots: 2,
+  },
+  {
+    id: 'hangar',
+    name: 'Hangar',
+    description: 'Store and deploy aircraft and space ships. Capacity: 8.',
+    icon: 'hangar',
+    color: '#7060c0',
+    special: 'hangar',
+    slots: 8,
   },
   {
     id: 'inventory',
@@ -354,6 +380,15 @@ const BATTLESHIP_COMPARTMENTS = [
     slots: 6,
   },
   {
+    id: 'hangar',
+    name: 'Hangar',
+    description: 'Store and deploy aircraft and space ships. Capacity: 4.',
+    icon: 'hangar',
+    color: '#7060c0',
+    special: 'hangar',
+    slots: 4,
+  },
+  {
     id: 'inventory',
     name: 'Inventory',
     description: 'Ores and minerals collected by mining stations.',
@@ -361,6 +396,22 @@ const BATTLESHIP_COMPARTMENTS = [
     color: '#70a0d0',
     special: 'inventory',
     slots: 0,
+  },
+]
+
+const FIGHTER_COMPARTMENTS = [
+  {
+    id: 'cannon',
+    name: 'Cannon',
+    description: 'Weapon systems. Each slot mounts a weapon.',
+    icon: 'cannon',
+    color: '#e05050',
+    slots: 2,
+    tiers: [
+      { name: 'Railgun Turret', desc: 'Basic kinetic weapon' },
+      { name: 'Plasma Cannon', desc: 'Energy weapon' },
+      { name: 'Antimatter Cannon', desc: 'Maximum firepower' },
+    ],
   },
 ]
 
@@ -374,6 +425,7 @@ export function getCompartments(unitName) {
   if (unitName === 'Battleship') return BATTLESHIP_COMPARTMENTS
   if (unitName === 'Command Center') return COMMAND_CENTER_COMPARTMENTS
   if (unitName === 'Base') return BASE_COMPARTMENTS
+  if (unitName === 'Fighter') return FIGHTER_COMPARTMENTS
   return []
 }
 
@@ -990,6 +1042,188 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
   )
 }
 
+const HANGAR_UNIT_NAMES = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter'])
+
+function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, comp, unitTypes, teamGold, allUnits }) {
+  const [selectedSlot, setSelectedSlot] = useState(null)
+  const [showProduceMenu, setShowProduceMenu] = useState(false)
+  const [showTransferMenu, setShowTransferMenu] = useState(false)
+  const hangar = upgrades.hangar || []
+  const capacity = comp.slots
+  const isFull = hangar.length >= capacity
+
+  const producibleTypes = (unitTypes || []).filter(ut => HANGAR_UNIT_NAMES.has(ut.name))
+  const allSlots = Array.from({ length: capacity }, (_, i) => hangar[i] || null)
+  const cols = Math.min(capacity, 4)
+
+  const HANGAR_SHIPS = new Set(['Command Ship', 'Command Center', 'Battleship'])
+  const transferTargets = (allUnits || []).filter(u =>
+    u.id !== unit.id &&
+    u.owner_id === unit.owner_id &&
+    u.is_alive !== false &&
+    HANGAR_SHIPS.has(u.wg_unit_types?.name) &&
+    getCompartments(u.wg_unit_types?.name).some(c => c.special === 'hangar')
+  )
+
+  return (
+    <div>
+      <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+        Hangar ({hangar.length}/{capacity})
+      </div>
+
+      <div className="flex gap-1 mb-2">
+        <button
+          onClick={() => { setShowProduceMenu(!showProduceMenu); setShowTransferMenu(false); setSelectedSlot(null) }}
+          disabled={isFull}
+          className="flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
+          style={{
+            backgroundColor: showProduceMenu ? comp.color + '20' : '#21262d',
+            color: showProduceMenu ? comp.color : '#8b949e',
+            border: `1px solid ${showProduceMenu ? comp.color : '#30363d'}`,
+          }}
+        >
+          {isFull ? 'Full' : showProduceMenu ? 'Close' : 'Produce'}
+        </button>
+      </div>
+
+      <div className={`grid gap-1 mb-2`} style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+        {allSlots.map((stored, i) => {
+          const isSelected = selectedSlot === i
+          const isEmpty = !stored
+          return (
+            <button
+              key={i}
+              onClick={() => {
+                if (!isEmpty) { setSelectedSlot(isSelected ? null : i); setShowProduceMenu(false); setShowTransferMenu(false) }
+              }}
+              className="rounded p-1 text-center transition-all aspect-square flex flex-col items-center justify-center"
+              style={{
+                backgroundColor: isSelected ? comp.color + '20' : isEmpty ? '#161b22' : comp.color + '15',
+                border: `1px solid ${isSelected ? comp.color : isEmpty ? '#30363d' : comp.color + '50'}`,
+                cursor: isEmpty ? 'default' : 'pointer',
+              }}
+            >
+              {isEmpty ? (
+                <span className="text-[10px]" style={{ color: '#30363d' }}>&ndash;</span>
+              ) : (
+                <div className="text-[7px] font-semibold leading-tight" style={{ color: '#c9d1d9' }}>
+                  {stored.typeName}
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {selectedSlot !== null && allSlots[selectedSlot] && (
+        <div className="p-2 rounded mb-2" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
+              {allSlots[selectedSlot].typeName}
+            </span>
+          </div>
+          <div className="flex gap-1">
+            <button
+              onClick={() => { onDeployFromHangar(unit.id, selectedSlot); setSelectedSlot(null) }}
+              className="flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+              style={{
+                backgroundColor: comp.color + '20',
+                color: comp.color,
+                border: `1px solid ${comp.color}40`,
+              }}
+            >
+              Deploy
+            </button>
+            {transferTargets.length > 0 && (
+              <button
+                onClick={() => { setShowTransferMenu(!showTransferMenu); setShowProduceMenu(false) }}
+                className="flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                style={{
+                  backgroundColor: showTransferMenu ? '#1a3050' : '#21262d',
+                  color: showTransferMenu ? '#6cb4e6' : '#8b949e',
+                  border: `1px solid ${showTransferMenu ? '#6cb4e6' : '#30363d'}`,
+                }}
+              >
+                Transfer
+              </button>
+            )}
+          </div>
+          {showTransferMenu && (
+            <div className="mt-2 flex flex-col gap-0.5">
+              {transferTargets.map(target => {
+                const targetUpgrades = target.upgrades || {}
+                const targetHangar = targetUpgrades.hangar || []
+                const targetComp = getCompartments(target.wg_unit_types?.name).find(c => c.special === 'hangar')
+                const targetCap = targetComp?.slots || 0
+                const targetFull = targetHangar.length >= targetCap
+                return (
+                  <button
+                    key={target.id}
+                    onClick={() => { if (!targetFull) { onTransferHangar(unit.id, selectedSlot, target.id); setSelectedSlot(null); setShowTransferMenu(false) } }}
+                    disabled={targetFull}
+                    className="flex items-center justify-between p-1.5 rounded text-left transition-all"
+                    style={{
+                      backgroundColor: '#161b22',
+                      border: '1px solid #2a3140',
+                      opacity: targetFull ? 0.4 : 1,
+                      cursor: targetFull ? 'default' : 'pointer',
+                    }}
+                  >
+                    <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{target.wg_unit_types?.name}</span>
+                    <span className="text-[9px] font-mono" style={{ color: targetFull ? '#e05050' : '#6e7681' }}>
+                      {targetHangar.length}/{targetCap}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {showProduceMenu && !isFull && (
+        <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+          <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+            Produce Ship — <span className="font-mono" style={{ color: '#8b949e' }}>⚒{teamGold}</span>
+          </div>
+          {producibleTypes.length === 0 ? (
+            <div className="text-[9px]" style={{ color: '#4a5568' }}>No ship types available</div>
+          ) : (
+            <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
+              {producibleTypes.map(ut => {
+                const canAfford = teamGold >= ut.cost
+                return (
+                  <button
+                    key={ut.id}
+                    onClick={() => { if (canAfford) onProduceToHangar(unit.id, ut.id, ut.name) }}
+                    disabled={!canAfford}
+                    className="flex items-center justify-between p-1.5 rounded text-left transition-all"
+                    style={{
+                      backgroundColor: '#161b22',
+                      border: '1px solid #2a3140',
+                      opacity: canAfford ? 1 : 0.4,
+                      cursor: canAfford ? 'pointer' : 'default',
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      {ut.icon && <img src={`/assets/${ut.icon}`} alt={ut.name} className="w-4 h-4 object-contain" />}
+                      <div>
+                        <div className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{ut.name}</div>
+                        <div className="text-[8px]" style={{ color: '#6e7681' }}>ATK {ut.attack} DEF {ut.defense} HP {ut.hp}</div>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-mono" style={{ color: canAfford ? '#cca43b' : '#e05050' }}>{ut.cost}g</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const VEHICLE_NAMES = new Set(['Armor Transport', 'Armored Cavalry', 'Modern Armor', 'Rocket Artillery', 'Heavy Unit', 'Missile Defense', 'Excavator'])
 const TRANSPORT_CAPACITY = 4
 
@@ -1269,6 +1503,7 @@ export default function CommandShipPanel({
   onLoadCargo, onUnloadCargo,
   onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
   onBuyMissile,
+  onDeployFromHangar, onProduceToHangar, onTransferHangar,
   groundUnits, unitTypes, teamGold, playerResources, allUnits,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
@@ -1352,6 +1587,11 @@ export default function CommandShipPanel({
             const lb = upgrades.loadingBay || []
             statusText = `${lb.length}/${c.slots} docked`
             statusSlots = Array.from({ length: c.slots }, (_, i) => lb[i] ? 2 : 0)
+          } else if (c.special === 'hangar') {
+            const hb = upgrades.hangar || []
+            statusText = `${hb.length}/${c.slots} aircraft`
+            const filledRatio = Math.ceil((hb.length / c.slots) * 4)
+            statusSlots = Array.from({ length: 4 }, (_, i) => i < filledRatio ? 1 : 0)
           } else if (c.special === 'inventory') {
             const inv = upgrades.inventory || {}
             const totalItems = Object.values(inv).reduce((s, v) => s + v, 0)
@@ -1483,6 +1723,18 @@ export default function CommandShipPanel({
               comp={comp}
               unitTypes={unitTypes}
               teamGold={teamGold}
+            />
+          ) : comp.special === 'hangar' ? (
+            <HangarPanel
+              unit={unit}
+              upgrades={upgrades}
+              onDeployFromHangar={onDeployFromHangar}
+              onProduceToHangar={onProduceToHangar}
+              onTransferHangar={onTransferHangar}
+              comp={comp}
+              unitTypes={unitTypes}
+              teamGold={teamGold}
+              allUnits={allUnits}
             />
           ) : comp.special === 'inventory' ? (
             <InventoryPanel unit={unit} upgrades={upgrades} isCommandShip={isCommandShip} />

@@ -163,6 +163,9 @@ export default function Game() {
           boardSoldierToTransport={gameState.boardSoldierToTransport}
           setAutoPath={gameState.setAutoPath}
           clearAutoPath={gameState.clearAutoPath}
+          deployFromHangar={gameState.deployFromHangar}
+          produceUnitToHangar={gameState.produceUnitToHangar}
+          transferHangarUnit={gameState.transferHangarUnit}
           battleLog={gameState.battleLog}
           isAdmin={gameState.isAdmin}
           productionPerTurn={gameState.productionPerTurn}
