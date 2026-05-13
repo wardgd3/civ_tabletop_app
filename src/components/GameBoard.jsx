@@ -311,8 +311,16 @@ export default function GameBoard({
   const unitPosMap = useMemo(() => {
     const map = new Map()
     for (const u of units) map.set(`${u.grid_row}-${u.grid_col}`, u)
+    for (const u of units) {
+      if (u.wg_unit_types?.name === 'Command Ship' || u.wg_unit_types?.name === 'Command Center') {
+        for (const [nr, nc] of hexNeighborsBoard(u.grid_row, u.grid_col, rows, cols)) {
+          const key = `${nr}-${nc}`
+          if (!map.has(key)) map.set(key, u)
+        }
+      }
+    }
     return map
-  }, [units])
+  }, [units, rows, cols])
 
   const visibleTiles = useMemo(() => {
     const set = new Set()
@@ -1523,7 +1531,7 @@ export default function GameBoard({
     }
 
     if (showUnit) {
-      if ((unit.wg_unit_types?.name === 'Command Ship' || unit.wg_unit_types?.name === 'Command Center' || unit.wg_unit_types?.name === 'Base' || unit.wg_unit_types?.name === 'Battleship' || unit.wg_unit_types?.name === 'Engineer Ship') && unit.owner_id === currentPlayer?.player_id) {
+      if ((unit.wg_unit_types?.name === 'Command Ship' || unit.wg_unit_types?.name === 'Command Center' || unit.wg_unit_types?.name === 'Base' || unit.wg_unit_types?.name === 'Battleship' || unit.wg_unit_types?.name === 'Repair Ship') && unit.owner_id === currentPlayer?.player_id) {
         const toggling = commandShipUnitId === unit.id
         setCommandShipUnitId(toggling ? null : unit.id)
         setSelectedUnitId(toggling ? null : unit.id)
@@ -2487,7 +2495,10 @@ export default function GameBoard({
                   {showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' && !slidingUnits.has(unit.id) && (() => {
                     const pColor = getPlayerColor(unit.owner_id, unit)
                     const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
-                    const sizeMultiplier = unit.wg_unit_types?.name === 'Battleship' ? 1.24 : 1.032
+                    const uName = unit.wg_unit_types?.name
+                    const npcIcon = unit.wg_unit_types?.icon
+                    const isWarship = npcIcon === 'hostilebattleship.png'
+                    const sizeMultiplier = uName === 'Battleship' ? 1.488 : isWarship ? 1.238 : 1.032
                     const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * sizeMultiplier
                     const fadeIn = unitAnimations.get(unit.id)?.type === 'fadeIn'
                     return (
@@ -2564,7 +2575,7 @@ export default function GameBoard({
             {units.filter(u => (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship') && !slidingUnits.has(u.id) && (u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`))).map(cc => {
               const ccX = cc.grid_col * HEX_W + (cc.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
               const ccY = cc.grid_row * ROW_H + RENDER_H / 2
-              const ccSize = HEX_W * 1.907
+              const ccSize = HEX_W * 2.288
               const hpRatio = cc.current_hp / cc.wg_unit_types?.hp
               const pColor = getPlayerColor(cc.owner_id)
               const ccFadeIn = unitAnimations.get(cc.id)?.type === 'fadeIn'
@@ -2580,7 +2591,7 @@ export default function GameBoard({
                     ...(ccFadeIn ? { animation: 'unitFadeIn 0.4s ease' } : {}),
                   }}
                 >
-                  <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `2.4px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
+                  <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `3.8px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
                     <img
                       src={getUnitIcon(cc.wg_unit_types, cc)}
                       alt={cc.wg_unit_types?.name}
@@ -2605,8 +2616,9 @@ export default function GameBoard({
               const u = sl.unit
               const pColor = getPlayerColor(u.owner_id, u)
               const isCC = u.wg_unit_types?.name === 'Command Ship' || u.wg_unit_types?.name === 'Command Center'
-              const sizeMultiplier = u.wg_unit_types?.name === 'Battleship' ? 1.24 : isCC ? 0 : 1.032
-              const tokenSize = isCC ? HEX_W * 1.907 : (Math.min(RENDER_W, RENDER_H) - 4) * sizeMultiplier
+              const isWarship = u.wg_unit_types?.icon === 'hostilebattleship.png'
+              const sizeMultiplier = u.wg_unit_types?.name === 'Battleship' ? 1.488 : isCC ? 0 : isWarship ? 1.238 : 1.032
+              const tokenSize = isCC ? HEX_W * 2.288 : (Math.min(RENDER_W, RENDER_H) - 4) * sizeMultiplier
               const hpRatio = u.current_hp / u.wg_unit_types?.hp
               return (
                 <div
@@ -2656,7 +2668,8 @@ export default function GameBoard({
               const duY = du.row * ROW_H + RENDER_H / 2
               const pColor = getPlayerColor(du.ownerId, du.unit)
               const isCC = du.unitType?.name === 'Command Ship' || du.unitType?.name === 'Command Center'
-              const size = isCC ? HEX_W * 1.907 : (Math.min(RENDER_W, RENDER_H) - 4) * (du.unitType?.name === 'Battleship' ? 1.24 : 1.032)
+              const isWarship = du.unitType?.icon === 'hostilebattleship.png'
+              const size = isCC ? HEX_W * 2.288 : (Math.min(RENDER_W, RENDER_H) - 4) * (du.unitType?.name === 'Battleship' ? 1.488 : isWarship ? 1.238 : 1.032)
               return (
                 <div
                   key={`dead-${du.id}`}

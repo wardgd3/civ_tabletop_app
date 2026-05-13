@@ -415,7 +415,7 @@ const FIGHTER_COMPARTMENTS = [
   },
 ]
 
-const ENGINEER_SHIP_COMPARTMENTS = [
+const REPAIR_SHIP_COMPARTMENTS = [
   {
     id: 'repair',
     name: 'Repair Ship',
@@ -442,7 +442,7 @@ export function getCompartments(unitName) {
   if (unitName === 'Command Center') return COMMAND_CENTER_COMPARTMENTS
   if (unitName === 'Base') return BASE_COMPARTMENTS
   if (unitName === 'Fighter') return FIGHTER_COMPARTMENTS
-  if (unitName === 'Engineer Ship') return ENGINEER_SHIP_COMPARTMENTS
+  if (unitName === 'Repair Ship') return REPAIR_SHIP_COMPARTMENTS
   return []
 }
 
@@ -911,7 +911,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
   )
 }
 
-const STRUCTURE_NAMES = new Set(['Command Center', 'Command Ship', 'Base', 'Factory', 'Mining Station', 'Battleship', 'Engineer Ship'])
+const STRUCTURE_NAMES = new Set(['Command Center', 'Command Ship', 'Base', 'Factory', 'Mining Station', 'Battleship', 'Repair Ship'])
 
 function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp, unitTypes, teamGold }) {
   const [selectedSlot, setSelectedSlot] = useState(null)
@@ -1059,7 +1059,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
   )
 }
 
-const HANGAR_UNIT_NAMES = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter', 'Engineer Ship'])
+const HANGAR_UNIT_NAMES = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter', 'Repair Ship'])
 
 function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar, nearbyUnits, comp, unitTypes, teamGold, allUnits }) {
   const [selectedSlot, setSelectedSlot] = useState(null)
