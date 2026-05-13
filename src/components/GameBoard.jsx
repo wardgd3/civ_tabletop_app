@@ -486,17 +486,25 @@ export default function GameBoard({
   }, [tiles, tileMap, themeColors, activeBoard, rows, cols, game?.terrain_theme])
 
   const miningAffectedTiles = useMemo(() => {
+    const GROUND_EXCLUDED = new Set(['ocean', 'lake', 'river', 'mountain'])
+    const SPACE_EXCLUDED = new Set(['void', 'nebula', 'nebula_core', 'nebula_bright', 'nebula_hotspot', 'star'])
     const set = new Set()
     for (const u of units) {
       const m = u.upgrades?.mining
       if (m && m.active && m.layer >= 1) {
+        const isSpace = (u.board || 'ground') === 'space'
+        const excluded = isSpace ? SPACE_EXCLUDED : GROUND_EXCLUDED
         for (const [nr, nc] of hexNeighborsBoard(m.centerRow, m.centerCol, rows, cols)) {
+          const td = tileMap.get(`${nr}-${nc}`)
+          if (!td) continue
+          if (td.has_road && !isSpace) continue
+          if (excluded.has(td.terrain)) continue
           set.add(`${nr}-${nc}`)
         }
       }
     }
     return set
-  }, [units, rows, cols])
+  }, [units, rows, cols, tileMap])
 
   function getTileColor(row, col, isVisible, isDiscovered) {
     const isSpace = activeBoard === 'space'
@@ -508,7 +516,7 @@ export default function GameBoard({
     if (miningAffectedTiles.has(`${row}-${col}`) && isVisible) {
       const h = tileHash(row, col)
       const jitter = (h - 0.5) * 0.12
-      const [br, bg, bb] = parseHex('#6a7068')
+      const [br, bg, bb] = parseHex('#7a8178')
       return toHex(br * (1 + jitter), bg * (1 + jitter), bb * (1 + jitter))
     }
     if (tile.has_road) {
@@ -1656,7 +1664,7 @@ export default function GameBoard({
               {isMining && (
                 <div className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded text-center"
                   style={{ backgroundColor: '#1a2a1a', color: '#50b050', border: '1px solid #2a4a2a' }}>
-                  Mining — Layer {selectedUnit.upgrades.mining.layer}/60
+                  Mining — Layer {selectedUnit.upgrades.mining.layer}/120
                 </div>
               )}
               {isMiningExhausted && (

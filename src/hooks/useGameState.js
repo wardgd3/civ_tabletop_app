@@ -6,17 +6,29 @@ import { LUXURY_RESOURCES } from '../lib/terrainGen'
 const LUXURY_BY_ID = Object.fromEntries(Object.values(LUXURY_RESOURCES).map(r => [r.id, r]))
 
 export const GROUND_ORES = {
-  iron:     { id: 'iron',     name: 'Iron',     chance: 0.35, minAmt: 2, maxAmt: 5, color: '#8a8a8a' },
-  copper:   { id: 'copper',   name: 'Copper',   chance: 0.25, minAmt: 1, maxAmt: 4, color: '#b87333' },
-  titanium: { id: 'titanium', name: 'Titanium', chance: 0.10, minAmt: 1, maxAmt: 2, color: '#a0b0c0' },
-  uranium:  { id: 'uranium',  name: 'Uranium',  chance: 0.04, minAmt: 1, maxAmt: 1, color: '#50c878' },
+  iron:        { id: 'iron',        name: 'Iron',        chance: 0.35, minAmt: 2, maxAmt: 5, color: '#8a8a8a' },
+  copper:      { id: 'copper',      name: 'Copper',      chance: 0.25, minAmt: 1, maxAmt: 4, color: '#b87333' },
+  titanium:    { id: 'titanium',    name: 'Titanium',    chance: 0.10, minAmt: 1, maxAmt: 2, color: '#a0b0c0' },
+  uranium:     { id: 'uranium',     name: 'Uranium',     chance: 0.04, minAmt: 1, maxAmt: 1, color: '#50c878' },
+  diamond:     { id: 'diamond',     name: 'Diamond',     chance: 0.01, minAmt: 1, maxAmt: 1, color: '#b9f2ff', deep: true },
+  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.01, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true },
+  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.01, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true },
+  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.008, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true },
+  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.006, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true },
+  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.004, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true },
 }
 
 export const SPACE_ORES = {
-  helium3:   { id: 'helium3',   name: 'Helium-3',   chance: 0.35, minAmt: 2, maxAmt: 5, color: '#d0e8ff' },
-  cobalt:    { id: 'cobalt',    name: 'Cobalt',      chance: 0.25, minAmt: 1, maxAmt: 4, color: '#4070c0' },
-  palladium: { id: 'palladium', name: 'Palladium',   chance: 0.10, minAmt: 1, maxAmt: 2, color: '#c0b090' },
-  iridium:   { id: 'iridium',   name: 'Iridium',     chance: 0.04, minAmt: 1, maxAmt: 1, color: '#e0e8f0' },
+  helium3:     { id: 'helium3',     name: 'Helium-3',    chance: 0.35, minAmt: 2, maxAmt: 5, color: '#d0e8ff' },
+  cobalt:      { id: 'cobalt',      name: 'Cobalt',      chance: 0.25, minAmt: 1, maxAmt: 4, color: '#4070c0' },
+  palladium:   { id: 'palladium',   name: 'Palladium',   chance: 0.10, minAmt: 1, maxAmt: 2, color: '#c0b090' },
+  iridium:     { id: 'iridium',     name: 'Iridium',     chance: 0.04, minAmt: 1, maxAmt: 1, color: '#e0e8f0' },
+  diamond:     { id: 'diamond',     name: 'Diamond',     chance: 0.01, minAmt: 1, maxAmt: 1, color: '#b9f2ff', deep: true },
+  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.01, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true },
+  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.01, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true },
+  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.008, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true },
+  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.006, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true },
+  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.004, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true },
 }
 
 function hexNeighborsOf(r, c) {
@@ -615,6 +627,9 @@ export function useGameState(gameId) {
     if (!unit || unit.owner_id !== userId) throw new Error('Not your unit')
     const canExcavate = unit.wg_unit_types?.name === 'Mining Station' || unit.wg_unit_types?.name === 'Excavator'
     if (!canExcavate) throw new Error('This unit cannot excavate')
+
+    const unitTile = tiles.find(t => t.grid_row === unit.grid_row && t.grid_col === unit.grid_col)
+    if (unitTile?.has_road && unit.wg_unit_types?.name === 'Excavator') throw new Error('Cannot mine on a bridge')
 
     const upgrades = unit.upgrades || {}
     if (upgrades.mining) throw new Error('Already mining')
@@ -1530,11 +1545,16 @@ export function useGameState(gameId) {
       }
     }
 
+    const tilesByKey = new Map(tiles.map(t => [`${t.grid_row}-${t.grid_col}`, t]))
+    const GROUND_EXCLUDED = new Set(['ocean', 'lake', 'river', 'mountain'])
+    const SPACE_EXCLUDED = new Set(['void', 'nebula', 'nebula_core', 'nebula_bright', 'nebula_hotspot', 'star'])
+
     for (const miner of miners) {
       const mining = { ...miner.upgrades.mining }
       const unitBoard = miner.board || 'ground'
       const isSpace = unitBoard === 'space'
       const oreTable = isSpace ? SPACE_ORES : GROUND_ORES
+      const excluded = isSpace ? SPACE_EXCLUDED : GROUND_EXCLUDED
 
       mining.turnsSinceLastDig = (mining.turnsSinceLastDig || 0) + 1
 
@@ -1542,11 +1562,17 @@ export function useGameState(gameId) {
         mining.turnsSinceLastDig = 0
         mining.layer = (mining.layer || 0) + 1
 
-        if (mining.layer <= 60) {
+        if (mining.layer <= 120) {
           const centerR = mining.centerRow
           const centerC = mining.centerCol
           const allTiles = [[centerR, centerC], ...hexNeighborsOf(centerR, centerC)]
-          const mineTiles = allTiles.filter(([r, c]) => claimedTiles.get(`${r}-${c}`) === miner.id)
+          const mineTiles = allTiles.filter(([r, c]) => {
+            if (claimedTiles.get(`${r}-${c}`) !== miner.id) return false
+            const td = tilesByKey.get(`${r}-${c}`)
+            if (!td) return false
+            if (td.has_road && !isSpace) return false
+            return !excluded.has(td.terrain)
+          })
 
           const seed = centerR * 1000 + centerC * 7 + mining.layer * 31 + (miner.id?.charCodeAt?.(0) || 0)
           const rand = seededRandFromHash(seed)
@@ -1564,7 +1590,8 @@ export function useGameState(gameId) {
             for (let t = 0; t < mineTiles.length; t++) {
               const roll = rand()
               for (const ore of Object.values(oreTable)) {
-                const depthBonus = Math.min(mining.layer / 60, 1) * 0.02
+                const depthFrac = Math.min(mining.layer / 120, 1)
+                const depthBonus = ore.deep ? depthFrac * 0.06 : depthFrac * 0.02
                 if (roll < ore.chance + depthBonus) {
                   const amt = ore.minAmt + Math.floor(rand() * (ore.maxAmt - ore.minAmt + 1))
                   inventory[ore.id] = (inventory[ore.id] || 0) + amt
@@ -1581,7 +1608,7 @@ export function useGameState(gameId) {
           }
         }
 
-        if (mining.layer >= 60) {
+        if (mining.layer >= 120) {
           const newUpgrades = { ...miner.upgrades, miningDisabled: true }
           delete newUpgrades.mining
           await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', miner.id)
