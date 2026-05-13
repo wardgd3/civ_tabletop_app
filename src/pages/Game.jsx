@@ -140,6 +140,7 @@ export default function Game() {
           levelUpUnit={gameState.levelUpUnit}
           buyMissile={gameState.buyMissile}
           fireMissile={gameState.fireMissile}
+          produceWarhead={gameState.produceWarhead}
           sendConvoyToGuild={gameState.sendConvoyToGuild}
           sellAtGuild={gameState.sellAtGuild}
           buyUnitAtGuild={gameState.buyUnitAtGuild}

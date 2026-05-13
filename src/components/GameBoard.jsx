@@ -107,7 +107,7 @@ export default function GameBoard({
   game, players, units, allUnits, unitTypes, allUnitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-  excavate, upgradeShipCompartment, levelUpUnit, buyMissile, fireMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
+  excavate, upgradeShipCompartment, levelUpUnit, buyMissile, fireMissile, produceWarhead, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
   setAutoPath, clearAutoPath,
@@ -1464,7 +1464,7 @@ export default function GameBoard({
         return
       }
       try {
-        await fireMissile(missileTargetInfo.shipId, missileTargetInfo.missileType, row, col, 'space')
+        await fireMissile(missileTargetInfo.shipId, missileTargetInfo.missileType, row, col, 'space', missileTargetInfo.warheadType)
       } catch (err) {
         setError(err.message)
       }
@@ -2058,14 +2058,17 @@ export default function GameBoard({
             onBuyMissile={async (unitId, missileType) => {
               try { await buyMissile(unitId, missileType) } catch (err) { setError(err.message) }
             }}
-            onFireMissile={async (shipId, missileType, targetRow, targetCol, targetBoard) => {
+            onFireMissile={async (shipId, missileType, targetRow, targetCol, targetBoard, warheadType) => {
               if (targetBoard === 'space' && targetRow == null) {
-                setMissileTargetInfo({ shipId, missileType })
+                setMissileTargetInfo({ shipId, missileType, warheadType })
                 setCommandShipUnitId(null)
                 setPanelOpen(false)
                 return
               }
-              try { await fireMissile(shipId, missileType, targetRow, targetCol, targetBoard) } catch (err) { setError(err.message) }
+              try { await fireMissile(shipId, missileType, targetRow, targetCol, targetBoard, warheadType) } catch (err) { setError(err.message) }
+            }}
+            onProduceWarhead={async (unitId, warheadType) => {
+              try { await produceWarhead(unitId, warheadType) } catch (err) { setError(err.message) }
             }}
             onBuildConvoy={async (unitId) => {
               try { await buildConvoy(unitId) } catch (err) { setError(err.message) }

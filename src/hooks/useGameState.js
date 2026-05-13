@@ -61,6 +61,11 @@ const BATTLESHIP_MATERIAL_COST = { uranium: 1, iron: 50, aluminum: 30 }
 
 const CANNON_RANGE = [0, 3, 4, 5]
 
+export const WARHEAD_TYPES = {
+  nuclear: { name: 'Nuclear', cost: 30, damage: 20, radius: 8 },
+  thermonuclear: { name: 'Thermonuclear', cost: 50, damage: 20, radius: 8 },
+}
+
 export function getEffectiveAttackRange(unit) {
   const base = unit?.wg_unit_types?.attack_range || 1
   if (unit?.wg_unit_types?.name !== 'Battleship') return base
@@ -883,8 +888,33 @@ export function useGameState(gameId) {
 
   const MISSILE_DAMAGE = { tactical: 8, cruise: 15, ipbm: 20 }
   const MISSILE_RANGE = { tactical: 5, cruise: 8, ipbm: 999 }
+  async function produceWarhead(unitId, warheadType) {
+    const unit = units.find(u => u.id === unitId)
+    if (!unit) throw new Error('Unit not found')
+    const wh = WARHEAD_TYPES[warheadType]
+    if (!wh) throw new Error('Invalid warhead type')
 
-  async function fireMissile(shipId, missileType, targetRow, targetCol, targetBoard) {
+    if (!isAdmin && teamGold < wh.cost) throw new Error('Not enough gold')
+
+    if (!isAdmin) {
+      const perPlayer = Math.ceil(wh.cost / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase
+          .from('wg_game_players')
+          .update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) })
+          .eq('id', tp.id)
+      }
+    }
+
+    const upgrades = unit.upgrades || {}
+    const munitions = { ...(upgrades.munitions || {}) }
+    munitions[warheadType] = (munitions[warheadType] || 0) + 1
+    const newUpgrades = { ...upgrades, munitions }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', unitId)
+    await fetchAll()
+  }
+
+  async function fireMissile(shipId, missileType, targetRow, targetCol, targetBoard, warheadType) {
     const ship = units.find(u => u.id === shipId)
     if (!ship) throw new Error('Ship not found')
 
@@ -892,6 +922,11 @@ export function useGameState(gameId) {
     if (upgrades.missileFiredThisTurn) throw new Error('Already fired a missile this turn')
     const munitions = { ...(upgrades.munitions || {}) }
     if ((munitions[missileType] || 0) <= 0) throw new Error('No munitions of this type')
+
+    const wh = warheadType ? WARHEAD_TYPES[warheadType] : null
+    if (warheadType && !wh) throw new Error('Invalid warhead type')
+    if (warheadType && (munitions[warheadType] || 0) <= 0) throw new Error('No warheads of this type')
+    if (warheadType && missileType !== 'ipbm') throw new Error('Warheads can only be mounted on IPBMs')
 
     const board = targetBoard || 'space'
 
@@ -904,11 +939,13 @@ export function useGameState(gameId) {
     }
 
     munitions[missileType] = (munitions[missileType] || 0) - 1
-    const damage = MISSILE_DAMAGE[missileType]
+    if (warheadType) munitions[warheadType] = (munitions[warheadType] || 0) - 1
+    const damage = wh ? wh.damage : MISSILE_DAMAGE[missileType]
+    const splashRadius = wh ? wh.radius : 2
 
     if (board === 'ground') {
       const pendingStrikes = [...(upgrades.pendingStrikes || [])]
-      pendingStrikes.push({ row: targetRow, col: targetCol, damage, missileType })
+      pendingStrikes.push({ row: targetRow, col: targetCol, damage, missileType, warheadType: warheadType || null, splashRadius })
       const newUpgrades = { ...upgrades, munitions, pendingStrikes, missileFiredThisTurn: true }
       await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
 
@@ -918,9 +955,10 @@ export function useGameState(gameId) {
         attackerUnit: ship.wg_unit_types?.name,
         attackerPlayerName: getPlayerName(userId),
         missileType,
+        warheadType: warheadType || null,
         targetBoard: 'ground',
         targetRow, targetCol,
-        message: `${missileType.toUpperCase()} launched at ground X${targetRow}/Y${targetCol} — strikes next turn`,
+        message: `${warheadType ? WARHEAD_TYPES[warheadType].name + ' ' : ''}${missileType.toUpperCase()} launched at ground X${targetRow}/Y${targetCol} — strikes next turn`,
       })
 
       await fetchAll()
@@ -931,12 +969,16 @@ export function useGameState(gameId) {
     const hitUnits = []
     for (const u of boardUnits) {
       if (u.id === shipId) continue
-      if (u.owner_id === userId) continue
+      if (!wh && u.owner_id === userId) continue
       const d = hexDistance(targetRow, targetCol, u.grid_row, u.grid_col)
       let dmg = 0
-      if (d === 0) dmg = damage
-      else if (d === 1) dmg = Math.floor(damage / 2)
-      else if (d === 2) dmg = Math.floor(damage / 4)
+      if (wh) {
+        if (d <= splashRadius) dmg = damage
+      } else {
+        if (d === 0) dmg = damage
+        else if (d === 1) dmg = Math.floor(damage / 2)
+        else if (d === 2) dmg = Math.floor(damage / 4)
+      }
       if (dmg > 0) hitUnits.push({ unit: u, dmg, dist: d })
     }
 
@@ -979,6 +1021,7 @@ export function useGameState(gameId) {
       attackerUnit: ship.wg_unit_types?.name,
       attackerPlayerName: getPlayerName(userId),
       missileType,
+      warheadType: warheadType || null,
       targetBoard: 'space',
       targetRow, targetCol,
       unitsHit: hitUnits.length,
@@ -1004,15 +1047,21 @@ export function useGameState(gameId) {
       let npcChanged = false
 
       for (const strike of pendingStrikes) {
-        const { row, col, damage } = strike
+        const { row, col, damage, warheadType: strikeWarhead, splashRadius: strikeSplash } = strike
+        const hasWarhead = !!strikeWarhead
+        const radius = strikeSplash ?? 2
 
         for (const target of groundUnits) {
-          if (target.owner_id === userId) continue
+          if (!hasWarhead && target.owner_id === userId) continue
           const d = hexDistance(row, col, target.grid_row, target.grid_col)
           let dmg = 0
-          if (d === 0) dmg = damage
-          else if (d === 1) dmg = Math.floor(damage / 2)
-          else if (d === 2) dmg = Math.floor(damage / 4)
+          if (hasWarhead) {
+            if (d <= radius) dmg = damage
+          } else {
+            if (d === 0) dmg = damage
+            else if (d === 1) dmg = Math.floor(damage / 2)
+            else if (d === 2) dmg = Math.floor(damage / 4)
+          }
           if (dmg <= 0) continue
 
           if (target.isNPC) {
@@ -1047,6 +1096,7 @@ export function useGameState(gameId) {
           attackerUnit: ship.wg_unit_types?.name,
           attackerPlayerName: getPlayerName(userId),
           missileType: strike.missileType,
+          warheadType: strikeWarhead || null,
           targetBoard: 'ground',
           targetRow: row, targetCol: col,
           damage,
@@ -2414,7 +2464,7 @@ export function useGameState(gameId) {
     game, players, units, unitTypes, tiles, discoveredTiles, loading,
     currentPlayer, isMyTurn, isAdmin, battleLog,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-    excavate, upgradeShipCompartment, levelUpUnit, buyMissile, fireMissile, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
+    excavate, upgradeShipCompartment, levelUpUnit, buyMissile, fireMissile, produceWarhead, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
     setAutoPath, clearAutoPath,

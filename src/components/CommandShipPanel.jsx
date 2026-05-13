@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GROUND_ORES, SPACE_ORES, SHIELD_HP, getEffectiveAttackRange } from '../hooks/useGameState'
+import { GROUND_ORES, SPACE_ORES, SHIELD_HP, getEffectiveAttackRange, WARHEAD_TYPES } from '../hooks/useGameState'
 
 const ICON_STYLE = { width: 14, height: 14, fill: 'none', stroke: '#8b949e', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }
 
@@ -1614,13 +1614,14 @@ export default function CommandShipPanel({
   onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay, onProduceUnit,
   onLoadCargo, onUnloadCargo,
   onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
-  onBuyMissile, onFireMissile,
+  onBuyMissile, onFireMissile, onProduceWarhead,
   onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar,
   groundUnits, unitTypes, teamGold, playerResources, allUnits, nearbyUnits,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [selectedMissile, setSelectedMissile] = useState(null)
+  const [selectedWarhead, setSelectedWarhead] = useState(null)
   const [ipbmTarget, setIpbmTarget] = useState('space')
   const [ipbmRow, setIpbmRow] = useState('')
   const [ipbmCol, setIpbmCol] = useState('')
@@ -1979,8 +1980,11 @@ export default function CommandShipPanel({
                   { key: 'ipbm', name: 'IPBM', color: '#d29922', cost: 20, reqLevel: 3, range: '∞' },
                 ]
                 const selMissile = MISSILE_TYPES.find(m => m.key === selectedMissile)
-                const canFire = selMissile && (munitions[selMissile.key] || 0) > 0 && !upgrades.missileFiredThisTurn
+                const ipbmWarhead = selectedMissile === 'ipbm' ? selectedWarhead : null
+                const needsWarhead = selectedMissile === 'ipbm' && ipbmWarhead && (munitions[ipbmWarhead] || 0) <= 0
+                const canFire = selMissile && (munitions[selMissile.key] || 0) > 0 && !upgrades.missileFiredThisTurn && !needsWarhead
                 const isIpbmGround = selectedMissile === 'ipbm' && ipbmTarget === 'ground'
+                const whInfo = ipbmWarhead ? WARHEAD_TYPES[ipbmWarhead] : null
 
                 return (
                   <div className="mt-3">
@@ -1991,13 +1995,15 @@ export default function CommandShipPanel({
                           const r = parseInt(ipbmRow, 10)
                           const c = parseInt(ipbmCol, 10)
                           if (isNaN(r) || isNaN(c)) return
-                          onFireMissile(unit.id, selectedMissile, r, c, 'ground')
+                          onFireMissile(unit.id, selectedMissile, r, c, 'ground', ipbmWarhead || undefined)
                           setSelectedMissile(null)
+                          setSelectedWarhead(null)
                           setIpbmRow('')
                           setIpbmCol('')
                         } else {
-                          onFireMissile(unit.id, selectedMissile, null, null, 'space')
+                          onFireMissile(unit.id, selectedMissile, null, null, 'space', ipbmWarhead || undefined)
                           setSelectedMissile(null)
+                          setSelectedWarhead(null)
                         }
                       }}
                       disabled={!canFire || (isIpbmGround && (!ipbmRow || !ipbmCol))}
@@ -2011,7 +2017,7 @@ export default function CommandShipPanel({
                       {upgrades.missileFiredThisTurn
                         ? 'Missile Fired'
                         : canFire
-                        ? isIpbmGround ? 'Launch IPBM (Strikes Next Turn)' : 'Fire Missile — Select Target'
+                        ? isIpbmGround ? `Launch${whInfo ? ' ' + whInfo.name : ''} IPBM (Strikes Next Turn)` : `Fire${whInfo ? ' ' + whInfo.name : ''} Missile — Select Target`
                         : 'Fire Missile'}
                     </button>
 
@@ -2065,8 +2071,28 @@ export default function CommandShipPanel({
                         {ipbmTarget === 'space' && (
                           <div className="text-[9px]" style={{ color: '#6e7681' }}>Click Fire then select target on space board</div>
                         )}
-                        <div className="text-[8px] mt-1.5" style={{ color: '#6e7681' }}>
-                          DMG: 20 center · 10 adjacent · 5 outer ring
+
+                        <div className="text-[9px] uppercase tracking-widest font-semibold mt-2 mb-1" style={{ color: '#d29922' }}>
+                          Warhead
+                        </div>
+                        <select
+                          value={selectedWarhead || ''}
+                          onChange={e => setSelectedWarhead(e.target.value || null)}
+                          className="w-full px-2 py-1.5 rounded text-[11px] font-semibold mb-2 cursor-pointer"
+                          style={{ backgroundColor: '#161b22', color: '#c9d1d9', border: '1px solid #30363d', outline: 'none' }}
+                        >
+                          <option value="">None (Standard)</option>
+                          {Object.entries(WARHEAD_TYPES).map(([key, wh]) => (
+                            <option key={key} value={key} disabled={(munitions[key] || 0) <= 0}>
+                              {wh.name} ({munitions[key] || 0} available) — {wh.damage} DMG / {wh.radius} tile radius
+                            </option>
+                          ))}
+                        </select>
+
+                        <div className="text-[8px] mt-1" style={{ color: '#6e7681' }}>
+                          {whInfo
+                            ? `DMG: ${whInfo.damage} flat · ${whInfo.radius} tile radius · Hits all units`
+                            : 'DMG: 20 center · 10 adjacent · 5 outer ring'}
                         </div>
                       </div>
                     )}
@@ -2083,7 +2109,10 @@ export default function CommandShipPanel({
                           <div
                             key={m.key}
                             onClick={() => {
-                              if (!locked && count > 0) setSelectedMissile(isSelected ? null : m.key)
+                              if (!locked && count > 0) {
+                                setSelectedMissile(isSelected ? null : m.key)
+                                if (m.key !== 'ipbm') setSelectedWarhead(null)
+                              }
                             }}
                             className="rounded p-1.5 transition-all"
                             style={{
@@ -2116,7 +2145,55 @@ export default function CommandShipPanel({
                           </div>
                         )
                       })}
+
+                      {missileLevel >= 3 && Object.entries(WARHEAD_TYPES).map(([key, wh]) => {
+                        const count = munitions[key] || 0
+                        return (
+                          <div key={key} className="rounded p-1.5" style={{ backgroundColor: 'transparent', border: '1px solid transparent' }}>
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className="text-[9px] font-semibold" style={{ color: '#e05050' }}>
+                                {wh.name} Warhead — {wh.damage} DMG / R{wh.radius}
+                              </span>
+                              <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>{count}</span>
+                            </div>
+                            <div className="flex gap-[3px]">
+                              {Array.from({ length: Math.max(count, 5) }, (_, i) => (
+                                <div
+                                  key={i}
+                                  className="flex-1 rounded-sm"
+                                  style={{
+                                    height: 8,
+                                    backgroundColor: i < count ? '#e05050' : '#1c2128',
+                                    border: `1px solid ${i < count ? '#e0505080' : '#2a3140'}`,
+                                    opacity: i < count ? 1 : 0.5,
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
+
+                    {missileLevel >= 3 && (
+                      <div className="flex gap-1.5 mb-2">
+                        {Object.entries(WARHEAD_TYPES).map(([key, wh]) => (
+                          <button
+                            key={key}
+                            onClick={() => onProduceWarhead(unit.id, key)}
+                            disabled={!isAdmin && teamGold < wh.cost}
+                            className="flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
+                            style={{
+                              backgroundColor: '#e0505018',
+                              color: '#e05050',
+                              border: '1px solid #e0505040',
+                            }}
+                          >
+                            Produce {wh.name} ({wh.cost}g)
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               })()}
