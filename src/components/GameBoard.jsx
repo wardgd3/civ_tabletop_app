@@ -2172,7 +2172,7 @@ export default function GameBoard({
                     </div>
                   )}
                   {isMountainShadow && (isVisible || isDiscovered) && (
-                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.12)', clipPath: hexClip }} />
+                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: game.terrain_theme === 'crystal_tundra' ? 'rgba(0, 0, 0, 0.22)' : 'rgba(0, 0, 0, 0.12)', clipPath: hexClip }} />
                   )}
                   {(isCC || unitTeamColor) && (
                     <div
