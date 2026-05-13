@@ -505,7 +505,12 @@ export default function GameBoard({
     if (!tile) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : fogColor
     const terrain = TERRAIN_BY_ID[tile.terrain]
     if (!terrain) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : fogColor
-    if (miningAffectedTiles.has(`${row}-${col}`) && isVisible) return '#9a9590'
+    if (miningAffectedTiles.has(`${row}-${col}`) && isVisible) {
+      const h = tileHash(row, col)
+      const jitter = (h - 0.5) * 0.12
+      const [br, bg, bb] = parseHex('#4a5e6e')
+      return toHex(br * (1 + jitter), bg * (1 + jitter), bb * (1 + jitter))
+    }
     if (tile.has_road) {
       if (isVisible) return '#8a7a60'
       if (isDiscovered) return '#5a5040'

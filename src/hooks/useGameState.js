@@ -1518,6 +1518,18 @@ export function useGameState(gameId) {
     })
     if (miners.length === 0) return
 
+    const claimedTiles = new Map()
+    for (const miner of miners) {
+      const m = miner.upgrades.mining
+      const centerR = m.centerRow
+      const centerC = m.centerCol
+      const tiles = [[centerR, centerC], ...hexNeighborsOf(centerR, centerC)]
+      for (const [r, c] of tiles) {
+        const key = `${r}-${c}`
+        if (!claimedTiles.has(key)) claimedTiles.set(key, miner.id)
+      }
+    }
+
     for (const miner of miners) {
       const mining = { ...miner.upgrades.mining }
       const unitBoard = miner.board || 'ground'
@@ -1533,7 +1545,8 @@ export function useGameState(gameId) {
         if (mining.layer <= 60) {
           const centerR = mining.centerRow
           const centerC = mining.centerCol
-          const mineTiles = [[centerR, centerC], ...hexNeighborsOf(centerR, centerC)]
+          const allTiles = [[centerR, centerC], ...hexNeighborsOf(centerR, centerC)]
+          const mineTiles = allTiles.filter(([r, c]) => claimedTiles.get(`${r}-${c}`) === miner.id)
 
           const seed = centerR * 1000 + centerC * 7 + mining.layer * 31 + (miner.id?.charCodeAt?.(0) || 0)
           const rand = seededRandFromHash(seed)
