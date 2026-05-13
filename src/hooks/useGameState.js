@@ -1670,9 +1670,50 @@ export function useGameState(gameId) {
     }
   }
 
+  async function processConvoyTicks() {
+    const CONVOY_HOSTS = new Set(['Command Center', 'Command Ship', 'Battleship'])
+    const myStructures = units.filter(u => u.owner_id === userId && CONVOY_HOSTS.has(u.wg_unit_types?.name))
+
+    for (const struct of myStructures) {
+      const upgrades = struct.upgrades || {}
+      const convoys = upgrades.convoys || []
+      const guildConvoys = upgrades.guildConvoys || []
+      let changed = false
+
+      const newConvoys = convoys.map(c => {
+        if (!c.inTransit) return c
+        const updated = { ...c, turnsLeft: (c.turnsLeft || 1) - 1 }
+        if (updated.turnsLeft <= 0) {
+          updated.inTransit = false
+          updated.turnsLeft = 0
+        }
+        changed = true
+        return updated
+      })
+
+      const newGuildConvoys = guildConvoys.map(c => {
+        if (!c.inTransit) return c
+        const updated = { ...c, turnsLeft: (c.turnsLeft || 1) - 1 }
+        if (updated.turnsLeft <= 0) {
+          updated.inTransit = false
+          updated.turnsLeft = 0
+        }
+        changed = true
+        return updated
+      })
+
+      if (changed) {
+        const newUpgrades = { ...upgrades, convoys: newConvoys }
+        if (guildConvoys.length > 0) newUpgrades.guildConvoys = newGuildConvoys
+        await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', struct.id)
+      }
+    }
+  }
+
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
+    await processConvoyTicks()
     await processMiningTicks()
 
     const { data, error } = await supabase.functions.invoke('end-turn', {
