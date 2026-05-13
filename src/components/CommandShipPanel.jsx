@@ -1970,7 +1970,7 @@ export default function CommandShipPanel({
                   { key: 'ipbm', name: 'IPBM', color: '#d29922', cost: 20, reqLevel: 3, range: '∞' },
                 ]
                 const selMissile = MISSILE_TYPES.find(m => m.key === selectedMissile)
-                const canFire = selMissile && (munitions[selMissile.key] || 0) > 0
+                const canFire = selMissile && (munitions[selMissile.key] || 0) > 0 && !upgrades.missileFiredThisTurn
                 const isIpbmGround = selectedMissile === 'ipbm' && ipbmTarget === 'ground'
 
                 return (
@@ -1999,7 +1999,9 @@ export default function CommandShipPanel({
                         border: `1px solid ${canFire ? '#e05050' : '#30363d'}`,
                       }}
                     >
-                      {canFire
+                      {upgrades.missileFiredThisTurn
+                        ? 'Missile Fired'
+                        : canFire
                         ? isIpbmGround ? 'Launch IPBM (Strikes Next Turn)' : 'Fire Missile — Select Target'
                         : 'Fire Missile'}
                     </button>

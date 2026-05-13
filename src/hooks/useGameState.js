@@ -868,6 +868,7 @@ export function useGameState(gameId) {
     if (!ship) throw new Error('Ship not found')
 
     const upgrades = ship.upgrades || {}
+    if (upgrades.missileFiredThisTurn) throw new Error('Already fired a missile this turn')
     const munitions = { ...(upgrades.munitions || {}) }
     if ((munitions[missileType] || 0) <= 0) throw new Error('No munitions of this type')
 
@@ -887,7 +888,7 @@ export function useGameState(gameId) {
     if (board === 'ground') {
       const pendingStrikes = [...(upgrades.pendingStrikes || [])]
       pendingStrikes.push({ row: targetRow, col: targetCol, damage, missileType })
-      const newUpgrades = { ...upgrades, munitions, pendingStrikes }
+      const newUpgrades = { ...upgrades, munitions, pendingStrikes, missileFiredThisTurn: true }
       await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
 
       await addBattleLogEntry({
@@ -948,7 +949,7 @@ export function useGameState(gameId) {
       }
     }
 
-    const newUpgrades = { ...upgrades, munitions }
+    const newUpgrades = { ...upgrades, munitions, missileFiredThisTurn: true }
     await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
 
     await addBattleLogEntry({
@@ -2258,12 +2259,15 @@ export function useGameState(gameId) {
   }
 
   async function processHangarCooldowns() {
-    const myUnits = units.filter(u => u.owner_id === userId && (u.upgrades?.hangarCooldown || 0) > 0)
+    const myUnits = units.filter(u => u.owner_id === userId && ((u.upgrades?.hangarCooldown || 0) > 0 || u.upgrades?.missileFiredThisTurn))
     for (const u of myUnits) {
-      const cd = u.upgrades.hangarCooldown - 1
       const newUpgrades = { ...u.upgrades }
-      if (cd <= 0) delete newUpgrades.hangarCooldown
-      else newUpgrades.hangarCooldown = cd
+      if (newUpgrades.hangarCooldown) {
+        const cd = newUpgrades.hangarCooldown - 1
+        if (cd <= 0) delete newUpgrades.hangarCooldown
+        else newUpgrades.hangarCooldown = cd
+      }
+      delete newUpgrades.missileFiredThisTurn
       await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', u.id)
     }
   }

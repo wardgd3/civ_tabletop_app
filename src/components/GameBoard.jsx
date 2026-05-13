@@ -210,7 +210,7 @@ export default function GameBoard({
     }
     if (slides.size > 0) {
       setSlidingUnits(slides)
-      setTimeout(() => setSlidingUnits(new Map()), 350)
+      setTimeout(() => setSlidingUnits(new Map()), 550)
     }
 
     prevBoardRef.current = activeBoard
@@ -2604,7 +2604,7 @@ export default function GameBoard({
                   style={{
                     width: tokenSize,
                     height: tokenSize,
-                    animation: `slide-${id} 0.3s ease forwards`,
+                    animation: `slide-${id} 0.5s ease forwards`,
                     marginLeft: -tokenSize / 2,
                     marginTop: -tokenSize / 2,
                   }}
