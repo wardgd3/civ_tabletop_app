@@ -7,7 +7,7 @@ export const TERRAIN = {
   PLAINS:          { id: 'plains',          name: 'Plains',          color: '#425a32', darkColor: '#283520' },
   GRASSLAND:       { id: 'grassland',       name: 'Grassland',       color: '#335530', darkColor: '#203520' },
   TUNDRA:          { id: 'tundra',          name: 'Tundra',          color: '#4a5060', darkColor: '#303540' },
-  SNOW:            { id: 'snow',            name: 'Snow',            color: '#606870', darkColor: '#404548' },
+  SNOW:            { id: 'snow',            name: 'Snow',            color: '#8a9098', darkColor: '#5a5e64' },
   HILLS:           { id: 'hills',           name: 'Hills',           color: '#554e38', darkColor: '#353020' },
   MOUNTAIN:        { id: 'mountain',        name: 'Mountain',        color: '#504840', darkColor: '#332e28' },
   FOREST:          { id: 'forest',          name: 'Forest',          color: '#1e3a1e', darkColor: '#152615' },
