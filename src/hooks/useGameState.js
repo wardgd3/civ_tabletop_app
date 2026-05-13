@@ -1675,7 +1675,9 @@ export function useGameState(gameId) {
     const hangar = [...(upgrades.hangar || [])]
     if (hangarIndex < 0 || hangarIndex >= hangar.length) throw new Error('Invalid hangar index')
 
-    const storedUnit = hangar.splice(hangarIndex, 1)[0]
+    const storedUnit = hangar[hangarIndex]
+    if (storedUnit.transferredThisTurn) throw new Error('Transferred units cannot deploy until next turn')
+    hangar.splice(hangarIndex, 1)
 
     const { error, data: inserted } = await supabase.from('wg_units').insert({
       game_id: gameId,
@@ -1746,7 +1748,7 @@ export function useGameState(gameId) {
     if (toHangar.length >= getHangarCapacity(toShip)) throw new Error('Destination hangar full')
 
     const transferred = fromHangar.splice(hangarIndex, 1)[0]
-    toHangar.push(transferred)
+    toHangar.push({ ...transferred, transferredThisTurn: true })
 
     await Promise.all([
       supabase.from('wg_units').update({ upgrades: { ...fromUpgrades, hangar: fromHangar } }).eq('id', fromShipId),
@@ -1769,7 +1771,7 @@ export function useGameState(gameId) {
     if (slotsAvailable <= 0) throw new Error('Destination hangar full')
 
     const transferCount = Math.min(fromHangar.length, slotsAvailable)
-    const moved = fromHangar.splice(0, transferCount)
+    const moved = fromHangar.splice(0, transferCount).map(u => ({ ...u, transferredThisTurn: true }))
     toHangar.push(...moved)
 
     await Promise.all([
@@ -2426,13 +2428,25 @@ export function useGameState(gameId) {
     const { data: freshUnits } = await supabase.from('wg_units').select('id, upgrades').eq('game_id', gameId).eq('is_alive', true)
     const myUnits = (freshUnits || []).filter(u => {
       const owner = units.find(lu => lu.id === u.id)?.owner_id
-      return owner === userId && (u.upgrades?.hangarCooldown || 0) > 0
+      if (owner !== userId) return false
+      if ((u.upgrades?.hangarCooldown || 0) > 0) return true
+      if ((u.upgrades?.hangar || []).some(h => h.transferredThisTurn)) return true
+      return false
     })
     for (const u of myUnits) {
       const newUpgrades = { ...u.upgrades }
-      const cd = newUpgrades.hangarCooldown - 1
-      if (cd <= 0) delete newUpgrades.hangarCooldown
-      else newUpgrades.hangarCooldown = cd
+      if (newUpgrades.hangarCooldown) {
+        const cd = newUpgrades.hangarCooldown - 1
+        if (cd <= 0) delete newUpgrades.hangarCooldown
+        else newUpgrades.hangarCooldown = cd
+      }
+      if (newUpgrades.hangar) {
+        newUpgrades.hangar = newUpgrades.hangar.map(h => {
+          if (!h.transferredThisTurn) return h
+          const { transferredThisTurn, ...rest } = h
+          return rest
+        })
+      }
       await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', u.id)
     }
   }

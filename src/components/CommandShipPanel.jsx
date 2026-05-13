@@ -1262,9 +1262,14 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
               {isEmpty ? (
                 <span className="text-[10px]" style={{ color: '#30363d' }}>&ndash;</span>
               ) : (
-                <div className="text-[7px] font-semibold leading-tight" style={{ color: '#c9d1d9' }}>
-                  {stored.typeName}
-                </div>
+                <>
+                  <div className="text-[7px] font-semibold leading-tight" style={{ color: stored.transferredThisTurn ? '#6e7681' : '#c9d1d9' }}>
+                    {stored.typeName}
+                  </div>
+                  {stored.transferredThisTurn && (
+                    <div className="text-[6px] uppercase" style={{ color: '#d29922' }}>locked</div>
+                  )}
+                </>
               )}
             </button>
           )
@@ -1280,15 +1285,16 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
           </div>
           <div className="flex gap-1">
             <button
-              onClick={() => { onDeployFromHangar(unit.id, selectedSlot); setSelectedSlot(null) }}
-              className="flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+              onClick={() => { if (!allSlots[selectedSlot]?.transferredThisTurn) { onDeployFromHangar(unit.id, selectedSlot); setSelectedSlot(null) } }}
+              disabled={!!allSlots[selectedSlot]?.transferredThisTurn}
+              className="flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
               style={{
                 backgroundColor: comp.color + '20',
                 color: comp.color,
                 border: `1px solid ${comp.color}40`,
               }}
             >
-              Deploy
+              {allSlots[selectedSlot]?.transferredThisTurn ? 'Locked' : 'Deploy'}
             </button>
             {transferTargets.length > 0 && (
               <button
