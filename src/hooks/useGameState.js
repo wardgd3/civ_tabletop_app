@@ -1072,7 +1072,8 @@ export function useGameState(gameId) {
     const myShips = units.filter(u => u.owner_id === userId && STRIKE_SHIPS.has(u.wg_unit_types?.name))
 
     for (const ship of myShips) {
-      const upgrades = ship.upgrades || {}
+      const { data: freshShip } = await supabase.from('wg_units').select('upgrades').eq('id', ship.id).single()
+      const upgrades = freshShip?.upgrades || ship.upgrades || {}
       const pendingStrikes = upgrades.pendingStrikes || []
       if (pendingStrikes.length === 0) continue
 
