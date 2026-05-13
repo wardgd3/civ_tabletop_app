@@ -2081,8 +2081,9 @@ export default function GameBoard({
                 const lightJitter = (h - 0.5) * 0.12
                 const darkJitter = ((h * 7 + 0.3) % 1 - 0.5) * 0.12
                 const isTundra = game.terrain_theme === 'crystal_tundra'
-                const [lr, lg, lb] = isTundra ? parseHex('#b0d8e0') : parseHex(tileBg)
-                const lightDim = isTundra ? 0.88 : 0.92
+                const tealLight = isTundra && ((h * 17 + 0.4) % 1) < 0.25
+                const [lr, lg, lb] = isTundra ? (tealLight ? parseHex('#6aabb8') : parseHex('#b0d8e0')) : parseHex(tileBg)
+                const lightDim = isTundra ? (tealLight ? 0.82 : 0.88) : 0.92
                 const lightColor = toHex(lr * lightDim * (1 + lightJitter), lg * lightDim * (1 + lightJitter), lb * lightDim * (1 + lightJitter))
                 const [mr, mg, mb] = parseHex(tileBg)
                 const [gr, gg, gb] = isTundra ? parseHex('#3a7080') : [0, 0, 0]
