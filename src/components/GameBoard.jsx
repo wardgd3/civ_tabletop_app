@@ -159,6 +159,7 @@ export default function GameBoard({
   const prevUnitMapRef = useRef(null)
   const prevBoardRef = useRef(activeBoard)
   const [deadUnits, setDeadUnits] = useState([])
+  const [slidingUnits, setSlidingUnits] = useState(new Map())
 
   const unitAnimations = useMemo(() => {
     const prev = prevUnitMapRef.current
@@ -169,9 +170,11 @@ export default function GameBoard({
       if (!p) {
         anims.set(u.id, { type: 'fadeIn' })
       } else if (p.row !== u.grid_row || p.col !== u.grid_col) {
-        const dx = (p.col * HEX_W + (p.row & 1 ? HEX_W / 2 : 0)) - (u.grid_col * HEX_W + (u.grid_row & 1 ? HEX_W / 2 : 0))
-        const dy = p.row * ROW_H - u.grid_row * ROW_H
-        anims.set(u.id, { type: 'slide', dx, dy })
+        const fromX = p.col * HEX_W + (p.row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
+        const fromY = p.row * ROW_H + RENDER_H / 2
+        const toX = u.grid_col * HEX_W + (u.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
+        const toY = u.grid_row * ROW_H + RENDER_H / 2
+        anims.set(u.id, { type: 'slide', fromX, fromY, toX, toY })
       }
     }
     return anims
@@ -179,13 +182,11 @@ export default function GameBoard({
 
   const slideKeyframes = useMemo(() => {
     let css = ''
-    for (const [id, anim] of unitAnimations) {
-      if (anim.type === 'slide') {
-        css += `@keyframes slide-${id}{from{transform:translate(${anim.dx}px,${anim.dy}px)}to{transform:translate(0,0)}}`
-      }
+    for (const [id, anim] of slidingUnits) {
+      css += `@keyframes slide-${id}{from{left:${anim.fromX}px;top:${anim.fromY}px}to{left:${anim.toX}px;top:${anim.toY}px}}`
     }
     return css
-  }, [unitAnimations])
+  }, [slidingUnits])
 
   useEffect(() => {
     const prev = prevUnitMapRef.current
@@ -199,6 +200,19 @@ export default function GameBoard({
       }
       if (dying.length > 0) setDeadUnits(p => [...p, ...dying])
     }
+
+    const slides = new Map()
+    for (const [id, anim] of unitAnimations) {
+      if (anim.type === 'slide') {
+        const u = units.find(u => u.id === id)
+        if (u) slides.set(id, { ...anim, unit: u })
+      }
+    }
+    if (slides.size > 0) {
+      setSlidingUnits(slides)
+      setTimeout(() => setSlidingUnits(new Map()), 350)
+    }
+
     prevBoardRef.current = activeBoard
     const newMap = new Map()
     for (const u of units) {
@@ -2459,19 +2473,14 @@ export default function GameBoard({
                     />
                   )}
                   {/* ore icons disabled */}
-                  {showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' && (() => {
+                  {showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' && !slidingUnits.has(unit.id) && (() => {
                     const pColor = getPlayerColor(unit.owner_id, unit)
                     const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
                     const sizeMultiplier = unit.wg_unit_types?.name === 'Battleship' ? 1.24 : 1.032
                     const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * sizeMultiplier
-                    const anim = unitAnimations.get(unit.id)
-                    const animStyle = anim?.type === 'fadeIn'
-                      ? { animation: 'unitFadeIn 0.4s ease' }
-                      : anim?.type === 'slide'
-                      ? { animation: `slide-${unit.id} 0.3s ease` }
-                      : {}
+                    const fadeIn = unitAnimations.get(unit.id)?.type === 'fadeIn'
                     return (
-                      <div className="relative flex items-center justify-center z-10" style={{ width: tokenSize, height: tokenSize, ...animStyle }}>
+                      <div className="relative flex items-center justify-center z-10" style={{ width: tokenSize, height: tokenSize, ...(fadeIn ? { animation: 'unitFadeIn 0.4s ease' } : {}) }}>
                         <div
                           className="absolute inset-0 rounded-full overflow-hidden"
                           style={{ border: `3px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}
@@ -2541,18 +2550,13 @@ export default function GameBoard({
                 </div>
               )
             })()}
-            {units.filter(u => (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship') && (u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`))).map(cc => {
+            {units.filter(u => (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship') && !slidingUnits.has(u.id) && (u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`))).map(cc => {
               const ccX = cc.grid_col * HEX_W + (cc.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
               const ccY = cc.grid_row * ROW_H + RENDER_H / 2
               const ccSize = HEX_W * 1.907
               const hpRatio = cc.current_hp / cc.wg_unit_types?.hp
               const pColor = getPlayerColor(cc.owner_id)
-              const ccAnim = unitAnimations.get(cc.id)
-              const ccAnimStyle = ccAnim?.type === 'fadeIn'
-                ? { animation: 'unitFadeIn 0.4s ease' }
-                : ccAnim?.type === 'slide'
-                ? { animation: `slide-${cc.id} 0.3s ease` }
-                : {}
+              const ccFadeIn = unitAnimations.get(cc.id)?.type === 'fadeIn'
               return (
                 <div
                   key={`cc-overlay-${cc.id}`}
@@ -2562,7 +2566,7 @@ export default function GameBoard({
                     top: ccY - ccSize / 2,
                     width: ccSize,
                     height: ccSize,
-                    ...ccAnimStyle,
+                    ...(ccFadeIn ? { animation: 'unitFadeIn 0.4s ease' } : {}),
                   }}
                 >
                   <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `2.4px solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
@@ -2583,6 +2587,56 @@ export default function GameBoard({
                       boxShadow: '0 0 2px #000',
                     }}
                   />
+                </div>
+              )
+            })}
+            {[...slidingUnits.entries()].map(([id, sl]) => {
+              const u = sl.unit
+              const pColor = getPlayerColor(u.owner_id, u)
+              const isCC = u.wg_unit_types?.name === 'Command Ship' || u.wg_unit_types?.name === 'Command Center'
+              const sizeMultiplier = u.wg_unit_types?.name === 'Battleship' ? 1.24 : isCC ? 0 : 1.032
+              const tokenSize = isCC ? HEX_W * 1.907 : (Math.min(RENDER_W, RENDER_H) - 4) * sizeMultiplier
+              const hpRatio = u.current_hp / u.wg_unit_types?.hp
+              return (
+                <div
+                  key={`slide-${id}`}
+                  className="absolute pointer-events-none z-10"
+                  style={{
+                    width: tokenSize,
+                    height: tokenSize,
+                    animation: `slide-${id} 0.3s ease forwards`,
+                    marginLeft: -tokenSize / 2,
+                    marginTop: -tokenSize / 2,
+                  }}
+                >
+                  <div className="absolute inset-0 rounded-full overflow-hidden" style={{ border: `${isCC ? '2.4px' : '3px'} solid ${pColor}`, boxShadow: `0 0 8px ${pColor}40` }}>
+                    <img src={getUnitIcon(u.wg_unit_types, u)} alt="" className="w-full h-full object-cover pointer-events-none" />
+                  </div>
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 rounded-full z-20"
+                    style={{
+                      bottom: isCC ? 4 : 3,
+                      height: isCC ? 3 : 4,
+                      width: `${hpRatio * (isCC ? 50 : 60)}%`,
+                      backgroundColor: hpRatio > 0.5 ? '#4a8060' : '#804a4a',
+                      minWidth: isCC ? 4 : 6,
+                      boxShadow: '0 0 2px #000',
+                    }}
+                  />
+                  {(u.upgrades?.level || 0) > 0 && !isCC && (
+                    <div
+                      className="absolute -top-0.5 -left-0.5 flex items-center justify-center rounded-full z-20"
+                      style={{
+                        width: 18, height: 18,
+                        backgroundColor: '#1a1a0d',
+                        border: '2px solid #cca43b',
+                        fontSize: 12, fontWeight: 'bold',
+                        color: '#cca43b', lineHeight: 1,
+                      }}
+                    >
+                      {u.upgrades.level}
+                    </div>
+                  )}
                 </div>
               )
             })}
