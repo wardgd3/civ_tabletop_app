@@ -1408,10 +1408,9 @@ export default function GameBoard({
   const hexClip = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'
 
   const canExcavate = selectedUnit && (selectedUnit.wg_unit_types?.name === 'Mining Station' || selectedUnit.wg_unit_types?.name === 'Excavator')
-  const selectedUnitTile = selectedUnit ? tileMap.get(`${selectedUnit.grid_row}-${selectedUnit.grid_col}`) : null
-  const selectedTileLux = selectedUnitTile?.resource ? RESOURCE_BY_ID[selectedUnitTile.resource] : null
-  const isSelectedTileLuxury = selectedTileLux && selectedTileLux.yield != null
-  const hasOreToExcavate = canExcavate && selectedUnitTile?.resource && selectedUnitTile.resource !== 'space_guild' && (isSelectedTileLuxury || selectedUnitTile?.ore_amount > 0)
+  const isMining = canExcavate && selectedUnit?.upgrades?.mining?.active
+  const isMiningExhausted = canExcavate && selectedUnit?.upgrades?.miningDisabled
+  const canStartMining = canExcavate && !isMining && !isMiningExhausted
 
   const spaceGuildTile = useMemo(() => {
     if (activeBoard !== 'space') return null
@@ -1624,7 +1623,7 @@ export default function GameBoard({
                   </div>
                 </div>
               )}
-              {hasOreToExcavate && (
+              {canStartMining && (
                 <button
                   onClick={async () => {
                     try { await excavate(selectedUnit.id) } catch (err) { setError(err.message) }
@@ -1632,9 +1631,20 @@ export default function GameBoard({
                   className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
                   style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
                 >
-                  Excavate {RESOURCE_BY_ID[selectedUnitTile.resource]?.name || selectedUnitTile.resource}
-                  {isSelectedTileLuxury ? ` (+${selectedTileLux.yield}g/turn)` : ` (+1g/turn)`}{!isSelectedTileLuxury && selectedUnitTile.ore_amount ? ` +${selectedUnitTile.ore_amount} ore` : ''}
+                  Start Mining
                 </button>
+              )}
+              {isMining && (
+                <div className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded text-center"
+                  style={{ backgroundColor: '#1a2a1a', color: '#50b050', border: '1px solid #2a4a2a' }}>
+                  Mining — Layer {selectedUnit.upgrades.mining.layer}/60
+                </div>
+              )}
+              {isMiningExhausted && (
+                <div className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded text-center"
+                  style={{ backgroundColor: '#2a1a1a', color: '#8b949e', border: '1px solid #3a2a2a' }}>
+                  Mining Exhausted
+                </div>
               )}
               {isNearSpaceGuild && (
                 <button

@@ -5,6 +5,37 @@ import { LUXURY_RESOURCES } from '../lib/terrainGen'
 
 const LUXURY_BY_ID = Object.fromEntries(Object.values(LUXURY_RESOURCES).map(r => [r.id, r]))
 
+export const GROUND_ORES = {
+  iron:     { id: 'iron',     name: 'Iron',     chance: 0.35, minAmt: 2, maxAmt: 5, color: '#8a8a8a' },
+  copper:   { id: 'copper',   name: 'Copper',   chance: 0.25, minAmt: 1, maxAmt: 4, color: '#b87333' },
+  titanium: { id: 'titanium', name: 'Titanium', chance: 0.10, minAmt: 1, maxAmt: 2, color: '#a0b0c0' },
+  uranium:  { id: 'uranium',  name: 'Uranium',  chance: 0.04, minAmt: 1, maxAmt: 1, color: '#50c878' },
+}
+
+export const SPACE_ORES = {
+  helium3:   { id: 'helium3',   name: 'Helium-3',   chance: 0.35, minAmt: 2, maxAmt: 5, color: '#d0e8ff' },
+  cobalt:    { id: 'cobalt',    name: 'Cobalt',      chance: 0.25, minAmt: 1, maxAmt: 4, color: '#4070c0' },
+  palladium: { id: 'palladium', name: 'Palladium',   chance: 0.10, minAmt: 1, maxAmt: 2, color: '#c0b090' },
+  iridium:   { id: 'iridium',   name: 'Iridium',     chance: 0.04, minAmt: 1, maxAmt: 1, color: '#e0e8f0' },
+}
+
+function hexNeighborsOf(r, c) {
+  const isOdd = r & 1
+  return [
+    [r - 1, isOdd ? c : c - 1], [r - 1, isOdd ? c + 1 : c],
+    [r, c - 1], [r, c + 1],
+    [r + 1, isOdd ? c : c - 1], [r + 1, isOdd ? c + 1 : c],
+  ]
+}
+
+function seededRandFromHash(seed) {
+  let s = seed | 0
+  return () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff
+    return s / 0x7fffffff
+  }
+}
+
 const NPC_UNIT_TYPES = {
   test1: {
     id: 'npc-test1',
@@ -585,36 +616,26 @@ export function useGameState(gameId) {
     const canExcavate = unit.wg_unit_types?.name === 'Mining Station' || unit.wg_unit_types?.name === 'Excavator'
     if (!canExcavate) throw new Error('This unit cannot excavate')
 
-    const unitBoard = unit.board || 'ground'
-    const tile = tiles.find(t => t.grid_row === unit.grid_row && t.grid_col === unit.grid_col && (t.board || 'ground') === unitBoard)
-    if (!tile || !tile.resource) throw new Error('No resource on this tile')
+    const upgrades = unit.upgrades || {}
+    if (upgrades.mining) throw new Error('Already mining')
+    if (upgrades.miningDisabled) throw new Error('Mining exhausted')
 
-    const isLuxury = !!LUXURY_BY_ID[tile.resource]
-
-    if (!isLuxury && (!tile.ore_amount || tile.ore_amount <= 0)) throw new Error('No ore remaining')
-
-    const resources = { ...(currentPlayer.resources || {}) }
-    if (isLuxury) {
-      resources[tile.resource] = 1
-    } else {
-      resources[tile.resource] = (resources[tile.resource] || 0) + tile.ore_amount
+    const newUpgrades = {
+      ...upgrades,
+      mining: {
+        active: true,
+        layer: 0,
+        turnsSinceLastDig: 0,
+        centerRow: unit.grid_row,
+        centerCol: unit.grid_col,
+      },
     }
-    resources.excavations = (resources.excavations || 0) + 1
 
-    const { error: resError } = await supabase
-      .from('wg_game_players')
-      .update({ resources })
-      .eq('id', currentPlayer.id)
-    if (resError) throw resError
-
-    const { error: tileError } = await supabase
-      .from('wg_game_tiles')
-      .update({ resource: null, ore_amount: 0 })
-      .eq('game_id', gameId)
-      .eq('grid_row', unit.grid_row)
-      .eq('grid_col', unit.grid_col)
-      .eq('board', unitBoard)
-    if (tileError) throw tileError
+    const { error } = await supabase
+      .from('wg_units')
+      .update({ upgrades: newUpgrades })
+      .eq('id', unitId)
+    if (error) throw error
 
     await fetchAll()
   }
@@ -1489,8 +1510,81 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function processMiningTicks() {
+    const myUnits = units.filter(u => u.owner_id === userId)
+    const miners = myUnits.filter(u => {
+      const name = u.wg_unit_types?.name
+      return (name === 'Mining Station' || name === 'Excavator') && u.upgrades?.mining?.active
+    })
+    if (miners.length === 0) return
+
+    for (const miner of miners) {
+      const mining = { ...miner.upgrades.mining }
+      const unitBoard = miner.board || 'ground'
+      const isSpace = unitBoard === 'space'
+      const oreTable = isSpace ? SPACE_ORES : GROUND_ORES
+
+      mining.turnsSinceLastDig = (mining.turnsSinceLastDig || 0) + 1
+
+      if (mining.turnsSinceLastDig >= 3) {
+        mining.turnsSinceLastDig = 0
+        mining.layer = (mining.layer || 0) + 1
+
+        if (mining.layer <= 60) {
+          const centerR = mining.centerRow
+          const centerC = mining.centerCol
+          const mineTiles = [[centerR, centerC], ...hexNeighborsOf(centerR, centerC)]
+
+          const seed = centerR * 1000 + centerC * 7 + mining.layer * 31 + (miner.id?.charCodeAt?.(0) || 0)
+          const rand = seededRandFromHash(seed)
+
+          const ccUnit = myUnits.find(u => {
+            const n = u.wg_unit_types?.name
+            return isSpace ? n === 'Command Ship' : n === 'Command Center'
+          })
+
+          if (ccUnit) {
+            const ccUpgrades = { ...(ccUnit.upgrades || {}) }
+            const inventory = { ...(ccUpgrades.inventory || {}) }
+            let changed = false
+
+            for (let t = 0; t < mineTiles.length; t++) {
+              const roll = rand()
+              for (const ore of Object.values(oreTable)) {
+                const depthBonus = Math.min(mining.layer / 60, 1) * 0.02
+                if (roll < ore.chance + depthBonus) {
+                  const amt = ore.minAmt + Math.floor(rand() * (ore.maxAmt - ore.minAmt + 1))
+                  inventory[ore.id] = (inventory[ore.id] || 0) + amt
+                  changed = true
+                  break
+                }
+              }
+            }
+
+            if (changed) {
+              ccUpgrades.inventory = inventory
+              await supabase.from('wg_units').update({ upgrades: ccUpgrades }).eq('id', ccUnit.id)
+            }
+          }
+        }
+
+        if (mining.layer >= 60) {
+          const newUpgrades = { ...miner.upgrades, miningDisabled: true }
+          delete newUpgrades.mining
+          await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', miner.id)
+          continue
+        }
+      }
+
+      const newUpgrades = { ...miner.upgrades, mining }
+      await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', miner.id)
+    }
+  }
+
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
+
+    await processMiningTicks()
 
     const { data, error } = await supabase.functions.invoke('end-turn', {
       body: { gameId },

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { GROUND_ORES, SPACE_ORES } from '../hooks/useGameState'
 
 const ICON_STYLE = { width: 14, height: 14, fill: 'none', stroke: '#8b949e', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }
 
@@ -58,6 +59,14 @@ const ICONS = {
       <path d="M5 6 L5 3 L11 3 L11 6" />
       <line x1="6" y1="10" x2="10" y2="10" />
       <line x1="8" y1="8" x2="8" y2="12" />
+    </svg>
+  ),
+  inventory: (
+    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
+      <rect x="2" y="3" width="12" height="11" rx="1" />
+      <line x1="2" y1="7" x2="14" y2="7" />
+      <circle cx="8" cy="11" r="1.5" />
+      <line x1="5" y1="5" x2="11" y2="5" />
     </svg>
   ),
   iron_dome: (
@@ -159,6 +168,15 @@ const COMMAND_SHIP_COMPARTMENTS = [
     special: 'holding_bay',
     slots: 12,
   },
+  {
+    id: 'inventory',
+    name: 'Inventory',
+    description: 'Ores and minerals collected by mining stations.',
+    icon: 'inventory',
+    color: '#70a0d0',
+    special: 'inventory',
+    slots: 0,
+  },
 ]
 
 const COMMAND_CENTER_COMPARTMENTS = [
@@ -240,6 +258,15 @@ const COMMAND_CENTER_COMPARTMENTS = [
     color: '#6080a0',
     special: 'loading_bay',
     slots: 2,
+  },
+  {
+    id: 'inventory',
+    name: 'Inventory',
+    description: 'Ores and minerals collected by excavators.',
+    icon: 'inventory',
+    color: '#70a0d0',
+    special: 'inventory',
+    slots: 0,
   },
 ]
 
@@ -1094,6 +1121,43 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
   )
 }
 
+function InventoryPanel({ unit, upgrades, isCommandShip }) {
+  const inventory = upgrades.inventory || {}
+  const oreTable = isCommandShip ? SPACE_ORES : GROUND_ORES
+  const allOres = Object.values(oreTable)
+  const hasAny = allOres.some(o => (inventory[o.id] || 0) > 0)
+
+  return (
+    <div>
+      <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+        {isCommandShip ? 'Space Ores' : 'Ground Ores'}
+      </div>
+      {hasAny ? (
+        <div className="flex flex-col gap-1">
+          {allOres.map(ore => {
+            const amount = inventory[ore.id] || 0
+            if (amount === 0) return null
+            return (
+              <div key={ore.id} className="flex items-center justify-between p-1.5 rounded"
+                style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ore.color }} />
+                  <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{ore.name}</span>
+                </div>
+                <span className="text-[10px] font-mono font-bold" style={{ color: ore.color }}>{amount}</span>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="p-2 rounded text-center" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+          <span className="text-[9px]" style={{ color: '#4a5568' }}>No ores collected</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function CommandShipPanel({
   unit, onClose, onUpgrade, onMove, isAdmin,
   onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay, onProduceUnit,
@@ -1171,6 +1235,11 @@ export default function CommandShipPanel({
             const lb = upgrades.loadingBay || []
             statusText = `${lb.length}/${c.slots} docked`
             statusSlots = Array.from({ length: c.slots }, (_, i) => lb[i] ? 2 : 0)
+          } else if (c.special === 'inventory') {
+            const inv = upgrades.inventory || {}
+            const totalItems = Object.values(inv).reduce((s, v) => s + v, 0)
+            statusText = `${totalItems} ores`
+            statusSlots = [totalItems > 0 ? 1 : 0]
           } else {
             const cSlots = getSlots(upgrades, c.id, c.slots)
             const filledCount = cSlots.filter(s => s > 0).length
@@ -1272,6 +1341,8 @@ export default function CommandShipPanel({
               unitTypes={unitTypes}
               teamGold={teamGold}
             />
+          ) : comp.special === 'inventory' ? (
+            <InventoryPanel unit={unit} upgrades={upgrades} isCommandShip={isCommandShip} />
           ) : (
             <>
               <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
