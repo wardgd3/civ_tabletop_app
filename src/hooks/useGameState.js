@@ -174,8 +174,7 @@ export function useGameState(gameId) {
   const pendingFetchRef = useRef(false)
   const attackingRef = useRef(new Set())
   const npcSpawnedRef = useRef(false)
-  const missileFiredRef = useRef(new Set())
-  const lastTurnPlayerRef = useRef(null)
+  const [missileFiredShips, setMissileFiredShips] = useState(new Set())
 
   const currentPlayer = players.find(p => p.player_id === userId)
   const myColor = currentPlayer?.color
@@ -183,12 +182,6 @@ export function useGameState(gameId) {
     ? game.current_team_color === myColor && !currentPlayer?.has_ended_turn
     : game?.current_player_id === userId
   const isAdmin = !!game?.is_admin
-
-  const turnKey = game?.current_player_id || game?.current_team_color
-  if (turnKey && turnKey !== lastTurnPlayerRef.current) {
-    lastTurnPlayerRef.current = turnKey
-    missileFiredRef.current.clear()
-  }
 
   const teamPlayers = players.filter(p => p.color === myColor)
   const teamPlayerIds = teamPlayers.map(p => p.player_id)
@@ -932,7 +925,7 @@ export function useGameState(gameId) {
     if (!ship) throw new Error('Ship not found')
 
     const upgrades = ship.upgrades || {}
-    if (missileFiredRef.current.has(shipId)) throw new Error('Already fired a missile this turn')
+    if (missileFiredShips.has(shipId)) throw new Error('Already fired a missile this turn')
     const munitions = { ...(upgrades.munitions || {}) }
     if ((munitions[missileType] || 0) <= 0) throw new Error('No munitions of this type')
 
@@ -961,7 +954,7 @@ export function useGameState(gameId) {
       pendingStrikes.push({ row: targetRow, col: targetCol, damage, missileType, warheadType: warheadType || null, splashRadius })
       const newUpgrades = { ...upgrades, munitions, pendingStrikes }
       await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
-      missileFiredRef.current.add(shipId)
+      setMissileFiredShips(prev => new Set(prev).add(shipId))
 
       if (warheadType) {
         const craterRadius = warheadType === 'thermonuclear' ? 5 : 3
@@ -1059,7 +1052,7 @@ export function useGameState(gameId) {
 
     const newUpgrades = { ...upgrades, munitions }
     await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
-    missileFiredRef.current.add(shipId)
+    setMissileFiredShips(prev => new Set(prev).add(shipId))
 
     await addBattleLogEntry({
       type: 'missile_strike',
@@ -2498,6 +2491,8 @@ export function useGameState(gameId) {
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
+    setMissileFiredShips(new Set())
+
     await processConvoyTicks()
     await processMiningTicks()
     await processMissileStrikes()
@@ -2578,7 +2573,7 @@ export function useGameState(gameId) {
     setAutoPath, clearAutoPath,
     deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar,
     persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
-    missileFiredShips: missileFiredRef.current,
+    missileFiredShips,
     refresh: fetchAll,
   }
 }
