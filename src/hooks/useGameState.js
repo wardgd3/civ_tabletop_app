@@ -1777,7 +1777,10 @@ export function useGameState(gameId) {
     const existing = game.settings?.npcUnits || []
     if (existing.length > 0) { npcSpawnedRef.current = true; return }
     npcSpawnedRef.current = true
-    spawnNPCs(5, 'test1')
+    ;(async () => {
+      await spawnNPCs(5, 'test1')
+      await spawnNPCs(10, 'test2')
+    })()
   }, [isAdmin, game, tiles])
 
   const battleLog = (game?.settings?.battleLog || []).filter(
