@@ -57,6 +57,17 @@ function getConvoySlots(unit) {
 
 const BATTLESHIP_MATERIAL_COST = { uranium: 1, iron: 50, aluminum: 30 }
 
+const CANNON_RANGE = [0, 3, 4, 5]
+
+export function getEffectiveAttackRange(unit) {
+  const base = unit?.wg_unit_types?.attack_range || 1
+  if (unit?.wg_unit_types?.name !== 'Battleship') return base
+  const cannons = unit.upgrades?.cannon || []
+  const maxTier = Math.max(0, ...cannons.filter(t => t > 0))
+  if (maxTier === 0) return base
+  return Math.max(base, CANNON_RANGE[maxTier] || base)
+}
+
 function seededRandFromHash(seed) {
   let s = seed | 0
   return () => {
@@ -476,7 +487,7 @@ export function useGameState(gameId) {
     try {
 
     const dist = hexDistance(attacker.grid_row, attacker.grid_col, target.grid_row, target.grid_col)
-    if (dist > attacker.wg_unit_types.attack_range) throw new Error('Out of range')
+    if (dist > getEffectiveAttackRange(attacker)) throw new Error('Out of range')
 
     const rawDamage = Math.max(1, attacker.wg_unit_types.attack - target.wg_unit_types.defense)
     const shield = getShieldHp(target.upgrades)

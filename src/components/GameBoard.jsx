@@ -4,7 +4,7 @@ import SpaceGuildPanel from './SpaceGuildPanel'
 import BattleLog from './BattleLog'
 import TeamChat from './TeamChat'
 import { TERRAIN, TERRAIN_THEMES, RESOURCES, SPACE_RESOURCES, LUXURY_RESOURCES } from '../lib/terrainGen'
-import { SHIELD_HP } from '../hooks/useGameState'
+import { SHIELD_HP, getEffectiveAttackRange } from '../hooks/useGameState'
 
 const HEX_SIZE = 48
 const HEX_W = Math.round(Math.sqrt(3) * HEX_SIZE)
@@ -675,7 +675,7 @@ export default function GameBoard({
   function getAttackRange(unit) {
     if (!unit?.wg_unit_types) return new Set()
     const cells = new Set()
-    const range = unit.wg_unit_types.attack_range
+    const range = getEffectiveAttackRange(unit)
     const rMin = Math.max(0, unit.grid_row - range)
     const rMax = Math.min(rows - 1, unit.grid_row + range)
     const cMin = Math.max(0, unit.grid_col - range)

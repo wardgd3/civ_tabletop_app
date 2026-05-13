@@ -161,7 +161,7 @@ const COMMAND_SHIP_COMPARTMENTS = [
   {
     id: 'transport',
     name: 'Convoy Bay',
-    description: 'Build convoy ships to transport ground units. 5 turns to reach ground.',
+    description: 'Build convoy ships to transport ground units. 3 turns to reach ground.',
     icon: 'transport',
     color: '#50b0b0',
     special: 'transport',
@@ -364,7 +364,7 @@ const BATTLESHIP_COMPARTMENTS = [
   {
     id: 'transport',
     name: 'Convoy Bay',
-    description: 'Build convoy ships to transport ground units. 5 turns to reach ground.',
+    description: 'Build convoy ships to transport ground units. 3 turns to reach ground.',
     icon: 'transport',
     color: '#50b0b0',
     special: 'transport',
@@ -417,7 +417,7 @@ const FIGHTER_COMPARTMENTS = [
 
 const CONVOY_COST = 15
 const CONVOY_CAPACITY = 4
-const CONVOY_TRANSIT_TURNS = 5
+const CONVOY_TRANSIT_TURNS = 3
 const HOLDING_BAY_CAPACITY = 12
 
 export function getCompartments(unitName) {
