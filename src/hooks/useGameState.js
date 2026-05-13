@@ -32,7 +32,7 @@ export const SPACE_ORES = {
   umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.004, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true },
 }
 
-const HANGAR_ELIGIBLE = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter'])
+const HANGAR_ELIGIBLE = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter', 'Engineer Ship'])
 
 function hexNeighborsOf(r, c) {
   const isOdd = r & 1
@@ -2405,6 +2405,42 @@ export function useGameState(gameId) {
     }
   }
 
+  const REPAIR_HP = [0, 1, 2, 3]
+  const REPAIR_RADIUS = [0, 3, 4, 5]
+
+  async function processRepairTicks() {
+    const myEngineers = units.filter(u => u.owner_id === userId && u.wg_unit_types?.name === 'Engineer Ship' && u.is_alive)
+    if (myEngineers.length === 0) return
+
+    const myColor = currentPlayer?.color
+    const teamUnits = units.filter(u => {
+      if (!u.is_alive || !u.owner_id) return false
+      const p = players.find(pl => pl.user_id === u.owner_id)
+      return p && p.color === myColor && (u.board || 'ground') === 'space'
+    })
+
+    const healed = new Set()
+    for (const eng of myEngineers) {
+      const repairSlots = eng.upgrades?.repair
+      const tier = Array.isArray(repairSlots) ? Math.max(...repairSlots) : 0
+      if (tier <= 0) continue
+      const hp = REPAIR_HP[tier]
+      const radius = REPAIR_RADIUS[tier]
+
+      for (const target of teamUnits) {
+        if (target.id === eng.id) continue
+        if (healed.has(target.id)) continue
+        if (target.current_hp >= (target.wg_unit_types?.hp || 0)) continue
+        const d = hexDistance(eng.grid_row, eng.grid_col, target.grid_row, target.grid_col)
+        if (d > radius) continue
+
+        const newHp = Math.min(target.current_hp + hp, target.wg_unit_types?.hp || target.current_hp)
+        await supabase.from('wg_units').update({ current_hp: newHp }).eq('id', target.id)
+        healed.add(target.id)
+      }
+    }
+  }
+
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
@@ -2412,6 +2448,7 @@ export function useGameState(gameId) {
     await processMiningTicks()
     await processMissileStrikes()
     await processHangarCooldowns()
+    await processRepairTicks()
     await processNPCTicks()
 
     const { data, error } = await supabase.functions.invoke('end-turn', {

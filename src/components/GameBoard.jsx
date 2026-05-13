@@ -1523,7 +1523,7 @@ export default function GameBoard({
     }
 
     if (showUnit) {
-      if ((unit.wg_unit_types?.name === 'Command Ship' || unit.wg_unit_types?.name === 'Command Center' || unit.wg_unit_types?.name === 'Base' || unit.wg_unit_types?.name === 'Battleship') && unit.owner_id === currentPlayer?.player_id) {
+      if ((unit.wg_unit_types?.name === 'Command Ship' || unit.wg_unit_types?.name === 'Command Center' || unit.wg_unit_types?.name === 'Base' || unit.wg_unit_types?.name === 'Battleship' || unit.wg_unit_types?.name === 'Engineer Ship') && unit.owner_id === currentPlayer?.player_id) {
         const toggling = commandShipUnitId === unit.id
         setCommandShipUnitId(toggling ? null : unit.id)
         setSelectedUnitId(toggling ? null : unit.id)
