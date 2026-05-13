@@ -11,6 +11,8 @@ export default function SpaceGuildPanel({
 }) {
   const [sellResult, setSellResult] = useState(null)
   const [expandedGuildConvoy, setExpandedGuildConvoy] = useState(null)
+  const [showPurchaseUnits, setShowPurchaseUnits] = useState(false)
+  const [showPurchaseMunitions, setShowPurchaseMunitions] = useState(false)
 
   if (!guildShips || guildShips.length === 0) {
     return (
@@ -279,50 +281,60 @@ export default function SpaceGuildPanel({
 
       {allGuildConvoys.some(gc => !gc.inTransit) && availableUnitTypes && availableUnitTypes.length > 0 && (
         <>
-          <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5 mt-3" style={{ color: '#4a5568' }}>
-            Purchase Units
+          <div
+            onClick={() => setShowPurchaseUnits(v => !v)}
+            className="flex items-center justify-between mt-3 mb-1.5 cursor-pointer"
+          >
+            <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>
+              Purchase Units
+            </span>
+            <span className="text-[9px]" style={{ color: '#4a5568' }}>{showPurchaseUnits ? '▴' : '▾'}</span>
           </div>
-          <div className="text-[9px] mb-1.5" style={{ color: '#6e7681' }}>
-            Units are loaded into the selected convoy. Expand a convoy above to select it.
-          </div>
-          <div className="flex flex-col gap-1 mb-2">
-            {availableUnitTypes.map(ut => {
-              const canAfford = teamGold >= ut.cost
-              const docked = (expandedGuildConvoy != null && allGuildConvoys[expandedGuildConvoy] && !allGuildConvoys[expandedGuildConvoy].inTransit) ? allGuildConvoys[expandedGuildConvoy] : null
-              const noDocked = !docked
-              return (
-                <button
-                  key={ut.id}
-                  onClick={() => canAfford && docked && onBuyUnit(docked.shipId, docked.gcIdx, ut.id)}
-                  disabled={!canAfford || noDocked}
-                  className="flex items-center justify-between p-1.5 rounded transition-colors"
-                  style={{
-                    backgroundColor: canAfford && !noDocked ? '#1a2a3a10' : '#0d1117',
-                    border: `1px solid ${canAfford && !noDocked ? '#6cb4e640' : '#2a3140'}`,
-                    cursor: canAfford && !noDocked ? 'pointer' : 'default',
-                    opacity: canAfford && !noDocked ? 1 : 0.4,
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={`/assets/${ut.name.toLowerCase().replace(/\s+/g, '')}.png`}
-                      alt={ut.name}
-                      className="w-6 h-6 object-contain"
-                    />
-                    <div className="text-left">
-                      <div className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{ut.name}</div>
-                      <div className="text-[8px]" style={{ color: '#6e7681' }}>
-                        ATK {ut.attack} DEF {ut.defense} HP {ut.hp}
+          {showPurchaseUnits && (
+            <>
+              <div className="text-[9px] mb-1.5" style={{ color: '#6e7681' }}>
+                Units are loaded into the selected convoy. Expand a convoy above to select it.
+              </div>
+              <div className="flex flex-col gap-1 mb-2">
+                {availableUnitTypes.map(ut => {
+                  const canAfford = teamGold >= ut.cost
+                  const docked = (expandedGuildConvoy != null && allGuildConvoys[expandedGuildConvoy] && !allGuildConvoys[expandedGuildConvoy].inTransit) ? allGuildConvoys[expandedGuildConvoy] : null
+                  const noDocked = !docked
+                  return (
+                    <button
+                      key={ut.id}
+                      onClick={() => canAfford && docked && onBuyUnit(docked.shipId, docked.gcIdx, ut.id)}
+                      disabled={!canAfford || noDocked}
+                      className="flex items-center justify-between p-1.5 rounded transition-colors"
+                      style={{
+                        backgroundColor: canAfford && !noDocked ? '#1a2a3a10' : '#0d1117',
+                        border: `1px solid ${canAfford && !noDocked ? '#6cb4e640' : '#2a3140'}`,
+                        cursor: canAfford && !noDocked ? 'pointer' : 'default',
+                        opacity: canAfford && !noDocked ? 1 : 0.4,
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={`/assets/${ut.name.toLowerCase().replace(/\s+/g, '')}.png`}
+                          alt={ut.name}
+                          className="w-6 h-6 object-contain"
+                        />
+                        <div className="text-left">
+                          <div className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{ut.name}</div>
+                          <div className="text-[8px]" style={{ color: '#6e7681' }}>
+                            ATK {ut.attack} DEF {ut.defense} HP {ut.hp}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-mono font-semibold" style={{ color: '#cca43b' }}>
-                    ⚒{ut.cost}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+                      <span className="text-[10px] font-mono font-semibold" style={{ color: '#cca43b' }}>
+                        ⚒{ut.cost}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -340,43 +352,53 @@ export default function SpaceGuildPanel({
         const docked = (expandedGuildConvoy != null && allGuildConvoys[expandedGuildConvoy] && !allGuildConvoys[expandedGuildConvoy].inTransit) ? allGuildConvoys[expandedGuildConvoy] : null
         return (
           <>
-            <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5 mt-3" style={{ color: '#4a5568' }}>
-              Purchase Munitions
+            <div
+              onClick={() => setShowPurchaseMunitions(v => !v)}
+              className="flex items-center justify-between mt-3 mb-1.5 cursor-pointer"
+            >
+              <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>
+                Purchase Munitions
+              </span>
+              <span className="text-[9px]" style={{ color: '#4a5568' }}>{showPurchaseMunitions ? '▴' : '▾'}</span>
             </div>
-            <div className="text-[9px] mb-1.5" style={{ color: '#6e7681' }}>
-              Munitions are loaded into the selected convoy. Expand a convoy above to select it.
-            </div>
-            <div className="flex gap-1.5 mb-2">
-              {MISSILE_TYPES.map(m => {
-                const locked = effectiveLevel < m.reqLevel
-                const canAfford = teamGold >= m.cost
-                const noDocked = !docked
-                const disabled = locked || !canAfford || noDocked
-                return (
-                  <button
-                    key={m.key}
-                    onClick={() => !disabled && docked && onBuyMunition(docked.shipId, docked.gcIdx, m.key)}
-                    disabled={disabled}
-                    className="flex-1 rounded p-1.5 text-center transition-all"
-                    style={{
-                      backgroundColor: disabled ? '#161b22' : m.color + '15',
-                      border: `1px solid ${disabled ? '#2a3140' : m.color + '60'}`,
-                      cursor: disabled ? 'default' : 'pointer',
-                      opacity: disabled ? 0.4 : 1,
-                    }}
-                  >
-                    <div className="text-[9px] font-semibold" style={{ color: locked ? '#4a5568' : m.color }}>
-                      {locked ? 'Locked' : m.name}
-                    </div>
-                    {!locked && (
-                      <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                        <span className="text-[9px] font-mono" style={{ color: '#cca43b' }}>{m.cost}g</span>
-                      </div>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
+            {showPurchaseMunitions && (
+              <>
+                <div className="text-[9px] mb-1.5" style={{ color: '#6e7681' }}>
+                  Munitions are loaded into the selected convoy. Expand a convoy above to select it.
+                </div>
+                <div className="flex gap-1.5 mb-2">
+                  {MISSILE_TYPES.map(m => {
+                    const locked = effectiveLevel < m.reqLevel
+                    const canAfford = teamGold >= m.cost
+                    const noDocked = !docked
+                    const disabled = locked || !canAfford || noDocked
+                    return (
+                      <button
+                        key={m.key}
+                        onClick={() => !disabled && docked && onBuyMunition(docked.shipId, docked.gcIdx, m.key)}
+                        disabled={disabled}
+                        className="flex-1 rounded p-1.5 text-center transition-all"
+                        style={{
+                          backgroundColor: disabled ? '#161b22' : m.color + '15',
+                          border: `1px solid ${disabled ? '#2a3140' : m.color + '60'}`,
+                          cursor: disabled ? 'default' : 'pointer',
+                          opacity: disabled ? 0.4 : 1,
+                        }}
+                      >
+                        <div className="text-[9px] font-semibold" style={{ color: locked ? '#4a5568' : m.color }}>
+                          {locked ? 'Locked' : m.name}
+                        </div>
+                        {!locked && (
+                          <div className="flex items-center justify-center gap-0.5 mt-0.5">
+                            <span className="text-[9px] font-mono" style={{ color: '#cca43b' }}>{m.cost}g</span>
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )}
           </>
         )
       })()}
