@@ -2471,7 +2471,7 @@ export default function GameBoard({
                     )
                   })()}
                   {moveOverlay && (
-                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
+                    <div className="absolute inset-0 z-[1]" style={{ backgroundColor: (activeBoard || 'ground') === 'space' ? 'rgba(180, 200, 220, 0.18)' : 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
                   )}
                   {isOnAutoPath && (
                     <div className="absolute inset-0 z-[2] flex items-center justify-center pointer-events-none" style={{ clipPath: hexClip }}>
