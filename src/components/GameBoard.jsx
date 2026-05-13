@@ -940,7 +940,7 @@ export default function GameBoard({
   const missileTargetRange = missileTargetInfo ? (() => {
     const ship = units.find(u => u.id === missileTargetInfo.shipId)
     if (!ship) return new Set()
-    const MISSILE_RANGE = { tactical: 5, cruise: 8, ipbm: 999 }
+    const MISSILE_RANGE = { tactical: 6, cruise: 11, ipbm: 999 }
     const range = MISSILE_RANGE[missileTargetInfo.missileType] || 5
     const cells = new Set()
     const rMin = Math.max(0, ship.grid_row - range)
@@ -1732,6 +1732,18 @@ export default function GameBoard({
           })}
         </div>
       </div>
+      {isMyTurn && (
+        <button
+          onClick={async (e) => {
+            e.stopPropagation()
+            try { await endTurn() } catch (err) { setError(err.message) }
+          }}
+          className="w-full px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+          style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
+        >
+          End Turn
+        </button>
+      )}
 
       <div className="hidden lg:block p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
         <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>Operatives</div>
@@ -2028,16 +2040,6 @@ export default function GameBoard({
                 : { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
             >
               Deploy
-            </button>
-
-            <button
-              onClick={async () => {
-                try { await endTurn() } catch (err) { setError(err.message) }
-              }}
-              className="flex-1 lg:w-full px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-              style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
-            >
-              End Turn
             </button>
           </div>
         </div>

@@ -893,7 +893,7 @@ export function useGameState(gameId) {
   }
 
   const MISSILE_DAMAGE = { tactical: 8, cruise: 15, ipbm: 20 }
-  const MISSILE_RANGE = { tactical: 5, cruise: 8, ipbm: 999 }
+  const MISSILE_RANGE = { tactical: 6, cruise: 11, ipbm: 999 }
   async function produceWarhead(unitId, warheadType) {
     const unit = units.find(u => u.id === unitId)
     if (!unit) throw new Error('Unit not found')
@@ -2458,7 +2458,7 @@ export function useGameState(gameId) {
     const myColor = currentPlayer?.color
     const teamUnits = units.filter(u => {
       if (!u.is_alive || !u.owner_id) return false
-      const p = players.find(pl => pl.user_id === u.owner_id)
+      const p = players.find(pl => pl.player_id === u.owner_id)
       return p && p.color === myColor && (u.board || 'ground') === 'space'
     })
 

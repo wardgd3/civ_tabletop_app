@@ -1664,25 +1664,30 @@ export default function CommandShipPanel({
 
   return (
     <div className="p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      <div className="mb-3">
+        <div className="flex justify-end mb-1">
+          <button
+            onClick={onClose}
+            className="w-5 h-5 rounded flex items-center justify-center text-xs cursor-pointer"
+            style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+          >
+            ×
+          </button>
+        </div>
+        <div className="flex flex-col items-center gap-2">
           <img
-            src={isCommandShip ? `/assets/${unit.upgrades?.shipModel || 'commandship2'}.png` : unitName === 'Battleship' ? '/assets/battleship.png' : unitName === 'Base' ? '/assets/base.png' : '/assets/command center.png'}
+            src={isCommandShip ? `/assets/${unit.upgrades?.shipModel || 'commandship2'}.png` : unitName === 'Battleship' ? '/assets/battleship.png' : unitName === 'Repair Ship' ? '/assets/medicship.png' : unitName === 'Base' ? '/assets/base.png' : '/assets/command center.png'}
             alt={unitName}
-            className="w-6 h-6 object-contain"
+            className="w-24 h-24 object-contain"
           />
-          <div>
-            <div className="text-xs font-semibold" style={{ color: '#c9d1d9' }}>{unitName}</div>
-            <div className="text-[10px] font-mono" style={{ color: '#6e7681' }}>HP {unit.current_hp}/{unit.wg_unit_types?.hp}</div>
+          <div className="text-center">
+            <div className="text-sm font-semibold" style={{ color: '#c9d1d9' }}>{unitName}</div>
+            <div className="text-xs font-mono mt-0.5" style={{ color: '#6e7681' }}>HP {unit.current_hp}/{unit.wg_unit_types?.hp}</div>
+            <div className="text-[11px] font-mono mt-0.5" style={{ color: '#6e7681' }}>
+              ATK {unit.wg_unit_types?.attack} | DEF {unit.wg_unit_types?.defense} | MOV {Math.max(0, (unit.wg_unit_types?.movement || 0) - (unit.moves_used || 0))}/{unit.wg_unit_types?.movement}
+            </div>
           </div>
         </div>
-        <button
-          onClick={onClose}
-          className="w-5 h-5 rounded flex items-center justify-center text-xs cursor-pointer"
-          style={{ backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
-        >
-          ×
-        </button>
       </div>
 
       {unitName !== 'Base' && (
@@ -1992,8 +1997,8 @@ export default function CommandShipPanel({
                 const munitions = upgrades.munitions || { tactical: 0, cruise: 0, ipbm: 0 }
                 const missileLevel = slots[0] || 0
                 const MISSILE_TYPES = [
-                  { key: 'tactical', name: 'Tactical', color: '#8b949e', cost: 5, reqLevel: 1, range: 5 },
-                  { key: 'cruise', name: 'Cruise', color: '#3fb950', cost: 10, reqLevel: 2, range: 8 },
+                  { key: 'tactical', name: 'Tactical', color: '#8b949e', cost: 5, reqLevel: 1, range: 6 },
+                  { key: 'cruise', name: 'Cruise', color: '#3fb950', cost: 10, reqLevel: 2, range: 11 },
                   { key: 'ipbm', name: 'IPBM', color: '#d29922', cost: 20, reqLevel: 3, range: '∞' },
                 ]
                 const selMissile = MISSILE_TYPES.find(m => m.key === selectedMissile)
