@@ -2572,7 +2572,7 @@ export default function GameBoard({
             {units.filter(u => (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship') && !slidingUnits.has(u.id) && (u.owner_id === currentPlayer?.player_id || visibleTiles.has(`${u.grid_row}-${u.grid_col}`))).map(cc => {
               const ccX = cc.grid_col * HEX_W + (cc.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
               const ccY = cc.grid_row * ROW_H + RENDER_H / 2
-              const ccSize = HEX_W * 2.288
+              const ccSize = HEX_W * 2.746
               const hpRatio = cc.current_hp / cc.wg_unit_types?.hp
               const pColor = getPlayerColor(cc.owner_id)
               const ccFadeIn = unitAnimations.get(cc.id)?.type === 'fadeIn'
@@ -2613,7 +2613,7 @@ export default function GameBoard({
               const bsX = bs.grid_col * HEX_W + (bs.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
               const bsY = bs.grid_row * ROW_H + RENDER_H / 2
               const isBattleship = bs.wg_unit_types?.name === 'Battleship'
-              const bsSize = HEX_W * (isBattleship ? 1.8 : 1.5)
+              const bsSize = HEX_W * 1.62
               const hpRatio = bs.current_hp / bs.wg_unit_types?.hp
               const pColor = getPlayerColor(bs.owner_id, bs)
               const bsFadeIn = unitAnimations.get(bs.id)?.type === 'fadeIn'
@@ -2670,7 +2670,7 @@ export default function GameBoard({
               const isCC = u.wg_unit_types?.name === 'Command Ship' || u.wg_unit_types?.name === 'Command Center'
               const isBattleship = u.wg_unit_types?.name === 'Battleship'
               const isWarship = u.wg_unit_types?.icon === 'hostilebattleship.png'
-              const tokenSize = isCC ? HEX_W * 2.288 : isBattleship ? HEX_W * 1.8 : isWarship ? HEX_W * 1.5 : (Math.min(RENDER_W, RENDER_H) - 4) * 1.032
+              const tokenSize = isCC ? HEX_W * 2.746 : isBattleship ? HEX_W * 1.62 : isWarship ? HEX_W * 1.62 : (Math.min(RENDER_W, RENDER_H) - 4) * 1.032
               const hpRatio = u.current_hp / u.wg_unit_types?.hp
               return (
                 <div
@@ -2722,7 +2722,7 @@ export default function GameBoard({
               const isCC = du.unitType?.name === 'Command Ship' || du.unitType?.name === 'Command Center'
               const isBattleship = du.unitType?.name === 'Battleship'
               const isWarship = du.unitType?.icon === 'hostilebattleship.png'
-              const size = isCC ? HEX_W * 2.288 : isBattleship ? HEX_W * 1.8 : isWarship ? HEX_W * 1.5 : (Math.min(RENDER_W, RENDER_H) - 4) * 1.032
+              const size = isCC ? HEX_W * 2.746 : isBattleship ? HEX_W * 1.62 : isWarship ? HEX_W * 1.62 : (Math.min(RENDER_W, RENDER_H) - 4) * 1.032
               return (
                 <div
                   key={`dead-${du.id}`}

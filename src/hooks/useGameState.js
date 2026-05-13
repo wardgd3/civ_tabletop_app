@@ -954,6 +954,37 @@ export function useGameState(gameId) {
       const newUpgrades = { ...upgrades, munitions, pendingStrikes, missileFiredThisTurn: true }
       await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
 
+      if (warheadType) {
+        const craterRadius = warheadType === 'thermonuclear' ? 5 : 3
+        const groundTiles = tiles.filter(t => (t.board || 'ground') === 'ground')
+        let seed = (targetRow * 7919 + targetCol * 104729 + Date.now()) & 0x7fffffff
+        const craterRand = () => { seed = (seed * 1664525 + 1013904223) & 0x7fffffff; return seed / 0x7fffffff }
+
+        const craterTiles = []
+        for (const tile of groundTiles) {
+          const d = hexDistance(targetRow, targetCol, tile.grid_row, tile.grid_col)
+          if (d > craterRadius + 1) continue
+          if (d <= craterRadius - 2) {
+            craterTiles.push({ tile, terrain: 'crater_inner' })
+          } else if (d === craterRadius - 1) {
+            craterTiles.push({ tile, terrain: craterRand() < 0.7 ? 'crater_inner' : 'crater_outer' })
+          } else if (d === craterRadius) {
+            craterTiles.push({ tile, terrain: craterRand() < 0.55 ? 'crater_outer' : null })
+          } else if (d === craterRadius + 1) {
+            if (craterRand() < 0.2) craterTiles.push({ tile, terrain: 'crater_outer' })
+          }
+        }
+        for (const { tile, terrain } of craterTiles) {
+          if (!terrain) continue
+          await supabase.from('wg_game_tiles')
+            .update({ terrain, resource: null, has_road: false })
+            .eq('game_id', gameId)
+            .eq('grid_row', tile.grid_row)
+            .eq('grid_col', tile.grid_col)
+            .eq('board', 'ground')
+        }
+      }
+
       await addBattleLogEntry({
         type: 'missile_launch',
         attackerId: userId,
@@ -1092,37 +1123,6 @@ export function useGameState(gameId) {
             } else {
               await supabase.from('wg_units').update({ current_hp: newHp, ...shieldUpdate }).eq('id', target.id)
             }
-          }
-        }
-
-        if (hasWarhead) {
-          const craterRadius = strikeWarhead === 'thermonuclear' ? 5 : 3
-          const groundTiles = tiles.filter(t => (t.board || 'ground') === 'ground')
-          let seed = (row * 7919 + col * 104729 + Date.now()) & 0x7fffffff
-          const craterRand = () => { seed = (seed * 1664525 + 1013904223) & 0x7fffffff; return seed / 0x7fffffff }
-
-          const craterTiles = []
-          for (const tile of groundTiles) {
-            const d = hexDistance(row, col, tile.grid_row, tile.grid_col)
-            if (d > craterRadius + 1) continue
-            if (d <= craterRadius - 2) {
-              craterTiles.push({ tile, terrain: 'crater_inner' })
-            } else if (d === craterRadius - 1) {
-              craterTiles.push({ tile, terrain: craterRand() < 0.7 ? 'crater_inner' : 'crater_outer' })
-            } else if (d === craterRadius) {
-              craterTiles.push({ tile, terrain: craterRand() < 0.55 ? 'crater_outer' : null })
-            } else if (d === craterRadius + 1) {
-              if (craterRand() < 0.2) craterTiles.push({ tile, terrain: 'crater_outer' })
-            }
-          }
-          for (const { tile, terrain } of craterTiles) {
-            if (!terrain) continue
-            await supabase.from('wg_game_tiles')
-              .update({ terrain, resource: null, has_road: false })
-              .eq('game_id', gameId)
-              .eq('grid_row', tile.grid_row)
-              .eq('grid_col', tile.grid_col)
-              .eq('board', 'ground')
           }
         }
 
@@ -2419,7 +2419,11 @@ export function useGameState(gameId) {
   }
 
   async function processHangarCooldowns() {
-    const myUnits = units.filter(u => u.owner_id === userId && ((u.upgrades?.hangarCooldown || 0) > 0 || u.upgrades?.missileFiredThisTurn))
+    const { data: freshUnits } = await supabase.from('wg_units').select('id, upgrades').eq('game_id', gameId).eq('is_alive', true)
+    const myUnits = (freshUnits || []).filter(u => {
+      const owner = units.find(lu => lu.id === u.id)?.owner_id
+      return owner === userId && ((u.upgrades?.hangarCooldown || 0) > 0 || u.upgrades?.missileFiredThisTurn)
+    })
     for (const u of myUnits) {
       const newUpgrades = { ...u.upgrades }
       if (newUpgrades.hangarCooldown) {
