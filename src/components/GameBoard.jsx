@@ -821,7 +821,6 @@ export default function GameBoard({
     return set
   }, [units])
 
-  const selectedAutoPath = selectedUnit?.upgrades?.autoPath || null
 
   function isNearEdge(r, c) {
     return Math.min(r, rows - 1 - r, c, cols - 1 - c) <= 3
@@ -1633,11 +1632,6 @@ export default function GameBoard({
 
   const hexClip = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'
 
-  const canExcavate = selectedUnit && (selectedUnit.wg_unit_types?.name === 'Mining Station' || selectedUnit.wg_unit_types?.name === 'Excavator')
-  const isMining = canExcavate && selectedUnit?.upgrades?.mining?.active
-  const isMiningExhausted = canExcavate && selectedUnit?.upgrades?.miningDisabled
-  const canStartMining = canExcavate && !isMining && !isMiningExhausted
-
   const spaceGuildTile = useMemo(() => {
     if (activeBoard !== 'space') return null
     for (const t of tiles) {
@@ -1645,9 +1639,6 @@ export default function GameBoard({
     }
     return null
   }, [tiles, activeBoard])
-
-  const isNearSpaceGuild = selectedUnit && spaceGuildTile && selectedUnit.owner_id === currentPlayer?.player_id &&
-    hexDistance(selectedUnit.grid_row, selectedUnit.grid_col, spaceGuildTile.grid_row, spaceGuildTile.grid_col) <= 3
 
   const resources = currentPlayer?.resources || {}
 
@@ -1789,248 +1780,6 @@ export default function GameBoard({
 
       {isMyTurn && (
         <div className="p-3 rounded space-y-2" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
-          {selectedUnit && (
-            <div className="text-xs p-3 rounded mb-2" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140', color: '#8b949e' }}>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 font-semibold" style={{ color: '#c9d1d9' }}>
-                  <img src={getUnitIcon(selectedUnit.wg_unit_types, selectedUnit)} alt={selectedUnit.wg_unit_types?.name} className="w-20 h-20 object-contain" />
-                  {selectedUnit.wg_unit_types?.name}
-                  {(selectedUnit.upgrades?.level || 0) > 0 && (
-                    <span className="text-xs font-mono" style={{ color: '#cca43b' }}>Lv{selectedUnit.upgrades.level}</span>
-                  )}
-                </span>
-                <span className="font-mono" style={{ color: '#6e7681' }}>HP {selectedUnit.current_hp}/{selectedUnit.wg_unit_types?.hp}</span>
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="font-mono" style={{ color: '#6e7681' }}>ATK {selectedUnit.wg_unit_types?.attack} | DEF {selectedUnit.wg_unit_types?.defense} | MOV {Math.max(0, (selectedUnit.wg_unit_types?.movement || 0) - (selectedUnit.moves_used || 0))}/{selectedUnit.wg_unit_types?.movement}</span>
-                <div className="flex gap-1">
-                  {selectedUnit.wg_unit_types?.name === 'Engineer' ? (
-                    <>
-                      {(!selectedUnit.has_attacked) && (
-                        <button
-                          onClick={() => setMode('build')}
-                          className="px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-                          style={mode === 'build'
-                            ? { backgroundColor: '#1a3a2a', color: '#7ee787', border: '1px solid #2a5a3a' }
-                            : { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
-                        >
-                          Build
-                        </button>
-                      )}
-                      {(!selectedUnit.has_attacked) && (
-                        <button
-                          onClick={() => setMode('destroy')}
-                          className="px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-                          style={mode === 'destroy'
-                            ? { backgroundColor: '#4c1a1a', color: '#f47067', border: '1px solid #6e2b2b' }
-                            : { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
-                        >
-                          Destroy
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    (!selectedUnit.has_attacked) && (
-                      <button
-                        onClick={() => setMode('attack')}
-                        className="px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-                        style={mode === 'attack'
-                          ? { backgroundColor: '#4c1a1a', color: '#f47067', border: '1px solid #6e2b2b' }
-                          : { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
-                      >
-                        Attack
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
-              {selectedAutoPath && selectedUnit.owner_id === currentPlayer?.player_id && (
-                <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #1a2a4a' }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#6090c0' }}>
-                      Auto-path ({selectedAutoPath.length} tiles)
-                    </span>
-                    <button
-                      onClick={async () => {
-                        try { await clearAutoPath(selectedUnit.id) } catch (err) { setError(err.message) }
-                      }}
-                      className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded cursor-pointer"
-                      style={{ backgroundColor: '#2a1a1a', color: '#f47067', border: '1px solid #4a2a2a' }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-              {canStartMining && (
-                <button
-                  onClick={async () => {
-                    try { await excavate(selectedUnit.id) } catch (err) { setError(err.message) }
-                  }}
-                  className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-                  style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
-                >
-                  Start Mining
-                </button>
-              )}
-              {isMining && (
-                <div className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded text-center"
-                  style={{ backgroundColor: '#1a2a1a', color: '#50b050', border: '1px solid #2a4a2a' }}>
-                  Mining — Layer {selectedUnit.upgrades.mining.layer}/120
-                </div>
-              )}
-              {isMiningExhausted && (
-                <div className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded text-center"
-                  style={{ backgroundColor: '#2a1a1a', color: '#8b949e', border: '1px solid #3a2a2a' }}>
-                  Mining Exhausted
-                </div>
-              )}
-              {isNearSpaceGuild && (
-                <button
-                  onClick={() => setError('Trade functionality coming soon!')}
-                  className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-                  style={{ backgroundColor: '#1a2a3a', color: '#6cb4e6', border: '1px solid #264a6a' }}
-                >
-                  Trade with Space Guild
-                </button>
-              )}
-              {selectedUnit.owner_id === currentPlayer?.player_id && selectedUnit.wg_unit_types?.name === 'Armor Transport' && (() => {
-                const nearbyStruct = allUnits.filter(u =>
-                  u.owner_id === currentPlayer?.player_id &&
-                  (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Base') &&
-                  (u.board || 'ground') === (selectedUnit.board || 'ground') &&
-                  hexDistance(u.grid_row, u.grid_col, selectedUnit.grid_row, selectedUnit.grid_col) <= 2
-                )
-                if (nearbyStruct.length === 0) return null
-                return nearbyStruct.map(struct => {
-                  const structUpgrades = struct.upgrades || {}
-                  const lb = structUpgrades.loadingBay || []
-                  const maxSlots = struct.wg_unit_types?.name === 'Base' ? 1 : 2
-                  const isFull = lb.length >= maxSlots
-                  return (
-                    <button
-                      key={struct.id}
-                      onClick={async () => {
-                        try {
-                          await dockTransport(struct.id, selectedUnit.id)
-                          setSelectedUnitId(null)
-                          setSpaceGuildOpen(false)
-                          setCommandShipUnitId(struct.id)
-                          setPanelOpen(true)
-                        } catch (err) { setError(err.message) }
-                      }}
-                      disabled={isFull}
-                      className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
-                      style={{ backgroundColor: '#1a2a3a', color: '#6080a0', border: '1px solid #304a6a' }}
-                    >
-                      Enter Loading Bay
-                    </button>
-                  )
-                })
-              })()}
-              {selectedUnit.wg_unit_types?.name === 'Armor Transport' && selectedUnit.upgrades?.loadedUnits?.length > 0 && (
-                <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
-                  <div className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
-                    Loaded Units ({selectedUnit.upgrades.loadedUnits.length}/4)
-                  </div>
-                  {selectedUnit.upgrades.loadedUnits.map((lu, li) => {
-                    const luType = allUnitTypes.find(ut => ut.id === lu.typeId)
-                    return (
-                      <div key={li} className="flex items-center gap-2 py-0.5">
-                        <img src={getUnitIcon(luType)} alt={lu.typeName} className="w-5 h-5 object-contain" />
-                        <span className="text-xs" style={{ color: '#c9d1d9' }}>{lu.typeName}</span>
-                        <span className="text-[10px] font-mono ml-auto" style={{ color: '#8b949e' }}>HP {lu.hp}</span>
-                      </div>
-                    )
-                  })}
-                  {selectedUnit.owner_id === currentPlayer?.player_id && (
-                    <button
-                      onClick={() => {
-                        setUnitDeployFromTransportInfo({ transportId: selectedUnit.id })
-                        setSelectedUnitId(null)
-                      }}
-                      className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-                      style={{ backgroundColor: '#1a3a2a', color: '#7ee787', border: '1px solid #2a5a3a' }}
-                    >
-                      Deploy Unit
-                    </button>
-                  )}
-                </div>
-              )}
-              {selectedUnit.owner_id === currentPlayer?.player_id && selectedUnit.wg_unit_types?.name !== 'Armor Transport' && !['Command Center', 'Command Ship', 'Base', 'Factory', 'Mining Station'].includes(selectedUnit.wg_unit_types?.name) && (() => {
-                const nearbyTransports = units.filter(u =>
-                  u.owner_id === currentPlayer?.player_id &&
-                  u.wg_unit_types?.name === 'Armor Transport' &&
-                  (u.board || 'ground') === (selectedUnit.board || 'ground') &&
-                  hexDistance(u.grid_row, u.grid_col, selectedUnit.grid_row, selectedUnit.grid_col) === 1
-                )
-                if (nearbyTransports.length === 0) return null
-                const cantReenter = !!selectedUnit.upgrades?.deployedFromTransport
-                return nearbyTransports.map(transport => {
-                  const loaded = transport.upgrades?.loadedUnits || []
-                  const isFull = loaded.length >= 4
-                  return (
-                    <button
-                      key={transport.id}
-                      onClick={async () => {
-                        try {
-                          await boardSoldierToTransport(selectedUnit.id, transport.id)
-                          setSelectedUnitId(null)
-                        } catch (err) { setError(err.message) }
-                      }}
-                      disabled={isFull || cantReenter}
-                      className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
-                      style={{ backgroundColor: '#1a2a3a', color: '#6080a0', border: '1px solid #304a6a' }}
-                    >
-                      Enter Transport ({loaded.length}/4){cantReenter ? ' — Just Deployed' : ''}
-                    </button>
-                  )
-                })
-              })()}
-              {selectedUnit.owner_id === currentPlayer?.player_id && (() => {
-                const unitLevel = selectedUnit.upgrades?.level || 0
-                const maxLevel = 5
-                const upgradeCost = (unitLevel + 1) * 5
-                const canAfford = isAdmin || (economy?.teamGold ?? 0) >= upgradeCost
-                return (
-                  <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>Unit Level</span>
-                      <span className="text-[10px] font-mono" style={{ color: '#8b949e' }}>Lv {unitLevel}/{maxLevel}</span>
-                    </div>
-                    <div className="flex gap-0.5 mb-2">
-                      {Array.from({ length: maxLevel }, (_, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 h-1.5 rounded-full"
-                          style={{
-                            backgroundColor: i < unitLevel ? '#cca43b' : '#21262d',
-                            border: `1px solid ${i < unitLevel ? '#cca43b' : '#30363d'}`,
-                          }}
-                        />
-                      ))}
-                    </div>
-                    {unitLevel < maxLevel ? (
-                      <button
-                        onClick={async () => {
-                          try { await levelUpUnit(selectedUnit.id) } catch (err) { setError(err.message) }
-                        }}
-                        disabled={!canAfford}
-                        className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
-                        style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
-                      >
-                        Level Up (⚒{upgradeCost})
-                      </button>
-                    ) : (
-                      <div className="text-[10px] font-semibold text-center py-1" style={{ color: '#cca43b' }}>
-                        MAX LEVEL
-                      </div>
-                    )}
-                  </div>
-                )
-              })()}
-            </div>
-          )}
 
           <div className="flex gap-2 lg:flex-col">
             <button
