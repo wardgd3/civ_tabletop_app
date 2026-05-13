@@ -694,7 +694,8 @@ export default function GameBoard({
       for (const [nr, nc] of neighbors) {
         const nk = `${nr}-${nc}`
         if (isImpassable(nr, nc, unitName)) continue
-        if (getUnitAt(nr, nc)) continue
+        const blocker = getUnitAt(nr, nc)
+        if (blocker && blocker.id !== unit.id) continue
         const nTile = tileMap.get(nk)
         const nHasRoad = nTile?.has_road
         let cost = 1
@@ -3126,8 +3127,8 @@ export default function GameBoard({
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <div className="rounded-lg p-6 w-full mx-4" style={{ maxWidth: 576, backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
             <div className="text-base font-semibold mb-4 text-center" style={{ color: '#c9d1d9' }}>Select Your Command Ship</div>
-            <div className="grid grid-cols-5 gap-3 mb-4">
-              {[2, 3, 4, 5, 6].map(n => {
+            <div className="grid grid-cols-6 gap-3 mb-4">
+              {[2, 3, 4, 5, 6, 7].map(n => {
                 const model = `commandship${n}`
                 return (
                   <button
