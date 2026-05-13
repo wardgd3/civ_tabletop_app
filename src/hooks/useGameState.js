@@ -1169,7 +1169,7 @@ export function useGameState(gameId) {
     if (!convoy || convoy.inTransit) throw new Error('Convoy not available')
 
     const guildConvoys = getGuildConvoys(upgrades)
-    if (guildConvoys.length >= 2) throw new Error('Guild convoy bay is full')
+    if (guildConvoys.length >= 8) throw new Error('Guild convoy bay is full')
     if (guildConvoys.some(gc => gc.inTransit)) throw new Error('A convoy is already en route to the Space Guild')
 
     convoys.splice(convoyIndex, 1)
