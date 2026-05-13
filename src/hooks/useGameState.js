@@ -40,6 +40,18 @@ function hexNeighborsOf(r, c) {
   ]
 }
 
+function getBarracksCapacity(unit) {
+  return unit?.wg_unit_types?.name === 'Battleship' ? 6 : 12
+}
+
+function getConvoySlots(unit) {
+  if (unit?.wg_unit_types?.name === 'Battleship') return 1
+  if (unit?.wg_unit_types?.name === 'Base') return 1
+  return 2
+}
+
+const BATTLESHIP_MATERIAL_COST = { uranium: 1, iron: 50, aluminum: 30 }
+
 function seededRandFromHash(seed) {
   let s = seed | 0
   return () => {
@@ -297,6 +309,22 @@ export function useGameState(gameId) {
       if (!tile.has_road && impassable.has(tile.terrain)) {
         throw new Error(`Cannot deploy on ${tile.terrain}`)
       }
+    }
+
+    if (unitType.name === 'Battleship' && !isAdmin) {
+      const ccForMaterials = units.find(u => u.owner_id === userId && (u.wg_unit_types?.name === 'Command Ship'))
+      if (!ccForMaterials) throw new Error('Need a Command Ship to build a Battleship')
+      const inv = ccForMaterials.upgrades?.inventory || {}
+      for (const [mat, qty] of Object.entries(BATTLESHIP_MATERIAL_COST)) {
+        if ((inv[mat] || 0) < qty) throw new Error(`Not enough ${mat} (need ${qty}, have ${inv[mat] || 0})`)
+      }
+      const newInv = { ...inv }
+      for (const [mat, qty] of Object.entries(BATTLESHIP_MATERIAL_COST)) {
+        newInv[mat] = (newInv[mat] || 0) - qty
+        if (newInv[mat] <= 0) delete newInv[mat]
+      }
+      const ccUpgrades = { ...(ccForMaterials.upgrades || {}), inventory: newInv }
+      await supabase.from('wg_units').update({ upgrades: ccUpgrades }).eq('id', ccForMaterials.id)
     }
 
     const insertData = {
@@ -1043,7 +1071,7 @@ export function useGameState(gameId) {
     if (!convoy || convoy.inTransit) throw new Error('Cannot unload')
 
     const holdingBay = [...(upgrades.holdingBay || [])]
-    if (holdingBay.length >= 12) throw new Error('Holding bay full')
+    if (holdingBay.length >= getBarracksCapacity(ship)) throw new Error('Holding bay full')
 
     const removed = convoy.units.splice(unitIndex, 1)[0]
     holdingBay.push(removed)
@@ -1211,7 +1239,7 @@ export function useGameState(gameId) {
 
     if (isTransport && !isSpaceBoard) {
       const loadingBay = [...(upgrades.loadingBay || [])]
-      const maxSlots = ship.wg_unit_types?.name === 'Base' ? 1 : 2
+      const maxSlots = getConvoySlots(ship)
       if (loadingBay.length >= maxSlots) throw new Error('Loading bay full')
 
       if (!isAdmin && teamGold < ut.cost) throw new Error('Not enough gold')
@@ -1237,7 +1265,7 @@ export function useGameState(gameId) {
       await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
     } else {
       const holdingBay = [...(upgrades.holdingBay || [])]
-      if (holdingBay.length >= 12) throw new Error('Barracks full')
+      if (holdingBay.length >= getBarracksCapacity(ship)) throw new Error('Barracks full')
 
       if (!isAdmin && teamGold < ut.cost) throw new Error('Not enough gold')
 
@@ -1334,7 +1362,7 @@ export function useGameState(gameId) {
 
     const upgrades = struct.upgrades || {}
     const loadingBay = [...(upgrades.loadingBay || [])]
-    const maxSlots = struct.wg_unit_types?.name === 'Base' ? 1 : 2
+    const maxSlots = getConvoySlots(struct)
     if (loadingBay.length >= maxSlots) throw new Error('Loading bay full')
 
     loadingBay.push({
@@ -1404,7 +1432,7 @@ export function useGameState(gameId) {
     if (!transport) throw new Error('Transport not found')
 
     const holdingBay = [...(upgrades.holdingBay || [])]
-    if (holdingBay.length >= 12) throw new Error('Holding bay full')
+    if (holdingBay.length >= getBarracksCapacity(struct)) throw new Error('Holding bay full')
 
     const removed = transport.units.splice(unitIndex, 1)[0]
     holdingBay.push(removed)

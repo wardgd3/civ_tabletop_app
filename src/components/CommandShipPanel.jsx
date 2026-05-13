@@ -282,6 +282,88 @@ const BASE_COMPARTMENTS = [
   },
 ]
 
+const BATTLESHIP_COMPARTMENTS = [
+  {
+    id: 'reactor',
+    name: 'Reactor Core',
+    description: 'Powers all ship systems.',
+    icon: 'reactor',
+    color: '#e6a020',
+    slots: 1,
+    tiers: [
+      { name: 'Fission Reactor', desc: 'Basic energy output' },
+      { name: 'Fusion Reactor', desc: 'Double energy output' },
+      { name: 'Quantum Reactor', desc: 'Maximum energy output' },
+    ],
+  },
+  {
+    id: 'shields',
+    name: 'Shields',
+    description: 'Protects the ship from damage.',
+    icon: 'shields',
+    color: '#40a0e0',
+    slots: 1,
+    tiers: [
+      { name: 'Deflector Array', desc: 'Basic shielding' },
+      { name: 'Adaptive Matrix', desc: 'Regenerating shields' },
+      { name: 'Phase Shields', desc: 'Maximum protection' },
+    ],
+  },
+  {
+    id: 'cannon',
+    name: 'Cannon',
+    description: 'Weapon systems. Each slot mounts a weapon.',
+    icon: 'cannon',
+    color: '#e05050',
+    slots: 3,
+    tiers: [
+      { name: 'Railgun Turret', desc: 'Basic kinetic weapon' },
+      { name: 'Plasma Cannon', desc: 'Energy weapon' },
+      { name: 'Antimatter Cannon', desc: 'Maximum firepower' },
+    ],
+  },
+  {
+    id: 'missiles',
+    name: 'Missile Systems',
+    description: 'Upgrade to unlock new missile types. Lv1: Tactical, Lv2: Cruise, Lv3: IPBM.',
+    icon: 'missiles',
+    color: '#c060e0',
+    slots: 1,
+    tiers: [
+      { name: 'Tactical Missile System', desc: 'Unlocks short-range guided missiles' },
+      { name: 'Cruise Missile System', desc: 'Unlocks long-range precision strike' },
+      { name: 'IPBM System', desc: 'Unlocks interplanetary ballistic missiles' },
+    ],
+  },
+  {
+    id: 'transport',
+    name: 'Convoy Bay',
+    description: 'Build convoy ships to transport ground units. 5 turns to reach ground.',
+    icon: 'transport',
+    color: '#50b0b0',
+    special: 'transport',
+    slots: 1,
+  },
+  {
+    id: 'holding_bay',
+    name: 'Barracks',
+    description: 'Produce and store up to 6 units. Deploy them to the ground board.',
+    icon: 'holding_bay',
+    color: '#a08040',
+    special: 'holding_bay',
+    slots: 6,
+  },
+  {
+    id: 'inventory',
+    name: 'Inventory',
+    description: 'Ores and minerals collected by mining stations.',
+    icon: 'inventory',
+    color: '#70a0d0',
+    special: 'inventory',
+    slots: 0,
+  },
+]
+
 const CONVOY_COST = 15
 const CONVOY_CAPACITY = 4
 const CONVOY_TRANSIT_TURNS = 5
@@ -289,6 +371,7 @@ const HOLDING_BAY_CAPACITY = 12
 
 export function getCompartments(unitName) {
   if (unitName === 'Command Ship') return COMMAND_SHIP_COMPARTMENTS
+  if (unitName === 'Battleship') return BATTLESHIP_COMPARTMENTS
   if (unitName === 'Command Center') return COMMAND_CENTER_COMPARTMENTS
   if (unitName === 'Base') return BASE_COMPARTMENTS
   return []
@@ -737,7 +820,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
   )
 }
 
-const STRUCTURE_NAMES = new Set(['Command Center', 'Command Ship', 'Base', 'Factory', 'Mining Station'])
+const STRUCTURE_NAMES = new Set(['Command Center', 'Command Ship', 'Base', 'Factory', 'Mining Station', 'Battleship'])
 
 function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp, unitTypes, teamGold }) {
   const [selectedSlot, setSelectedSlot] = useState(null)
@@ -1181,7 +1264,7 @@ export default function CommandShipPanel({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <img
-            src={isCommandShip ? `/assets/${unit.upgrades?.shipModel || 'commandship2'}.png` : unitName === 'Base' ? '/assets/base.png' : '/assets/command center.png'}
+            src={isCommandShip ? `/assets/${unit.upgrades?.shipModel || 'commandship2'}.png` : unitName === 'Battleship' ? '/assets/battleship.png' : unitName === 'Base' ? '/assets/base.png' : '/assets/command center.png'}
             alt={unitName}
             className="w-6 h-6 object-contain"
           />

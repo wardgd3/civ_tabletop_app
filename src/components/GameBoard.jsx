@@ -1337,7 +1337,7 @@ export default function GameBoard({
     }
 
     if (showUnit) {
-      if ((unit.wg_unit_types?.name === 'Command Ship' || unit.wg_unit_types?.name === 'Command Center' || unit.wg_unit_types?.name === 'Base') && unit.owner_id === currentPlayer?.player_id) {
+      if ((unit.wg_unit_types?.name === 'Command Ship' || unit.wg_unit_types?.name === 'Command Center' || unit.wg_unit_types?.name === 'Base' || unit.wg_unit_types?.name === 'Battleship') && unit.owner_id === currentPlayer?.player_id) {
         setCommandShipUnitId(prev => prev === unit.id ? null : unit.id)
         setSelectedUnitId(null)
         setSpaceGuildOpen(false)
@@ -1987,11 +1987,18 @@ export default function GameBoard({
               const alreadyHasCC = isCC && hasCommandStructureOnThisBoard
               const buildingNeedsCC = isBuilding && !hasCommandCenter
               const cantAfford = !isAdmin && (economy?.teamGold ?? currentPlayer?.gold ?? 0) < ut.cost
+              const isBattleship = ut.name === 'Battleship'
+              let missingMats = false
+              if (isBattleship && !isAdmin) {
+                const csUnit = units.find(u => u.owner_id === currentPlayer?.player_id && u.wg_unit_types?.name === 'Command Ship')
+                const inv = csUnit?.upgrades?.inventory || {}
+                missingMats = !csUnit || (inv.uranium || 0) < 1 || (inv.iron || 0) < 50 || (inv.aluminum || 0) < 30
+              }
               return (
               <button
                 key={ut.id}
                 onClick={() => setSelectedUnitType(ut.id)}
-                disabled={cantAfford || needsCC || alreadyHasCC || buildingNeedsCC}
+                disabled={cantAfford || needsCC || alreadyHasCC || buildingNeedsCC || missingMats}
                 className="flex flex-col lg:flex-row items-center lg:justify-between p-2 lg:p-3 rounded text-sm lg:text-base transition-colors disabled:opacity-20 cursor-pointer gap-1 lg:gap-3"
                 style={selectedUnitType === ut.id
                   ? { backgroundColor: '#1a2a3a', color: '#c9d1d9', border: '1px solid #3a4a5a' }
@@ -2000,6 +2007,9 @@ export default function GameBoard({
                 <img src={getUnitIcon(ut)} alt={ut.name} className="w-10 h-10 lg:w-16 lg:h-16 object-contain shrink-0" />
                 <span className="font-medium text-xs lg:text-sm truncate max-w-full">{ut.name}</span>
                 <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>⚒{ut.cost}</span>
+                {isBattleship && (
+                  <span className="text-[8px] lg:text-[10px] font-mono" style={{ color: '#6e7681' }}>1 uranium · 50 iron · 30 aluminum</span>
+                )}
               </button>
               )
             })}
