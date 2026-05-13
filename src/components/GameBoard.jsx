@@ -1875,8 +1875,8 @@ export default function GameBoard({
             onUnloadToHoldingBay={async (shipId, convoyIdx, unitIdx) => {
               try { await unloadToHoldingBay(shipId, convoyIdx, unitIdx) } catch (err) { setError(err.message) }
             }}
-            onSendConvoy={async (shipId, convoyIdx) => {
-              try { await sendConvoy(shipId, convoyIdx) } catch (err) { setError(err.message) }
+            onSendConvoy={async (shipId, convoyIdx, destId) => {
+              try { await sendConvoy(shipId, convoyIdx, destId) } catch (err) { setError(err.message) }
             }}
             onDeployFromBay={(shipId, bayIdx) => {
               setBayDeployInfo({ shipId, bayIndex: bayIdx })
@@ -1919,6 +1919,7 @@ export default function GameBoard({
             unitTypes={allUnitTypes || unitTypes}
             teamGold={economy?.teamGold ?? currentPlayer?.gold ?? 0}
             playerResources={currentPlayer?.resources || {}}
+            allUnits={allUnits}
           />
         )
       })()}

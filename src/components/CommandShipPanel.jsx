@@ -392,9 +392,9 @@ function getSlots(upgrades, compartmentId, slotCount) {
   return slots
 }
 
-function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isCC, teamGold, playerResources }) {
+function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isCC, teamGold, playerResources, destinations }) {
   const [goldAmount, setGoldAmount] = useState('')
-  const sendLabel = isCC ? 'Send to Space' : 'Send to Ground'
+  const [selectedDest, setSelectedDest] = useState(destinations?.length === 1 ? destinations[0].id : null)
   const cargo = convoy.cargo || { gold: 0, resources: {} }
   const hasAnyCargo = (cargo.gold || 0) > 0 || Object.values(cargo.resources || {}).some(v => v > 0)
   const hasAnyLoad = (convoy.units || []).length > 0 || hasAnyCargo
@@ -582,22 +582,42 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
         </div>
       )}
 
+      {destinations && destinations.length > 0 && (
+        <div className="mt-2 mb-1">
+          <div className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
+            Destination
+          </div>
+          <select
+            value={selectedDest || ''}
+            onChange={e => setSelectedDest(e.target.value || null)}
+            className="w-full px-1.5 py-1 text-[10px] rounded"
+            style={{ backgroundColor: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
+          >
+            <option value="">Select destination...</option>
+            {destinations.map(d => (
+              <option key={d.id} value={d.id}>{d.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <button
-        onClick={() => onSendConvoy(unit.id, convoyIndex)}
-        className="w-full mt-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+        onClick={() => onSendConvoy(unit.id, convoyIndex, selectedDest)}
+        disabled={!selectedDest}
+        className="w-full mt-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
         style={{
-          backgroundColor: hasAnyLoad ? '#d29922' + '20' : '#21262d',
-          color: hasAnyLoad ? '#d29922' : '#8b949e',
-          border: `1px solid ${hasAnyLoad ? '#d29922' + '40' : '#30363d'}`,
+          backgroundColor: selectedDest ? '#d29922' + '20' : '#21262d',
+          color: selectedDest ? '#d29922' : '#8b949e',
+          border: `1px solid ${selectedDest ? '#d29922' + '40' : '#30363d'}`,
         }}
       >
-        {hasAnyLoad ? `${sendLabel} (${CONVOY_TRANSIT_TURNS} turns)` : `Return Empty (${CONVOY_TRANSIT_TURNS} turns)`}
+        {selectedDest ? `Send (${CONVOY_TRANSIT_TURNS} turns)` : 'Select Destination'}
       </button>
     </div>
   )
 }
 
-function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isAdmin, teamGold, playerResources }) {
+function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isAdmin, teamGold, playerResources, destinations }) {
   const [selectedConvoy, setSelectedConvoy] = useState(null)
   const convoys = upgrades.convoys || []
   const maxConvoys = comp.slots
@@ -662,6 +682,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
             onLoadCargo={onLoadCargo} onUnloadCargo={onUnloadCargo}
             groundUnits={groundUnits} comp={comp} isCC={true}
             teamGold={teamGold} playerResources={playerResources}
+            destinations={destinations}
           />
         )}
 
@@ -814,6 +835,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
           onLoadCargo={onLoadCargo} onUnloadCargo={onUnloadCargo}
           groundUnits={groundUnits} comp={comp} isCC={false}
           teamGold={teamGold} playerResources={playerResources}
+          destinations={destinations}
         />
       )}
     </div>
@@ -1247,7 +1269,7 @@ export default function CommandShipPanel({
   onLoadCargo, onUnloadCargo,
   onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
   onBuyMissile,
-  groundUnits, unitTypes, teamGold, playerResources,
+  groundUnits, unitTypes, teamGold, playerResources, allUnits,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
@@ -1255,6 +1277,17 @@ export default function CommandShipPanel({
   const unitName = unit.wg_unit_types?.name || 'Command Ship'
   const compartments = getCompartments(unitName)
   const isCommandShip = unitName === 'Command Ship'
+
+  const CONVOY_TARGETS = new Set(['Command Center', 'Command Ship', 'Battleship'])
+  const destinations = (allUnits || [])
+    .filter(u => u.owner_id === unit.owner_id && u.id !== unit.id && CONVOY_TARGETS.has(u.wg_unit_types?.name))
+    .filter(u => {
+      const comps = getCompartments(u.wg_unit_types?.name)
+      return comps.some(c => c.special === 'transport')
+    })
+    .map(u => ({ id: u.id, label: u.wg_unit_types?.name }))
+  const spaceGuildDest = unitName === 'Command Ship' ? [{ id: 'space_guild', label: 'Space Guild' }] : []
+  const allDestinations = [...destinations, ...spaceGuildDest]
 
   const comp = selectedComp ? compartments.find(c => c.id === selectedComp) : null
   const slots = comp && !comp.special ? getSlots(upgrades, comp.id, comp.slots) : []
@@ -1398,6 +1431,7 @@ export default function CommandShipPanel({
               isAdmin={isAdmin}
               teamGold={teamGold}
               playerResources={playerResources}
+              destinations={allDestinations}
             />
           ) : comp.special === 'holding_bay' ? (
             <HoldingBayPanel

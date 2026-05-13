@@ -1094,7 +1094,7 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
-  async function sendConvoy(shipId, convoyIndex) {
+  async function sendConvoy(shipId, convoyIndex, destinationId) {
     const ship = units.find(u => u.id === shipId)
     if (!ship) throw new Error('Ship not found')
 
@@ -1103,10 +1103,19 @@ export function useGameState(gameId) {
     const convoy = convoys[convoyIndex]
     if (!convoy || convoy.inTransit) throw new Error('Already in transit')
 
-    const isCommandShip = ship.wg_unit_types?.name === 'Command Ship'
-    const destType = isCommandShip ? 'Command Center' : 'Command Ship'
-    const dest = units.find(u => u.owner_id === ship.owner_id && u.wg_unit_types?.name === destType)
-    if (!dest) throw new Error(`No ${destType} found to receive convoy`)
+    if (destinationId === 'space_guild') {
+      return sendConvoyToGuild(shipId, convoyIndex)
+    }
+
+    let dest
+    if (destinationId) {
+      dest = units.find(u => u.id === destinationId && u.owner_id === ship.owner_id)
+    } else {
+      const isCommandShip = ship.wg_unit_types?.name === 'Command Ship'
+      const destType = isCommandShip ? 'Command Center' : 'Command Ship'
+      dest = units.find(u => u.owner_id === ship.owner_id && u.wg_unit_types?.name === destType)
+    }
+    if (!dest) throw new Error('No destination found to receive convoy')
 
     convoys.splice(convoyIndex, 1)
     await supabase.from('wg_units').update({ upgrades: { ...upgrades, convoys } }).eq('id', shipId)
