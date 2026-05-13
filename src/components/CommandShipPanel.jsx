@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GROUND_ORES, SPACE_ORES, SHIELD_HP } from '../hooks/useGameState'
+import { GROUND_ORES, SPACE_ORES, SHIELD_HP, getEffectiveAttackRange } from '../hooks/useGameState'
 
 const ICON_STYLE = { width: 14, height: 14, fill: 'none', stroke: '#8b949e', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }
 
@@ -1610,7 +1610,7 @@ function InventoryPanel({ unit, upgrades, isCommandShip }) {
 }
 
 export default function CommandShipPanel({
-  unit, onClose, onUpgrade, onMove, isAdmin,
+  unit, onClose, onUpgrade, onMove, onAttack, isAdmin,
   onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay, onProduceUnit,
   onLoadCargo, onUnloadCargo,
   onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
@@ -1676,6 +1676,15 @@ export default function CommandShipPanel({
               style={{ backgroundColor: '#1a3a5c', color: '#79c0ff', border: '1px solid #2a5a8c' }}
             >
               Move
+            </button>
+          )}
+          {(isAdmin || !unit.has_attacked) && getEffectiveAttackRange(unit) > 0 && (
+            <button
+              onClick={onAttack}
+              className="flex-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+              style={{ backgroundColor: '#4c1a1a', color: '#f47067', border: '1px solid #6e2b2b' }}
+            >
+              Attack
             </button>
           )}
         </div>

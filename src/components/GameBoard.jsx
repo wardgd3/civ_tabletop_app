@@ -2044,6 +2044,12 @@ export default function GameBoard({
               setSelectedUnitId(csUnit.id)
               setMode('select')
             }}
+            onAttack={() => {
+              setSelectedUnitId(csUnit.id)
+              setMode('attack')
+              setCommandShipUnitId(null)
+              setPanelOpen(false)
+            }}
             onUpgrade={async (unitId, compartment, slotIndex, tierLevel) => {
               try { await upgradeShipCompartment(unitId, compartment, slotIndex, tierLevel) } catch (err) { setError(err.message) }
             }}
