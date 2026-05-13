@@ -1524,11 +1524,13 @@ export default function GameBoard({
 
     if (showUnit) {
       if ((unit.wg_unit_types?.name === 'Command Ship' || unit.wg_unit_types?.name === 'Command Center' || unit.wg_unit_types?.name === 'Base' || unit.wg_unit_types?.name === 'Battleship') && unit.owner_id === currentPlayer?.player_id) {
-        setCommandShipUnitId(prev => prev === unit.id ? null : unit.id)
-        setSelectedUnitId(null)
+        const toggling = commandShipUnitId === unit.id
+        setCommandShipUnitId(toggling ? null : unit.id)
+        setSelectedUnitId(toggling ? null : unit.id)
+        setMode('select')
         setSpaceGuildOpen(false)
         setInspectedUnitId(null)
-        setPanelOpen(true)
+        setPanelOpen(!toggling)
         return
       }
       if (unit.owner_id === currentPlayer?.player_id && isMyTurn) {
