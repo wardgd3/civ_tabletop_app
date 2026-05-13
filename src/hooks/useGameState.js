@@ -174,6 +174,8 @@ export function useGameState(gameId) {
   const pendingFetchRef = useRef(false)
   const attackingRef = useRef(new Set())
   const npcSpawnedRef = useRef(false)
+  const missileFiredRef = useRef(new Set())
+  const lastTurnPlayerRef = useRef(null)
 
   const currentPlayer = players.find(p => p.player_id === userId)
   const myColor = currentPlayer?.color
@@ -181,6 +183,12 @@ export function useGameState(gameId) {
     ? game.current_team_color === myColor && !currentPlayer?.has_ended_turn
     : game?.current_player_id === userId
   const isAdmin = !!game?.is_admin
+
+  const turnKey = game?.current_player_id || game?.current_team_color
+  if (turnKey && turnKey !== lastTurnPlayerRef.current) {
+    lastTurnPlayerRef.current = turnKey
+    missileFiredRef.current.clear()
+  }
 
   const teamPlayers = players.filter(p => p.color === myColor)
   const teamPlayerIds = teamPlayers.map(p => p.player_id)
@@ -924,7 +932,7 @@ export function useGameState(gameId) {
     if (!ship) throw new Error('Ship not found')
 
     const upgrades = ship.upgrades || {}
-    if (upgrades.missileFiredThisTurn) throw new Error('Already fired a missile this turn')
+    if (missileFiredRef.current.has(shipId)) throw new Error('Already fired a missile this turn')
     const munitions = { ...(upgrades.munitions || {}) }
     if ((munitions[missileType] || 0) <= 0) throw new Error('No munitions of this type')
 
@@ -951,8 +959,9 @@ export function useGameState(gameId) {
     if (board === 'ground') {
       const pendingStrikes = [...(upgrades.pendingStrikes || [])]
       pendingStrikes.push({ row: targetRow, col: targetCol, damage, missileType, warheadType: warheadType || null, splashRadius })
-      const newUpgrades = { ...upgrades, munitions, pendingStrikes, missileFiredThisTurn: true }
+      const newUpgrades = { ...upgrades, munitions, pendingStrikes }
       await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+      missileFiredRef.current.add(shipId)
 
       if (warheadType) {
         const craterRadius = warheadType === 'thermonuclear' ? 5 : 3
@@ -1048,8 +1057,9 @@ export function useGameState(gameId) {
       }
     }
 
-    const newUpgrades = { ...upgrades, munitions, missileFiredThisTurn: true }
+    const newUpgrades = { ...upgrades, munitions }
     await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+    missileFiredRef.current.add(shipId)
 
     await addBattleLogEntry({
       type: 'missile_strike',
@@ -2423,16 +2433,13 @@ export function useGameState(gameId) {
     const { data: freshUnits } = await supabase.from('wg_units').select('id, upgrades').eq('game_id', gameId).eq('is_alive', true)
     const myUnits = (freshUnits || []).filter(u => {
       const owner = units.find(lu => lu.id === u.id)?.owner_id
-      return owner === userId && ((u.upgrades?.hangarCooldown || 0) > 0 || u.upgrades?.missileFiredThisTurn)
+      return owner === userId && (u.upgrades?.hangarCooldown || 0) > 0
     })
     for (const u of myUnits) {
       const newUpgrades = { ...u.upgrades }
-      if (newUpgrades.hangarCooldown) {
-        const cd = newUpgrades.hangarCooldown - 1
-        if (cd <= 0) delete newUpgrades.hangarCooldown
-        else newUpgrades.hangarCooldown = cd
-      }
-      delete newUpgrades.missileFiredThisTurn
+      const cd = newUpgrades.hangarCooldown - 1
+      if (cd <= 0) delete newUpgrades.hangarCooldown
+      else newUpgrades.hangarCooldown = cd
       await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', u.id)
     }
   }
@@ -2571,6 +2578,7 @@ export function useGameState(gameId) {
     setAutoPath, clearAutoPath,
     deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar,
     persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
+    missileFiredShips: missileFiredRef.current,
     refresh: fetchAll,
   }
 }

@@ -107,7 +107,7 @@ export default function GameBoard({
   game, players, units, allUnits, unitTypes, allUnitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-  excavate, upgradeShipCompartment, levelUpUnit, buyMissile, fireMissile, produceWarhead, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
+  excavate, upgradeShipCompartment, levelUpUnit, buyMissile, fireMissile, produceWarhead, missileFiredShips, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
   setAutoPath, clearAutoPath,
@@ -2075,6 +2075,7 @@ export default function GameBoard({
               }
               try { await fireMissile(shipId, missileType, targetRow, targetCol, targetBoard, warheadType) } catch (err) { setError(err.message) }
             }}
+            missileFiredShips={missileFiredShips}
             onProduceWarhead={async (unitId, warheadType) => {
               try { await produceWarhead(unitId, warheadType) } catch (err) { setError(err.message) }
             }}

@@ -1631,7 +1631,7 @@ export default function CommandShipPanel({
   onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay, onProduceUnit,
   onLoadCargo, onUnloadCargo,
   onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
-  onBuyMissile, onFireMissile, onProduceWarhead,
+  onBuyMissile, onFireMissile, onProduceWarhead, missileFiredShips,
   onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar,
   groundUnits, unitTypes, teamGold, playerResources, allUnits, nearbyUnits,
 }) {
@@ -1999,7 +1999,7 @@ export default function CommandShipPanel({
                 const selMissile = MISSILE_TYPES.find(m => m.key === selectedMissile)
                 const ipbmWarhead = selectedMissile === 'ipbm' ? selectedWarhead : null
                 const needsWarhead = selectedMissile === 'ipbm' && ipbmWarhead && (munitions[ipbmWarhead] || 0) <= 0
-                const canFire = selMissile && (munitions[selMissile.key] || 0) > 0 && !upgrades.missileFiredThisTurn && !needsWarhead
+                const canFire = selMissile && (munitions[selMissile.key] || 0) > 0 && !missileFiredShips?.has(unit.id) && !needsWarhead
                 const isIpbmGround = selectedMissile === 'ipbm' && ipbmTarget === 'ground'
                 const whInfo = ipbmWarhead ? WARHEAD_TYPES[ipbmWarhead] : null
 
@@ -2031,7 +2031,7 @@ export default function CommandShipPanel({
                         border: `1px solid ${canFire ? '#e05050' : '#30363d'}`,
                       }}
                     >
-                      {upgrades.missileFiredThisTurn
+                      {missileFiredShips?.has(unit.id)
                         ? 'Missile Fired'
                         : canFire
                         ? isIpbmGround ? `Launch${whInfo ? ' ' + whInfo.name : ''} IPBM (Strikes Next Turn)` : `Fire${whInfo ? ' ' + whInfo.name : ''} Missile — Select Target`
