@@ -485,6 +485,19 @@ export default function GameBoard({
     return map
   }, [tiles, tileMap, themeColors, activeBoard, rows, cols, game?.terrain_theme])
 
+  const miningAffectedTiles = useMemo(() => {
+    const set = new Set()
+    for (const u of units) {
+      const m = u.upgrades?.mining
+      if (m && m.active && m.layer >= 1) {
+        for (const [nr, nc] of hexNeighborsBoard(m.centerRow, m.centerCol, rows, cols)) {
+          set.add(`${nr}-${nc}`)
+        }
+      }
+    }
+    return set
+  }, [units, rows, cols])
+
   function getTileColor(row, col, isVisible, isDiscovered) {
     const isSpace = activeBoard === 'space'
     const fogColor = isSpace ? '#0d1117' : '#1a2029'
@@ -492,6 +505,7 @@ export default function GameBoard({
     if (!tile) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : fogColor
     const terrain = TERRAIN_BY_ID[tile.terrain]
     if (!terrain) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : fogColor
+    if (miningAffectedTiles.has(`${row}-${col}`) && isVisible) return '#9a9590'
     if (tile.has_road) {
       if (isVisible) return '#8a7a60'
       if (isDiscovered) return '#5a5040'
