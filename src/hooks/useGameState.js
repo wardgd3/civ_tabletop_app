@@ -2324,7 +2324,8 @@ export function useGameState(gameId) {
             ? [[-1,0],[-1,1],[0,1],[1,1],[1,0],[0,-1]]
             : [[-1,-1],[-1,0],[0,1],[1,0],[1,-1],[0,-1]]
 
-          let stepBestR = curR, stepBestC = curC, stepBestDist = hexDistance(curR, curC, targetR, targetC)
+          const curDist = hexDistance(curR, curC, targetR, targetC)
+          const candidates = []
           for (const [dr, dc] of dirs) {
             const nr = curR + dr, nc = curC + dc
             if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue
@@ -2333,19 +2334,18 @@ export function useGameState(gameId) {
             if (tile && spaceImpassable.has(tile.terrain)) continue
             if (unitPositions.has(nk)) continue
             if (npcPositions.has(nk) && !(nr === npcUnits[ni].grid_row && nc === npcUnits[ni].grid_col)) continue
-            const d = hexDistance(nr, nc, targetR, targetC)
-            if (d < stepBestDist) {
-              stepBestR = nr
-              stepBestC = nc
-              stepBestDist = d
-            }
+            candidates.push({ r: nr, c: nc, dist: hexDistance(nr, nc, targetR, targetC) })
           }
-          if (stepBestR === curR && stepBestC === curC) break
+          if (candidates.length === 0) break
+          candidates.sort((a, b) => a.dist - b.dist)
+          const best = candidates[0]
+          if (best.dist > curDist + 1) break
           npcPositions.delete(`${curR}-${curC}`)
-          curR = stepBestR
-          curC = stepBestC
+          curR = best.r
+          curC = best.c
           npcPositions.add(`${curR}-${curC}`)
           stepsLeft--
+          if (hexDistance(curR, curC, targetR, targetC) <= attackRange) break
         }
 
         if (curR !== npcUnits[ni].grid_row || curC !== npcUnits[ni].grid_col) {
