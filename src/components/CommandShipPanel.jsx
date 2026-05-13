@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { GROUND_ORES, SPACE_ORES, SHIELD_HP, getEffectiveAttackRange, WARHEAD_TYPES } from '../hooks/useGameState'
 
 const ICON_STYLE = { width: 14, height: 14, fill: 'none', stroke: '#8b949e', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }
@@ -663,8 +663,8 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
             style={{ backgroundColor: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
           >
             <option value="">Select destination...</option>
-            {destinations.map(d => (
-              <option key={d.id} value={d.id}>{d.label}</option>
+            {destinations.map((d, dIdx) => (
+              <option key={d.id} value={d.id}>{d.id !== 'space_guild' ? `${dIdx + 1}. ` : ''}{d.label}</option>
             ))}
           </select>
         </div>
@@ -686,13 +686,25 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
   )
 }
 
-function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isAdmin, teamGold, playerResources, destinations }) {
+function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isAdmin, teamGold, playerResources, destinations, onSetNumberedOverlays }) {
   const [selectedConvoy, setSelectedConvoy] = useState(null)
   const convoys = upgrades.convoys || []
   const maxConvoys = comp.slots
   const isCC = unit.wg_unit_types?.name === 'Command Center'
   const availableConvoys = convoys.map((c, i) => ({ ...c, idx: i })).filter(c => !c.inTransit)
   const inTransitConvoys = convoys.map((c, i) => ({ ...c, idx: i })).filter(c => c.inTransit)
+
+  useEffect(() => {
+    if (selectedConvoy !== null && destinations.length > 0) {
+      onSetNumberedOverlays?.(destinations.filter(d => d.id !== 'space_guild').map((d, i) => ({ unitId: d.id, number: i + 1 })))
+    } else {
+      onSetNumberedOverlays?.([])
+    }
+  }, [selectedConvoy])
+
+  useEffect(() => {
+    return () => onSetNumberedOverlays?.([])
+  }, [])
 
   if (isCC) {
     return (
@@ -1061,7 +1073,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
 
 const HANGAR_UNIT_NAMES = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter', 'Repair Ship'])
 
-function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar, nearbyUnits, comp, unitTypes, teamGold, allUnits }) {
+function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar, nearbyUnits, comp, unitTypes, teamGold, allUnits, onSetNumberedOverlays }) {
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [showProduceMenu, setShowProduceMenu] = useState(false)
   const [showTransferMenu, setShowTransferMenu] = useState(false)
@@ -1083,6 +1095,18 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
     HANGAR_SHIPS.has(u.wg_unit_types?.name) &&
     getCompartments(u.wg_unit_types?.name).some(c => c.special === 'hangar')
   )
+
+  useEffect(() => {
+    if (showTransferMenu || showTransferAllMenu) {
+      onSetNumberedOverlays?.(transferTargets.map((t, i) => ({ unitId: t.id, number: i + 1 })))
+    } else {
+      onSetNumberedOverlays?.([])
+    }
+  }, [showTransferMenu, showTransferAllMenu])
+
+  useEffect(() => {
+    return () => onSetNumberedOverlays?.([])
+  }, [])
 
   const eligibleForHangar = (nearbyUnits || []).filter(u =>
     u.id !== unit.id &&
@@ -1185,7 +1209,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
             Transfer All To
           </div>
           <div className="flex flex-col gap-0.5">
-            {transferTargets.map(target => {
+            {transferTargets.map((target, tIdx) => {
               const targetUpgrades = target.upgrades || {}
               const targetHangar = targetUpgrades.hangar || []
               const targetComp = getCompartments(target.wg_unit_types?.name).find(c => c.special === 'hangar')
@@ -1204,7 +1228,10 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                     cursor: targetFull ? 'default' : 'pointer',
                   }}
                 >
-                  <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{target.wg_unit_types?.name}</span>
+                  <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full mr-1 text-[8px]" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff' }}>{tIdx + 1}</span>
+                    {target.wg_unit_types?.name}
+                  </span>
                   <span className="text-[9px] font-mono" style={{ color: targetFull ? '#e05050' : '#6e7681' }}>
                     {targetHangar.length}/{targetCap}
                   </span>
@@ -1279,7 +1306,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
           </div>
           {showTransferMenu && (
             <div className="mt-2 flex flex-col gap-0.5">
-              {transferTargets.map(target => {
+              {transferTargets.map((target, tIdx) => {
                 const targetUpgrades = target.upgrades || {}
                 const targetHangar = targetUpgrades.hangar || []
                 const targetComp = getCompartments(target.wg_unit_types?.name).find(c => c.special === 'hangar')
@@ -1298,7 +1325,10 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                       cursor: targetFull ? 'default' : 'pointer',
                     }}
                   >
-                    <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{target.wg_unit_types?.name}</span>
+                    <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full mr-1 text-[8px]" style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff' }}>{tIdx + 1}</span>
+                      {target.wg_unit_types?.name}
+                    </span>
                     <span className="text-[9px] font-mono" style={{ color: targetFull ? '#e05050' : '#6e7681' }}>
                       {targetHangar.length}/{targetCap}
                     </span>
@@ -1634,6 +1664,7 @@ export default function CommandShipPanel({
   onBuyMissile, onFireMissile, onProduceWarhead, missileFiredShips,
   onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar,
   groundUnits, unitTypes, teamGold, playerResources, allUnits, nearbyUnits,
+  onSetNumberedOverlays,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
@@ -1658,6 +1689,10 @@ export default function CommandShipPanel({
   const isSpaceUnit = unit.board === 'space'
   const spaceGuildDest = isSpaceUnit ? [{ id: 'space_guild', label: 'Space Guild' }] : []
   const allDestinations = [...destinations, ...spaceGuildDest]
+
+  useEffect(() => {
+    return () => onSetNumberedOverlays?.([])
+  }, [])
 
   const comp = selectedComp ? compartments.find(c => c.id === selectedComp) : null
   const slots = comp && !comp.special ? getSlots(upgrades, comp.id, comp.slots) : []
@@ -1846,6 +1881,7 @@ export default function CommandShipPanel({
               teamGold={teamGold}
               playerResources={playerResources}
               destinations={allDestinations}
+              onSetNumberedOverlays={onSetNumberedOverlays}
             />
           ) : comp.special === 'holding_bay' ? (
             <HoldingBayPanel
@@ -1889,6 +1925,7 @@ export default function CommandShipPanel({
               unitTypes={unitTypes}
               teamGold={teamGold}
               allUnits={allUnits}
+              onSetNumberedOverlays={onSetNumberedOverlays}
             />
           ) : comp.special === 'inventory' ? (
             <InventoryPanel unit={unit} upgrades={upgrades} isCommandShip={isCommandShip} />

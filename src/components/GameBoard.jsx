@@ -142,6 +142,7 @@ export default function GameBoard({
   const [spaceGuildOpen, setSpaceGuildOpen] = useState(false)
   const [clickedTile, setClickedTile] = useState(null)
   const [turnExpanded, setTurnExpanded] = useState(false)
+  const [numberedOverlays, setNumberedOverlays] = useState([])
   const boardRef = useRef(null)
   const boardInnerRef = useRef(null)
   const wrapperRef = useRef(null)
@@ -2052,7 +2053,7 @@ export default function GameBoard({
           <CommandShipPanel
             unit={csUnit}
             isAdmin={isAdmin}
-            onClose={() => setCommandShipUnitId(null)}
+            onClose={() => { setCommandShipUnitId(null); setNumberedOverlays([]) }}
             onMove={() => {
               setSelectedUnitId(csUnit.id)
               setMode('select')
@@ -2169,6 +2170,7 @@ export default function GameBoard({
               u.is_alive !== false &&
               hexDistance(csUnit.grid_row, csUnit.grid_col, u.grid_row, u.grid_col) <= 4
             )}
+            onSetNumberedOverlays={setNumberedOverlays}
           />
         )
       })()}
@@ -2665,6 +2667,41 @@ export default function GameBoard({
                       {bs.upgrades.level}
                     </div>
                   )}
+                </div>
+              )
+            })}
+            {numberedOverlays.map(({ unitId, number }) => {
+              const ov = units.find(u => u.id === unitId)
+              if (!ov) return null
+              const ovX = ov.grid_col * HEX_W + (ov.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
+              const ovY = ov.grid_row * ROW_H + RENDER_H / 2
+              const isOvCC = ov.wg_unit_types?.name === 'Command Ship' || ov.wg_unit_types?.name === 'Command Center'
+              const ovSize = isOvCC ? HEX_W * 2.746 : HEX_W * 1.62
+              return (
+                <div
+                  key={`num-overlay-${unitId}`}
+                  className="absolute z-20 pointer-events-none flex items-center justify-center"
+                  style={{
+                    left: ovX - ovSize / 2,
+                    top: ovY - ovSize / 2,
+                    width: ovSize,
+                    height: ovSize,
+                  }}
+                >
+                  <div
+                    className="rounded-full flex items-center justify-center"
+                    style={{
+                      width: ovSize,
+                      height: ovSize,
+                      backgroundColor: 'rgba(0,0,0,0.55)',
+                      fontSize: ovSize * 0.4,
+                      fontWeight: 'bold',
+                      color: '#fff',
+                      textShadow: '0 0 4px #000',
+                    }}
+                  >
+                    {number}
+                  </div>
                 </div>
               )
             })}
