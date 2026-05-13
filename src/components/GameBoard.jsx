@@ -2075,6 +2075,7 @@ export default function GameBoard({
               ut.name !== 'Factory' &&
               ut.name !== 'Mining Station'
             )}
+            isAdmin={isAdmin}
           />
         )
       })()}

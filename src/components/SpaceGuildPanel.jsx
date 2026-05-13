@@ -7,7 +7,7 @@ const RESOURCE_VALUES = {
 
 export default function SpaceGuildPanel({
   guildShips, onClose, onSendToGuild, onSellAtGuild, onReturnFromGuild, onBuyUnit, onBuyMunition,
-  playerResources, teamGold, availableUnitTypes, commandShipUpgrades,
+  playerResources, teamGold, availableUnitTypes, commandShipUpgrades, isAdmin,
 }) {
   const [sellResult, setSellResult] = useState(null)
   const [expandedGuildConvoy, setExpandedGuildConvoy] = useState(null)
@@ -324,7 +324,7 @@ export default function SpaceGuildPanel({
       {allGuildConvoys.some(gc => !gc.inTransit) && (() => {
         const missileLevel = (commandShipUpgrades || {}).missiles
         const mlSlots = Array.isArray(missileLevel) ? missileLevel : []
-        const effectiveLevel = mlSlots.reduce((max, v) => Math.max(max, v || 0), 0)
+        const effectiveLevel = isAdmin ? 3 : mlSlots.reduce((max, v) => Math.max(max, v || 0), 0)
         const MISSILE_TYPES = [
           { key: 'tactical', name: 'Tactical', color: '#8b949e', cost: 5, reqLevel: 1 },
           { key: 'cruise', name: 'Cruise', color: '#3fb950', cost: 10, reqLevel: 2 },
