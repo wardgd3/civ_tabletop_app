@@ -77,6 +77,21 @@ const NPC_UNIT_TYPES = {
     board: 'ground',
     isNPC: true,
   },
+  test2: {
+    id: 'npc-test2',
+    name: 'test2',
+    description: 'A hostile space creature',
+    cost: 0,
+    attack: 4,
+    defense: 2,
+    hp: 8,
+    movement: 3,
+    attack_range: 5,
+    visibility: 10,
+    icon: 'spacegrunt.png',
+    board: 'space',
+    isNPC: true,
+  },
 }
 
 function hexDistance(r1, c1, r2, c2) {
@@ -1727,22 +1742,27 @@ export function useGameState(gameId) {
 
   async function spawnNPCs(count, npcType = 'test1') {
     if (!game || !tiles.length) return
-    const groundTiles = tiles.filter(t => {
-      if ((t.board || 'ground') !== 'ground') return false
-      const impassable = new Set(['ocean', 'mountain', 'lake', 'river'])
+    const npcDef = NPC_UNIT_TYPES[npcType]
+    if (!npcDef) return
+    const targetBoard = npcDef.board || 'ground'
+    const impassable = targetBoard === 'space'
+      ? new Set(['asteroid', 'large_asteroid', 'star'])
+      : new Set(['ocean', 'mountain', 'lake', 'river'])
+    const boardTiles = tiles.filter(t => {
+      if ((t.board || 'ground') !== targetBoard) return false
       if (impassable.has(t.terrain)) return false
-      const occupied = units.some(u => (u.board || 'ground') === 'ground' && u.grid_row === t.grid_row && u.grid_col === t.grid_col)
+      const occupied = units.some(u => (u.board || 'ground') === targetBoard && u.grid_row === t.grid_row && u.grid_col === t.grid_col)
       return !occupied
     })
-    const shuffled = [...groundTiles].sort(() => Math.random() - 0.5)
+    const shuffled = [...boardTiles].sort(() => Math.random() - 0.5)
     const chosen = shuffled.slice(0, count)
     const npcUnits = chosen.map((tile, i) => ({
       id: `npc-${Date.now()}-${i}`,
       npcType,
       grid_row: tile.grid_row,
       grid_col: tile.grid_col,
-      board: 'ground',
-      current_hp: NPC_UNIT_TYPES[npcType].hp,
+      board: targetBoard,
+      current_hp: npcDef.hp,
       owner_id: null,
     }))
     const { data: freshGame } = await supabase.from('wg_games').select('settings').eq('id', gameId).single()
