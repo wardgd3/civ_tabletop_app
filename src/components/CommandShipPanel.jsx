@@ -2094,6 +2094,24 @@ export default function CommandShipPanel({
                             ? `DMG: ${whInfo.damage} flat · ${whInfo.radius} tile radius · Hits all units`
                             : 'DMG: 20 center · 10 adjacent · 5 outer ring'}
                         </div>
+
+                        <div className="flex gap-1.5 mt-2">
+                          {Object.entries(WARHEAD_TYPES).map(([key, wh]) => (
+                            <button
+                              key={key}
+                              onClick={() => onProduceWarhead(unit.id, key)}
+                              disabled={!isAdmin && teamGold < wh.cost}
+                              className="flex-1 py-1 text-[9px] font-bold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
+                              style={{
+                                backgroundColor: '#e0505018',
+                                color: '#e05050',
+                                border: '1px solid #e0505040',
+                              }}
+                            >
+                              Produce {wh.name} ({wh.cost}g)
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
 
@@ -2146,54 +2164,7 @@ export default function CommandShipPanel({
                         )
                       })}
 
-                      {missileLevel >= 3 && Object.entries(WARHEAD_TYPES).map(([key, wh]) => {
-                        const count = munitions[key] || 0
-                        return (
-                          <div key={key} className="rounded p-1.5" style={{ backgroundColor: 'transparent', border: '1px solid transparent' }}>
-                            <div className="flex items-center justify-between mb-0.5">
-                              <span className="text-[9px] font-semibold" style={{ color: '#e05050' }}>
-                                {wh.name} Warhead — {wh.damage} DMG / R{wh.radius}
-                              </span>
-                              <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>{count}</span>
-                            </div>
-                            <div className="flex gap-[3px]">
-                              {Array.from({ length: Math.max(count, 5) }, (_, i) => (
-                                <div
-                                  key={i}
-                                  className="flex-1 rounded-sm"
-                                  style={{
-                                    height: 8,
-                                    backgroundColor: i < count ? '#e05050' : '#1c2128',
-                                    border: `1px solid ${i < count ? '#e0505080' : '#2a3140'}`,
-                                    opacity: i < count ? 1 : 0.5,
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )
-                      })}
                     </div>
-
-                    {missileLevel >= 3 && (
-                      <div className="flex gap-1.5 mb-2">
-                        {Object.entries(WARHEAD_TYPES).map(([key, wh]) => (
-                          <button
-                            key={key}
-                            onClick={() => onProduceWarhead(unit.id, key)}
-                            disabled={!isAdmin && teamGold < wh.cost}
-                            className="flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
-                            style={{
-                              backgroundColor: '#e0505018',
-                              color: '#e05050',
-                              border: '1px solid #e0505040',
-                            }}
-                          >
-                            Produce {wh.name} ({wh.cost}g)
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 )
               })()}
