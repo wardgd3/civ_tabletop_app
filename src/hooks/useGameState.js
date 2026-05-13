@@ -121,6 +121,27 @@ const NPC_UNIT_TYPES = {
     board: 'space',
     isNPC: true,
   },
+  warship: {
+    id: 'npc-warship',
+    name: 'Warship',
+    description: 'A hostile alien warship',
+    cost: 0,
+    attack: 5,
+    defense: 3,
+    hp: 30,
+    movement: 3,
+    attack_range: 3,
+    visibility: 10,
+    icon: 'hostilebattleship.png',
+    board: 'space',
+    isNPC: true,
+    hangar: [
+      { npcType: 'test2' },
+      { npcType: 'test2' },
+    ],
+    missiles: { tactical: 2 },
+    missileDamage: 7,
+  },
 }
 
 function hexDistance(r1, c1, r2, c2) {
@@ -2106,7 +2127,7 @@ export function useGameState(gameId) {
     if (npcUnits.length === 0) return
 
     const { data: freshUnits } = await supabase.from('wg_units').select('*, wg_unit_types(*)').eq('game_id', gameId).eq('is_alive', true)
-    const playerUnits = (freshUnits || []).filter(u => u.owner_id)
+    let playerUnits = (freshUnits || []).filter(u => u.owner_id)
     if (playerUnits.length === 0) return
 
     const spaceImpassable = new Set(['asteroid', 'large_asteroid', 'star'])
@@ -2115,7 +2136,29 @@ export function useGameState(gameId) {
     const cols = freshGame.grid_cols
 
     let changed = false
-    let battleLog = settings.battleLog || []
+    let battleLogArr = settings.battleLog || []
+
+    function applyDamageToPlayer(target, damage, attackerName) {
+      const shield = getShieldHp(target.upgrades)
+      const shieldAbsorbed = Math.min(shield.current, damage)
+      const hpDamage = damage - shieldAbsorbed
+      const newShieldHp = shield.current - shieldAbsorbed
+      const newHp = target.current_hp - hpDamage
+      const killed = newHp <= 0
+
+      battleLogArr = [...battleLogArr, {
+        type: 'attack', attackerId: null, attackerUnit: attackerName,
+        targetId: target.owner_id, targetUnit: target.wg_unit_types?.name || 'Unit',
+        targetIsNPC: false, attackerPlayerName: 'Hostile Creature', targetPlayerName: null,
+        damage, shieldAbsorbed, killed, timestamp: Date.now(),
+      }]
+
+      target.current_hp = newHp
+      if (shield.max > 0) {
+        target.upgrades = { ...target.upgrades, shieldHp: newShieldHp, shieldMaxHp: shield.max }
+      }
+      return { newHp, killed, shieldUpdate: shield.max > 0 ? { upgrades: target.upgrades } : {} }
+    }
 
     for (let ni = 0; ni < npcUnits.length; ni++) {
       const npc = npcUnits[ni]
@@ -2126,8 +2169,8 @@ export function useGameState(gameId) {
       const attackRange = npcDef.attack_range || 1
       const movement = npcDef.movement || 1
 
-      const targets = playerUnits
-        .filter(u => (u.board || 'ground') === 'space')
+      const spacePlayerUnits = playerUnits.filter(u => (u.board || 'ground') === 'space' && u.current_hp > 0)
+      const targets = spacePlayerUnits
         .map(u => ({ unit: u, dist: hexDistance(npc.grid_row, npc.grid_col, u.grid_row, u.grid_col) }))
         .filter(t => t.dist <= visibility)
         .sort((a, b) => a.dist - b.dist)
@@ -2136,125 +2179,149 @@ export function useGameState(gameId) {
 
       const closest = targets[0]
 
-      if (closest.dist <= attackRange) {
-        const damage = Math.max(1, npcDef.attack - (closest.unit.wg_unit_types?.defense || 0))
-        const shield = getShieldHp(closest.unit.upgrades)
-        const shieldAbsorbed = Math.min(shield.current, damage)
-        const hpDamage = damage - shieldAbsorbed
-        const newShieldHp = shield.current - shieldAbsorbed
-        const newHp = closest.unit.current_hp - hpDamage
-        const killed = newHp <= 0
-
-        battleLog = [...battleLog, {
-          type: 'attack',
-          attackerId: null,
-          attackerUnit: npcDef.name,
-          targetId: closest.unit.owner_id,
-          targetUnit: closest.unit.wg_unit_types?.name || 'Unit',
-          targetIsNPC: false,
-          attackerPlayerName: 'Hostile Creature',
-          targetPlayerName: null,
-          damage,
-          shieldAbsorbed,
-          killed,
-          timestamp: Date.now(),
-        }]
-
-        const shieldUpdate = shield.max > 0 ? { upgrades: { ...closest.unit.upgrades, shieldHp: newShieldHp, shieldMaxHp: shield.max } } : {}
-        if (killed) {
-          await supabase.from('wg_units').update({ current_hp: 0, is_alive: false, ...shieldUpdate }).eq('id', closest.unit.id)
-        } else {
-          await supabase.from('wg_units').update({ current_hp: newHp, ...shieldUpdate }).eq('id', closest.unit.id)
-        }
-        changed = true
-        continue
-      }
-
-      const targetR = closest.unit.grid_row
-      const targetC = closest.unit.grid_col
-      let bestR = npc.grid_row
-      let bestC = npc.grid_col
-      let bestDist = closest.dist
-      let stepsLeft = movement
-
-      let curR = npc.grid_row
-      let curC = npc.grid_col
-
-      const npcPositions = new Set(npcUnits.map(n => `${n.grid_row}-${n.grid_col}`))
-      const unitPositions = new Set(playerUnits.filter(u => (u.board || 'ground') === 'space').map(u => `${u.grid_row}-${u.grid_col}`))
-
-      while (stepsLeft > 0) {
-        const odd = curR & 1
-        const dirs = odd
-          ? [[-1,0],[-1,1],[0,1],[1,1],[1,0],[0,-1]]
-          : [[-1,-1],[-1,0],[0,1],[1,0],[1,-1],[0,-1]]
-
-        let stepBestR = curR, stepBestC = curC, stepBestDist = hexDistance(curR, curC, targetR, targetC)
-        for (const [dr, dc] of dirs) {
-          const nr = curR + dr, nc = curC + dc
-          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue
-          const nk = `${nr}-${nc}`
-          const tile = spaceTileMap.get(nk)
-          if (tile && spaceImpassable.has(tile.terrain)) continue
-          if (unitPositions.has(nk)) continue
-          if (npcPositions.has(nk) && !(nr === npc.grid_row && nc === npc.grid_col)) continue
-          const d = hexDistance(nr, nc, targetR, targetC)
-          if (d < stepBestDist) {
-            stepBestR = nr
-            stepBestC = nc
-            stepBestDist = d
+      // Warship: deploy hangar units when targets sighted
+      if (npc.hangar && npc.hangar.length > 0) {
+        const npcPositions = new Set(npcUnits.map(n => `${n.grid_row}-${n.grid_col}`))
+        const unitPositions = new Set(spacePlayerUnits.map(u => `${u.grid_row}-${u.grid_col}`))
+        const toRemove = []
+        for (let hi = 0; hi < npc.hangar.length; hi++) {
+          const hUnit = npc.hangar[hi]
+          const hDef = NPC_UNIT_TYPES[hUnit.npcType]
+          if (!hDef) continue
+          const odd = npc.grid_row & 1
+          const dirs = odd
+            ? [[-1,0],[-1,1],[0,1],[1,1],[1,0],[0,-1]]
+            : [[-1,-1],[-1,0],[0,1],[1,0],[1,-1],[0,-1]]
+          let placed = false
+          for (const [dr, dc] of dirs) {
+            const nr = npc.grid_row + dr, nc = npc.grid_col + dc
+            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue
+            const nk = `${nr}-${nc}`
+            const tile = spaceTileMap.get(nk)
+            if (tile && spaceImpassable.has(tile.terrain)) continue
+            if (unitPositions.has(nk) || npcPositions.has(nk)) continue
+            npcUnits.push({
+              id: `npc-${Date.now()}-deploy-${ni}-${hi}`,
+              npcType: hUnit.npcType,
+              grid_row: nr, grid_col: nc,
+              board: 'space',
+              current_hp: hDef.hp,
+              owner_id: null,
+            })
+            npcPositions.add(nk)
+            toRemove.push(hi)
+            placed = true
+            break
           }
         }
-        if (stepBestR === curR && stepBestC === curC) break
-        npcPositions.delete(`${curR}-${curC}`)
-        curR = stepBestR
-        curC = stepBestC
-        npcPositions.add(`${curR}-${curC}`)
-        stepsLeft--
+        if (toRemove.length > 0) {
+          npc.hangar = npc.hangar.filter((_, i) => !toRemove.includes(i))
+          npcUnits[ni] = { ...npcUnits[ni], hangar: npc.hangar }
+          changed = true
+        }
       }
 
-      if (curR !== npc.grid_row || curC !== npc.grid_col) {
-        npcUnits[ni] = { ...npc, grid_row: curR, grid_col: curC }
-        changed = true
+      // Warship: fire 1 missile per turn
+      if (npc.missiles) {
+        const missileTypes = Object.keys(npc.missiles)
+        for (const mType of missileTypes) {
+          if ((npc.missiles[mType] || 0) <= 0) continue
+          const missileDmg = npcDef.missileDamage || 7
+          const target = closest.unit
+          if (target.current_hp <= 0) break
+
+          const result = applyDamageToPlayer(target, missileDmg, npcDef.name + ' Missile')
+          if (result.killed) {
+            await supabase.from('wg_units').update({ current_hp: 0, is_alive: false, ...result.shieldUpdate }).eq('id', target.id)
+          } else {
+            await supabase.from('wg_units').update({ current_hp: result.newHp, ...result.shieldUpdate }).eq('id', target.id)
+          }
+          npc.missiles = { ...npc.missiles, [mType]: npc.missiles[mType] - 1 }
+          npcUnits[ni] = { ...npcUnits[ni], missiles: npc.missiles }
+          changed = true
+          break
+        }
       }
 
-      const newDist = hexDistance(curR, curC, closest.unit.grid_row, closest.unit.grid_col)
-      if (newDist <= attackRange) {
+      // Cannon attack if in range (before moving)
+      let hasAttacked = false
+      if (closest.dist <= attackRange && closest.unit.current_hp > 0) {
         const damage = Math.max(1, npcDef.attack - (closest.unit.wg_unit_types?.defense || 0))
-        const shield = getShieldHp(closest.unit.upgrades)
-        const shieldAbsorbed = Math.min(shield.current, damage)
-        const hpDamage = damage - shieldAbsorbed
-        const newShieldHp = shield.current - shieldAbsorbed
-        const newHp = closest.unit.current_hp - hpDamage
-        const killed = newHp <= 0
-
-        battleLog = [...battleLog, {
-          type: 'attack',
-          attackerId: null,
-          attackerUnit: npcDef.name,
-          targetId: closest.unit.owner_id,
-          targetUnit: closest.unit.wg_unit_types?.name || 'Unit',
-          targetIsNPC: false,
-          attackerPlayerName: 'Hostile Creature',
-          targetPlayerName: null,
-          damage,
-          shieldAbsorbed,
-          killed,
-          timestamp: Date.now(),
-        }]
-
-        const shieldUpdate = shield.max > 0 ? { upgrades: { ...closest.unit.upgrades, shieldHp: newShieldHp, shieldMaxHp: shield.max } } : {}
-        if (killed) {
-          await supabase.from('wg_units').update({ current_hp: 0, is_alive: false, ...shieldUpdate }).eq('id', closest.unit.id)
+        const result = applyDamageToPlayer(closest.unit, damage, npcDef.name)
+        if (result.killed) {
+          await supabase.from('wg_units').update({ current_hp: 0, is_alive: false, ...result.shieldUpdate }).eq('id', closest.unit.id)
         } else {
-          await supabase.from('wg_units').update({ current_hp: newHp, ...shieldUpdate }).eq('id', closest.unit.id)
+          await supabase.from('wg_units').update({ current_hp: result.newHp, ...result.shieldUpdate }).eq('id', closest.unit.id)
         }
         changed = true
+        hasAttacked = true
+      }
+
+      // Move toward target if not already in attack range
+      if (!hasAttacked || closest.dist > attackRange) {
+        const targetR = closest.unit.grid_row
+        const targetC = closest.unit.grid_col
+        let curR = npcUnits[ni].grid_row
+        let curC = npcUnits[ni].grid_col
+        let stepsLeft = movement
+
+        const npcPositions = new Set(npcUnits.map(n => `${n.grid_row}-${n.grid_col}`))
+        const unitPositions = new Set(spacePlayerUnits.filter(u => u.current_hp > 0).map(u => `${u.grid_row}-${u.grid_col}`))
+
+        while (stepsLeft > 0) {
+          const odd = curR & 1
+          const dirs = odd
+            ? [[-1,0],[-1,1],[0,1],[1,1],[1,0],[0,-1]]
+            : [[-1,-1],[-1,0],[0,1],[1,0],[1,-1],[0,-1]]
+
+          let stepBestR = curR, stepBestC = curC, stepBestDist = hexDistance(curR, curC, targetR, targetC)
+          for (const [dr, dc] of dirs) {
+            const nr = curR + dr, nc = curC + dc
+            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue
+            const nk = `${nr}-${nc}`
+            const tile = spaceTileMap.get(nk)
+            if (tile && spaceImpassable.has(tile.terrain)) continue
+            if (unitPositions.has(nk)) continue
+            if (npcPositions.has(nk) && !(nr === npcUnits[ni].grid_row && nc === npcUnits[ni].grid_col)) continue
+            const d = hexDistance(nr, nc, targetR, targetC)
+            if (d < stepBestDist) {
+              stepBestR = nr
+              stepBestC = nc
+              stepBestDist = d
+            }
+          }
+          if (stepBestR === curR && stepBestC === curC) break
+          npcPositions.delete(`${curR}-${curC}`)
+          curR = stepBestR
+          curC = stepBestC
+          npcPositions.add(`${curR}-${curC}`)
+          stepsLeft--
+        }
+
+        if (curR !== npcUnits[ni].grid_row || curC !== npcUnits[ni].grid_col) {
+          npcUnits[ni] = { ...npcUnits[ni], grid_row: curR, grid_col: curC }
+          changed = true
+        }
+
+        // Attack after moving if now in range and haven't attacked yet
+        if (!hasAttacked && closest.unit.current_hp > 0) {
+          const newDist = hexDistance(curR, curC, closest.unit.grid_row, closest.unit.grid_col)
+          if (newDist <= attackRange) {
+            const damage = Math.max(1, npcDef.attack - (closest.unit.wg_unit_types?.defense || 0))
+            const result = applyDamageToPlayer(closest.unit, damage, npcDef.name)
+            if (result.killed) {
+              await supabase.from('wg_units').update({ current_hp: 0, is_alive: false, ...result.shieldUpdate }).eq('id', closest.unit.id)
+            } else {
+              await supabase.from('wg_units').update({ current_hp: result.newHp, ...result.shieldUpdate }).eq('id', closest.unit.id)
+            }
+            changed = true
+          }
+        }
       }
     }
 
     if (changed) {
-      await supabase.from('wg_games').update({ settings: { ...settings, npcUnits, battleLog } }).eq('id', gameId)
+      await supabase.from('wg_games').update({ settings: { ...settings, npcUnits, battleLog: battleLogArr } }).eq('id', gameId)
     }
   }
 
@@ -2306,15 +2373,20 @@ export function useGameState(gameId) {
     })
     const shuffled = [...boardTiles].sort(() => Math.random() - 0.5)
     const chosen = shuffled.slice(0, count)
-    const npcUnits = chosen.map((tile, i) => ({
-      id: `npc-${Date.now()}-${i}`,
-      npcType,
-      grid_row: tile.grid_row,
-      grid_col: tile.grid_col,
-      board: targetBoard,
-      current_hp: npcDef.hp,
-      owner_id: null,
-    }))
+    const npcUnits = chosen.map((tile, i) => {
+      const unit = {
+        id: `npc-${Date.now()}-${i}`,
+        npcType,
+        grid_row: tile.grid_row,
+        grid_col: tile.grid_col,
+        board: targetBoard,
+        current_hp: npcDef.hp,
+        owner_id: null,
+      }
+      if (npcDef.hangar) unit.hangar = npcDef.hangar.map(h => ({ ...h }))
+      if (npcDef.missiles) unit.missiles = { ...npcDef.missiles }
+      return unit
+    })
     const { data: freshGame } = await supabase.from('wg_games').select('settings').eq('id', gameId).single()
     const settings = freshGame?.settings || {}
     const existing = settings.npcUnits || []
@@ -2330,6 +2402,7 @@ export function useGameState(gameId) {
     ;(async () => {
       await spawnNPCs(5, 'test1')
       await spawnNPCs(10, 'test2')
+      await spawnNPCs(3, 'warship')
     })()
   }, [isAdmin, game, tiles])
 
