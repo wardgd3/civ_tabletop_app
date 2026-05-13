@@ -1044,11 +1044,12 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
 
 const HANGAR_UNIT_NAMES = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter'])
 
-function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, comp, unitTypes, teamGold, allUnits }) {
+function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar, nearbyUnits, comp, unitTypes, teamGold, allUnits }) {
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [showProduceMenu, setShowProduceMenu] = useState(false)
   const [showTransferMenu, setShowTransferMenu] = useState(false)
   const [showTransferAllMenu, setShowTransferAllMenu] = useState(false)
+  const [showAddMenu, setShowAddMenu] = useState(false)
   const hangar = upgrades.hangar || []
   const capacity = comp.slots
   const isFull = hangar.length >= capacity
@@ -1066,6 +1067,14 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
     getCompartments(u.wg_unit_types?.name).some(c => c.special === 'hangar')
   )
 
+  const eligibleForHangar = (nearbyUnits || []).filter(u =>
+    u.id !== unit.id &&
+    u.owner_id === unit.owner_id &&
+    u.is_alive !== false &&
+    HANGAR_UNIT_NAMES.has(u.wg_unit_types?.name) &&
+    (u.upgrades?.hangarCooldown || 0) <= 0
+  )
+
   return (
     <div>
       <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
@@ -1074,7 +1083,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
 
       <div className="flex gap-1 mb-2">
         <button
-          onClick={() => { setShowProduceMenu(!showProduceMenu); setShowTransferMenu(false); setShowTransferAllMenu(false); setSelectedSlot(null) }}
+          onClick={() => { setShowProduceMenu(!showProduceMenu); setShowTransferMenu(false); setShowTransferAllMenu(false); setShowAddMenu(false); setSelectedSlot(null) }}
           disabled={isFull}
           className="flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
           style={{
@@ -1087,7 +1096,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
         </button>
         {hangar.length > 0 && transferTargets.length > 0 && (
           <button
-            onClick={() => { setShowTransferAllMenu(!showTransferAllMenu); setShowProduceMenu(false); setShowTransferMenu(false); setSelectedSlot(null) }}
+            onClick={() => { setShowTransferAllMenu(!showTransferAllMenu); setShowProduceMenu(false); setShowTransferMenu(false); setShowAddMenu(false); setSelectedSlot(null) }}
             className="flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
             style={{
               backgroundColor: showTransferAllMenu ? '#1a3050' : '#21262d',
@@ -1102,7 +1111,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
           <button
             onClick={() => {
               if (isDeployAllActive) { onCancelDeployAll() }
-              else { onDeployAllFromHangar(unit.id); setShowProduceMenu(false); setShowTransferMenu(false); setShowTransferAllMenu(false); setSelectedSlot(null) }
+              else { onDeployAllFromHangar(unit.id); setShowProduceMenu(false); setShowTransferMenu(false); setShowTransferAllMenu(false); setShowAddMenu(false); setSelectedSlot(null) }
             }}
             className="flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
             style={{
@@ -1114,7 +1123,44 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
             {isDeployAllActive ? 'Cancel' : 'Deploy All'}
           </button>
         )}
+        {!isFull && eligibleForHangar.length > 0 && (
+          <button
+            onClick={() => { setShowAddMenu(!showAddMenu); setShowProduceMenu(false); setShowTransferMenu(false); setShowTransferAllMenu(false); setSelectedSlot(null) }}
+            className="flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+            style={{
+              backgroundColor: showAddMenu ? '#1a3a1a' : '#21262d',
+              color: showAddMenu ? '#50c878' : '#8b949e',
+              border: `1px solid ${showAddMenu ? '#50c878' : '#30363d'}`,
+            }}
+          >
+            {showAddMenu ? 'Close' : 'Add to Hangar'}
+          </button>
+        )}
       </div>
+
+      {showAddMenu && !isFull && (
+        <div className="mb-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #1a3a1a' }}>
+          <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+            Nearby Units (4 tiles)
+          </div>
+          <div className="flex flex-col gap-0.5 max-h-32 overflow-y-auto">
+            {eligibleForHangar.map(u => (
+              <button
+                key={u.id}
+                onClick={() => { onAddToHangar(unit.id, u.id); setShowAddMenu(false) }}
+                className="flex items-center justify-between p-1.5 rounded text-left transition-all cursor-pointer"
+                style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+              >
+                <div className="flex items-center gap-1.5">
+                  {u.wg_unit_types?.icon && <img src={`/assets/${u.wg_unit_types.icon}`} alt={u.wg_unit_types.name} className="w-4 h-4 object-contain" />}
+                  <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{u.wg_unit_types?.name}</span>
+                </div>
+                <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>HP {u.current_hp}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showTransferAllMenu && (
         <div className="mb-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #1a3050' }}>
@@ -1569,8 +1615,8 @@ export default function CommandShipPanel({
   onLoadCargo, onUnloadCargo,
   onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
   onBuyMissile, onFireMissile,
-  onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll,
-  groundUnits, unitTypes, teamGold, playerResources, allUnits,
+  onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar,
+  groundUnits, unitTypes, teamGold, playerResources, allUnits, nearbyUnits,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
@@ -1805,6 +1851,8 @@ export default function CommandShipPanel({
               onDeployAllFromHangar={onDeployAllFromHangar}
               isDeployAllActive={isDeployAllActive}
               onCancelDeployAll={onCancelDeployAll}
+              onAddToHangar={onAddToHangar}
+              nearbyUnits={nearbyUnits}
               comp={comp}
               unitTypes={unitTypes}
               teamGold={teamGold}

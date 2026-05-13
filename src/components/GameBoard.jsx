@@ -111,7 +111,7 @@ export default function GameBoard({
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
   setAutoPath, clearAutoPath,
-  deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar,
+  deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar,
   battleLog,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
@@ -2084,6 +2084,9 @@ export default function GameBoard({
             }}
             isDeployAllActive={!!hangarDeployAllInfo}
             onCancelDeployAll={() => setHangarDeployAllInfo(null)}
+            onAddToHangar={async (shipId, unitId) => {
+              try { await addToHangar(shipId, unitId) } catch (err) { setError(err.message) }
+            }}
             onProduceUnit={async (shipId, unitTypeId, unitTypeName) => {
               try { await produceUnitToBay(shipId, unitTypeId, unitTypeName) } catch (err) { setError(err.message) }
             }}
@@ -2123,6 +2126,12 @@ export default function GameBoard({
             teamGold={economy?.teamGold ?? currentPlayer?.gold ?? 0}
             playerResources={currentPlayer?.resources || {}}
             allUnits={allUnits}
+            nearbyUnits={units.filter(u =>
+              u.id !== csUnit.id &&
+              u.owner_id === csUnit.owner_id &&
+              u.is_alive !== false &&
+              hexDistance(csUnit.grid_row, csUnit.grid_col, u.grid_row, u.grid_col) <= 4
+            )}
           />
         )
       })()}

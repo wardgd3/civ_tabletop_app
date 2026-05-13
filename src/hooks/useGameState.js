@@ -32,6 +32,8 @@ export const SPACE_ORES = {
   umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.004, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true },
 }
 
+const HANGAR_ELIGIBLE = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter'])
+
 function hexNeighborsOf(r, c) {
   const isOdd = r & 1
   return [
@@ -1563,7 +1565,7 @@ export function useGameState(gameId) {
 
     const storedUnit = hangar.splice(hangarIndex, 1)[0]
 
-    const { error } = await supabase.from('wg_units').insert({
+    const { error, data: inserted } = await supabase.from('wg_units').insert({
       game_id: gameId,
       owner_id: userId,
       unit_type_id: storedUnit.typeId,
@@ -1575,7 +1577,8 @@ export function useGameState(gameId) {
       has_attacked: true,
       moves_used: 99,
       is_alive: true,
-    })
+      upgrades: { hangarCooldown: 5 },
+    }).select('id').single()
     if (error) throw error
 
     const newUpgrades = { ...upgrades, hangar }
@@ -1660,6 +1663,39 @@ export function useGameState(gameId) {
     await Promise.all([
       supabase.from('wg_units').update({ upgrades: { ...fromUpgrades, hangar: fromHangar } }).eq('id', fromShipId),
       supabase.from('wg_units').update({ upgrades: { ...toUpgrades, hangar: toHangar } }).eq('id', toShipId),
+    ])
+    await fetchAll()
+  }
+
+  async function addToHangar(shipId, unitId) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+    const target = units.find(u => u.id === unitId)
+    if (!target) throw new Error('Unit not found')
+    if (target.owner_id !== ship.owner_id) throw new Error('Not your unit')
+
+    const cooldown = target.upgrades?.hangarCooldown || 0
+    if (cooldown > 0) throw new Error(`Unit must wait ${cooldown} more turns`)
+
+    const d = hexDistance(ship.grid_row, ship.grid_col, target.grid_row, target.grid_col)
+    if (d > 4) throw new Error('Unit too far away (max 4 tiles)')
+
+    const shipUpgrades = ship.upgrades || {}
+    const hangar = [...(shipUpgrades.hangar || [])]
+    if (hangar.length >= getHangarCapacity(ship)) throw new Error('Hangar full')
+
+    const typeName = target.wg_unit_types?.name
+    if (!HANGAR_ELIGIBLE.has(typeName)) throw new Error('This unit cannot enter a hangar')
+
+    hangar.push({
+      typeId: target.unit_type_id,
+      typeName,
+      hp: target.current_hp,
+    })
+
+    await Promise.all([
+      supabase.from('wg_units').delete().eq('id', unitId),
+      supabase.from('wg_units').update({ upgrades: { ...shipUpgrades, hangar } }).eq('id', shipId),
     ])
     await fetchAll()
   }
@@ -2221,12 +2257,24 @@ export function useGameState(gameId) {
     }
   }
 
+  async function processHangarCooldowns() {
+    const myUnits = units.filter(u => u.owner_id === userId && (u.upgrades?.hangarCooldown || 0) > 0)
+    for (const u of myUnits) {
+      const cd = u.upgrades.hangarCooldown - 1
+      const newUpgrades = { ...u.upgrades }
+      if (cd <= 0) delete newUpgrades.hangarCooldown
+      else newUpgrades.hangarCooldown = cd
+      await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', u.id)
+    }
+  }
+
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
     await processConvoyTicks()
     await processMiningTicks()
     await processMissileStrikes()
+    await processHangarCooldowns()
     await processNPCTicks()
 
     const { data, error } = await supabase.functions.invoke('end-turn', {
@@ -2293,7 +2341,7 @@ export function useGameState(gameId) {
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
     setAutoPath, clearAutoPath,
-    deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar,
+    deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar,
     persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
     refresh: fetchAll,
   }
