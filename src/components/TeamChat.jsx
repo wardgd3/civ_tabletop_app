@@ -63,7 +63,7 @@ export default function TeamChat({ gameId, currentPlayer, players, onClose, isFu
       className="flex flex-col"
       style={{
         height: isFullscreen ? '100%' : 320,
-        backgroundColor: '#0d1117',
+        backgroundColor: '#111214',
         border: '1px solid #2a3140',
         borderRadius: isFullscreen ? 0 : 8,
       }}
@@ -106,7 +106,7 @@ export default function TeamChat({ gameId, currentPlayer, players, onClose, isFu
               <div
                 className="rounded-lg px-2.5 py-1.5 max-w-[85%]"
                 style={{
-                  backgroundColor: isMe ? '#1c3043' : '#161b22',
+                  backgroundColor: isMe ? '#1c3043' : '#18191c',
                   border: `1px solid ${isMe ? '#2a4a6a' : '#2a3140'}`,
                 }}
               >
@@ -127,14 +127,14 @@ export default function TeamChat({ gameId, currentPlayer, players, onClose, isFu
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
           placeholder="Message team..."
           className="flex-1 rounded px-2.5 py-1.5 text-xs outline-none min-w-0"
-          style={{ backgroundColor: '#161b22', border: '1px solid #2a3140', color: '#c9d1d9' }}
+          style={{ backgroundColor: '#18191c', border: '1px solid #2a3140', color: '#c9d1d9' }}
         />
         <button
           onClick={sendMessage}
           disabled={!draft.trim()}
           className="px-3 py-1.5 rounded text-xs font-semibold cursor-pointer shrink-0"
           style={{
-            backgroundColor: draft.trim() ? '#1c3043' : '#161b22',
+            backgroundColor: draft.trim() ? '#1c3043' : '#18191c',
             color: draft.trim() ? '#6cb4e6' : '#4a5568',
             border: `1px solid ${draft.trim() ? '#2a4a6a' : '#2a3140'}`,
           }}

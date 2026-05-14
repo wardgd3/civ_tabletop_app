@@ -481,7 +481,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
   )
 
   return (
-    <div className="p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+    <div className="p-2 rounded" style={{ backgroundColor: '#111214', border: `1px solid ${comp.color}40` }}>
       <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
         Convoy {convoyIndex + 1} — Inventory
       </div>
@@ -492,7 +492,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
           <div className="flex flex-col gap-0.5">
             {convoy.units.map((u, idx) => (
               <div key={idx} className="flex items-center justify-between p-1 rounded"
-                style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
                 <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{u.typeName}</span>
                 <button
                   onClick={() => onUnloadToHoldingBay(unit.id, convoyIndex, idx)}
@@ -507,7 +507,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
         ) : (
           <div className="flex gap-1">
             {Array.from({ length: CONVOY_CAPACITY }, (_, i) => (
-              <div key={i} className="flex-1 rounded" style={{ height: 24, backgroundColor: '#161b22', border: '1px solid #2a3140' }} />
+              <div key={i} className="flex-1 rounded" style={{ height: 24, backgroundColor: '#18191c', border: '1px solid #2a3140' }} />
             ))}
           </div>
         )}
@@ -528,7 +528,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
                     key={`bay-${idx}`}
                     onClick={() => onLoadFromBay(unit.id, convoyIndex, idx)}
                     className="flex items-center justify-between p-1 rounded text-left cursor-pointer"
-                    style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+                    style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}
                   >
                     <div className="flex items-center gap-1">
                       <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{bu.typeName}</span>
@@ -542,7 +542,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
                     key={gu.id}
                     onClick={() => onLoadUnit(unit.id, convoyIndex, gu.id)}
                     className="flex items-center justify-between p-1 rounded text-left cursor-pointer"
-                    style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+                    style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}
                   >
                     <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{gu.wg_unit_types?.name}</span>
                     <span className="text-[8px]" style={{ color: comp.color }}>Load</span>
@@ -571,14 +571,14 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
               <div className="flex flex-col gap-1">
                 {MISSILE_TYPES.filter(m => (munitions[m.key] || 0) > 0).map(m => (
                   <div key={m.key} className="flex items-center justify-between p-1 rounded"
-                    style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                    style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
                     <span className="text-[9px] font-semibold" style={{ color: m.color }}>{m.name}</span>
                     <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>{munitions[m.key]}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-1 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+              <div className="p-1 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
                 <span className="text-[9px]" style={{ color: '#4a5568' }}>None</span>
               </div>
             )}
@@ -595,13 +595,13 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
           <div className="flex flex-col gap-0.5">
             {(cargo.gold || 0) > 0 && (
               <div className="flex items-center justify-between p-1 rounded"
-                style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
                 <span className="text-[9px]" style={{ color: '#cca43b' }}>Gold: {cargo.gold}</span>
               </div>
             )}
             {Object.entries(cargo.resources || {}).filter(([, v]) => v > 0).map(([key, amount]) => (
               <div key={key} className="flex items-center justify-between p-1 rounded"
-                style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
                 <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{key}: {amount}</span>
               </div>
             ))}
@@ -615,7 +615,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
           </button>
         </div>
       ) : (
-        <div className="p-1 rounded mb-2" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+        <div className="p-1 rounded mb-2" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
           <span className="text-[9px]" style={{ color: '#4a5568' }}>None</span>
         </div>
       )}
@@ -629,7 +629,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
           onChange={e => setGoldAmount(e.target.value)}
           placeholder="Gold amt"
           className="flex-1 px-1.5 py-1 text-[9px] rounded"
-          style={{ backgroundColor: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
+          style={{ backgroundColor: '#18191c', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
         />
         <button
           onClick={() => {
@@ -651,7 +651,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
               key={key}
               onClick={() => onLoadCargo(unit.id, convoyIndex, { resources: { [key]: amount } })}
               className="px-1.5 py-0.5 text-[8px] rounded cursor-pointer"
-              style={{ backgroundColor: '#161b22', border: '1px solid #2a3140', color: '#c9d1d9' }}
+              style={{ backgroundColor: '#18191c', border: '1px solid #2a3140', color: '#c9d1d9' }}
             >
               {key} ({amount})
             </button>
@@ -668,7 +668,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
             value={selectedDest || ''}
             onChange={e => setSelectedDest(e.target.value || null)}
             className="w-full px-1.5 py-1 text-[10px] rounded"
-            style={{ backgroundColor: '#161b22', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
+            style={{ backgroundColor: '#18191c', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
           >
             <option value="">Select destination...</option>
             {destinations.map((d, dIdx) => (
@@ -747,7 +747,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
                           disabled={!canAfford}
                           className="flex items-center justify-between p-1 rounded transition-colors"
                           style={{
-                            backgroundColor: canAfford ? '#1a2a3a10' : '#0d1117',
+                            backgroundColor: canAfford ? '#1a2a3a10' : '#111214',
                             border: `1px solid ${canAfford ? '#6cb4e640' : '#2a3140'}`,
                             cursor: canAfford ? 'pointer' : 'default',
                             opacity: canAfford ? 1 : 0.4,
@@ -786,7 +786,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
                         disabled={disabled}
                         className="flex-1 rounded p-1 text-center transition-all"
                         style={{
-                          backgroundColor: disabled ? '#161b22' : m.color + '15',
+                          backgroundColor: disabled ? '#18191c' : m.color + '15',
                           border: `1px solid ${disabled ? '#2a3140' : m.color + '60'}`,
                           cursor: disabled ? 'default' : 'pointer',
                           opacity: disabled ? 0.4 : 1,
@@ -806,7 +806,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
             )}
 
             {(orderUnits.length > 0 || Object.values(orderMunitions).some(v => v > 0)) && (
-              <div className="p-1.5 rounded mb-2" style={{ backgroundColor: '#161b22', border: '1px solid #30363d' }}>
+              <div className="p-1.5 rounded mb-2" style={{ backgroundColor: '#18191c', border: '1px solid #30363d' }}>
                 <div className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
                   Order Summary
                 </div>
@@ -922,7 +922,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
                     onClick={() => setSelectedConvoy(isSelected ? null : convoy.idx)}
                     className="p-2 rounded text-left transition-all cursor-pointer"
                     style={{
-                      backgroundColor: isSelected ? comp.color + '20' : '#161b22',
+                      backgroundColor: isSelected ? comp.color + '20' : '#18191c',
                       border: `1px solid ${isSelected ? comp.color : '#30363d'}`,
                     }}
                   >
@@ -971,14 +971,14 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
           Incoming ({inTransitConvoys.length})
         </div>
         {inTransitConvoys.length === 0 ? (
-          <div className="text-[9px] p-2 rounded text-center" style={{ backgroundColor: '#161b22', border: '1px solid #30363d', color: '#4a5568' }}>
+          <div className="text-[9px] p-2 rounded text-center" style={{ backgroundColor: '#18191c', border: '1px solid #30363d', color: '#4a5568' }}>
             No convoys in transit
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
             {inTransitConvoys.map(convoy => (
               <div key={convoy.idx} className="p-2 rounded"
-                style={{ backgroundColor: '#161b22', border: '1px solid #d29922' + '60' }}>
+                style={{ backgroundColor: '#18191c', border: '1px solid #d29922' + '60' }}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>Convoy</span>
                   <span className="text-[9px] font-mono" style={{ color: '#d29922' }}>
@@ -1002,7 +1002,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
                   <div className="flex flex-col gap-0.5">
                     {convoy.units.map((u, idx) => (
                       <div key={idx} className="flex items-center p-1 rounded"
-                        style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
+                        style={{ backgroundColor: '#111214', border: '1px solid #2a3140' }}>
                         <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{u.typeName}</span>
                       </div>
                     ))}
@@ -1014,7 +1014,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
         )}
 
         {availableConvoys.length === 0 && inTransitConvoys.length === 0 && (
-          <div className="text-[9px] p-2 rounded text-center" style={{ backgroundColor: '#161b22', border: '1px solid #30363d', color: '#4a5568' }}>
+          <div className="text-[9px] p-2 rounded text-center" style={{ backgroundColor: '#18191c', border: '1px solid #30363d', color: '#4a5568' }}>
             No convoys — build and send from Command Ship
           </div>
         )}
@@ -1037,7 +1037,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
                 key={i}
                 onClick={() => onBuildConvoy(unit.id)}
                 className="p-2 rounded text-center transition-all cursor-pointer"
-                style={{ backgroundColor: '#161b22', border: '1px solid #30363d' }}
+                style={{ backgroundColor: '#18191c', border: '1px solid #30363d' }}
               >
                 <div className="text-[10px]" style={{ color: '#4a5568' }}>+ Build Convoy ({CONVOY_COST} gold)</div>
               </button>
@@ -1048,7 +1048,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
               <div
                 key={i}
                 className="p-2 rounded opacity-60"
-                style={{ backgroundColor: '#161b22', border: '1px solid #d29922' + '60' }}
+                style={{ backgroundColor: '#18191c', border: '1px solid #d29922' + '60' }}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
@@ -1076,7 +1076,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
               onClick={() => setSelectedConvoy(isSelected ? null : i)}
               className="p-2 rounded text-left transition-all cursor-pointer"
               style={{
-                backgroundColor: isSelected ? comp.color + '20' : '#161b22',
+                backgroundColor: isSelected ? comp.color + '20' : '#18191c',
                 border: `1px solid ${isSelected ? comp.color : '#30363d'}`,
               }}
             >
@@ -1179,7 +1179,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
                   style={{
                     backgroundColor: isSelected
                       ? comp.color + '20'
-                      : isEmpty ? '#161b22' : comp.color + '15',
+                      : isEmpty ? '#18191c' : comp.color + '15',
                     border: `1px solid ${isSelected
                       ? comp.color
                       : isEmpty ? '#30363d' : comp.color + '50'}`,
@@ -1201,7 +1201,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
       </div>
 
       {selectedSlot !== null && allSlots[selectedSlot] && (
-        <div className="p-2 rounded mb-2" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+        <div className="p-2 rounded mb-2" style={{ backgroundColor: '#111214', border: `1px solid ${comp.color}40` }}>
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
               {allSlots[selectedSlot].typeName}
@@ -1222,7 +1222,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
       )}
 
       {showProduceMenu && !isFull && (
-        <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+        <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#111214', border: `1px solid ${comp.color}40` }}>
           <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
             Produce Unit — <span className="font-mono" style={{ color: '#8b949e' }}>⚒{teamGold}</span>
           </div>
@@ -1241,7 +1241,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
                     disabled={!canAfford}
                     className="flex items-center justify-between p-1.5 rounded text-left transition-all"
                     style={{
-                      backgroundColor: '#161b22',
+                      backgroundColor: '#18191c',
                       border: '1px solid #2a3140',
                       opacity: canAfford ? 1 : 0.4,
                       cursor: canAfford ? 'pointer' : 'default',
@@ -1381,7 +1381,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
       </div>
 
       {showAddMenu && !isFull && (
-        <div className="mb-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #1a3a1a' }}>
+        <div className="mb-2 p-2 rounded" style={{ backgroundColor: '#111214', border: '1px solid #1a3a1a' }}>
           <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
             Nearby Units (4 tiles)
           </div>
@@ -1391,7 +1391,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                 key={u.id}
                 onClick={() => { onAddToHangar(unit.id, u.id); setShowAddMenu(false) }}
                 className="flex items-center justify-between p-1.5 rounded text-left transition-all cursor-pointer"
-                style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+                style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}
               >
                 <div className="flex items-center gap-1.5">
                   {u.wg_unit_types?.icon && <img src={`/assets/${u.wg_unit_types.icon}`} alt={u.wg_unit_types.name} className="w-4 h-4 object-contain" />}
@@ -1405,7 +1405,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
       )}
 
       {showTransferAllMenu && (
-        <div className="mb-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #1a3050' }}>
+        <div className="mb-2 p-2 rounded" style={{ backgroundColor: '#111214', border: '1px solid #1a3050' }}>
           <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
             Transfer All To
           </div>
@@ -1423,7 +1423,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                   disabled={targetFull}
                   className="flex items-center justify-between p-1.5 rounded text-left transition-all"
                   style={{
-                    backgroundColor: '#161b22',
+                    backgroundColor: '#18191c',
                     border: '1px solid #2a3140',
                     opacity: targetFull ? 0.4 : 1,
                     cursor: targetFull ? 'default' : 'pointer',
@@ -1455,7 +1455,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
               }}
               className="rounded p-1 text-center transition-all aspect-square flex flex-col items-center justify-center"
               style={{
-                backgroundColor: isSelected ? comp.color + '20' : isEmpty ? '#161b22' : comp.color + '15',
+                backgroundColor: isSelected ? comp.color + '20' : isEmpty ? '#18191c' : comp.color + '15',
                 border: `1px solid ${isSelected ? comp.color : isEmpty ? '#30363d' : comp.color + '50'}`,
                 cursor: isEmpty ? 'default' : 'pointer',
               }}
@@ -1478,7 +1478,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
       </div>
 
       {selectedSlot !== null && allSlots[selectedSlot] && (
-        <div className="p-2 rounded mb-2" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+        <div className="p-2 rounded mb-2" style={{ backgroundColor: '#111214', border: `1px solid ${comp.color}40` }}>
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>
               {allSlots[selectedSlot].typeName}
@@ -1526,7 +1526,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                     disabled={targetFull}
                     className="flex items-center justify-between p-1.5 rounded text-left transition-all"
                     style={{
-                      backgroundColor: '#161b22',
+                      backgroundColor: '#18191c',
                       border: '1px solid #2a3140',
                       opacity: targetFull ? 0.4 : 1,
                       cursor: targetFull ? 'default' : 'pointer',
@@ -1548,7 +1548,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
       )}
 
       {showProduceMenu && !isFull && (
-        <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+        <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#111214', border: `1px solid ${comp.color}40` }}>
           <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
             Produce Ship — <span className="font-mono" style={{ color: '#8b949e' }}>⚒{teamGold}</span>
           </div>
@@ -1565,7 +1565,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                     disabled={!canAfford}
                     className="flex items-center justify-between p-1.5 rounded text-left transition-all"
                     style={{
-                      backgroundColor: '#161b22',
+                      backgroundColor: '#18191c',
                       border: '1px solid #2a3140',
                       opacity: canAfford ? 1 : 0.4,
                       cursor: canAfford ? 'pointer' : 'default',
@@ -1628,7 +1628,7 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
                 onClick={() => canAfford && armorTransport && onProduceUnit(unit.id, armorTransport.id, armorTransport.name)}
                 className="p-2 rounded text-center transition-all"
                 style={{
-                  backgroundColor: canAfford ? comp.color + '10' : '#161b22',
+                  backgroundColor: canAfford ? comp.color + '10' : '#18191c',
                   border: `1px solid ${canAfford ? comp.color + '40' : '#30363d'}`,
                   cursor: canAfford ? 'pointer' : 'default',
                   opacity: canAfford ? 1 : 0.5,
@@ -1683,7 +1683,7 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
       </div>
 
       {selectedTransport !== null && loadingBay[selectedTransport] && (
-        <div className="p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+        <div className="p-2 rounded" style={{ backgroundColor: '#111214', border: `1px solid ${comp.color}40` }}>
           <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
             {loadingBay[selectedTransport].typeName} — Load Soldiers
           </div>
@@ -1694,7 +1694,7 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
               <div className="flex flex-col gap-0.5">
                 {loadingBay[selectedTransport].units.map((u, idx) => (
                   <div key={idx} className="flex items-center justify-between p-1 rounded"
-                    style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                    style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
                     <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{u.typeName}</span>
                     <button
                       onClick={() => onUnloadSoldier(unit.id, selectedTransport, idx)}
@@ -1723,7 +1723,7 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
                         key={`bay-${bu.bayIdx}`}
                         onClick={() => onLoadBaySoldier(unit.id, selectedTransport, bu.bayIdx)}
                         className="flex items-center justify-between p-1 rounded text-left cursor-pointer"
-                        style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+                        style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}
                       >
                         <div className="flex items-center gap-1">
                           <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{bu.typeName}</span>
@@ -1737,7 +1737,7 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
                         key={su.id}
                         onClick={() => onLoadSoldier(unit.id, selectedTransport, su.id)}
                         className="flex items-center justify-between p-1 rounded text-left cursor-pointer"
-                        style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+                        style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}
                       >
                         <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{su.wg_unit_types?.name}</span>
                         <span className="text-[8px]" style={{ color: comp.color }}>Load</span>
@@ -1768,7 +1768,7 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
                   {showBuyMenu ? 'Close Shop' : 'Purchase Units'}
                 </button>
                 {showBuyMenu && (
-                  <div className="mb-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #cca43b30' }}>
+                  <div className="mb-2 p-2 rounded" style={{ backgroundColor: '#111214', border: '1px solid #cca43b30' }}>
                     <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
                       Buy & Load — <span className="font-mono" style={{ color: '#8b949e' }}>⚒{teamGold}</span>
                     </div>
@@ -1782,7 +1782,7 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
                             disabled={!canAfford}
                             className="flex items-center justify-between p-1.5 rounded text-left transition-all"
                             style={{
-                              backgroundColor: '#161b22',
+                              backgroundColor: '#18191c',
                               border: '1px solid #2a3140',
                               opacity: canAfford ? 1 : 0.4,
                               cursor: canAfford ? 'pointer' : 'default',
@@ -1844,7 +1844,7 @@ function InventoryPanel({ unit, upgrades, isCommandShip }) {
             if (amount === 0) return null
             return (
               <div key={ore.id} className="flex items-center justify-between p-1.5 rounded"
-                style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+                style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
                 <div className="flex items-center gap-1.5">
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ore.color }} />
                   <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{ore.name}</span>
@@ -1855,7 +1855,7 @@ function InventoryPanel({ unit, upgrades, isCommandShip }) {
           })}
         </div>
       ) : (
-        <div className="p-2 rounded text-center" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+        <div className="p-2 rounded text-center" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
           <span className="text-[9px]" style={{ color: '#4a5568' }}>No ores collected</span>
         </div>
       )}
@@ -1907,7 +1907,7 @@ export default function CommandShipPanel({
   const slots = comp && !comp.special ? getSlots(upgrades, comp.id, comp.slots) : []
 
   return (
-    <div className="p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+    <div className="p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
       <div className="mb-3">
         <div className="flex justify-end mb-1">
           <button
@@ -1981,7 +1981,7 @@ export default function CommandShipPanel({
       )}
 
       {unit.upgrades?.autoPath && (
-        <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #1a2a4a' }}>
+        <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#111214', border: '1px solid #1a2a4a' }}>
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#6090c0' }}>
               Auto-path ({unit.upgrades.autoPath.length} tiles)
@@ -2026,7 +2026,7 @@ export default function CommandShipPanel({
       })()}
 
       {unitName === 'Armor Transport' && unit.upgrades?.loadedUnits?.length > 0 && (
-        <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
+        <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#111214', border: '1px solid #2a3140' }}>
           <div className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
             Loaded Units ({unit.upgrades.loadedUnits.length}/4)
           </div>
@@ -2052,7 +2052,7 @@ export default function CommandShipPanel({
         const upgradeCost = (unitLevel + 1) * 5
         const canAfford = isAdmin || (economy?.teamGold ?? 0) >= upgradeCost
         return (
-          <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
+          <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#111214', border: '1px solid #2a3140' }}>
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>Unit Level</span>
               <span className="text-[10px] font-mono" style={{ color: '#8b949e' }}>Lv {unitLevel}/{maxLevel}</span>
@@ -2132,7 +2132,7 @@ export default function CommandShipPanel({
               onClick={() => { setSelectedComp(isSelected ? null : c.id); setSelectedSlot(null) }}
               className="relative p-2 rounded text-left transition-all cursor-pointer"
               style={{
-                backgroundColor: isSelected ? c.color + '20' : '#0d1117',
+                backgroundColor: isSelected ? c.color + '20' : '#111214',
                 border: `1px solid ${isSelected ? c.color + '60' : '#2a3140'}`,
               }}
             >
@@ -2171,7 +2171,7 @@ export default function CommandShipPanel({
       </div>
 
       {comp && (
-        <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0d1117', border: `1px solid ${comp.color}40` }}>
+        <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#111214', border: `1px solid ${comp.color}40` }}>
           <div className="flex items-center gap-1.5 mb-1">
             {ICONS[comp.icon] || <span className="text-sm">{comp.icon}</span>}
             <span className="text-xs font-semibold" style={{ color: comp.color }}>{comp.name}</span>
@@ -2293,7 +2293,7 @@ export default function CommandShipPanel({
                       style={{
                         backgroundColor: isSlotSelected
                           ? comp.color + '20'
-                          : isEmpty ? '#161b22' : TIERS[tier - 1].color + '15',
+                          : isEmpty ? '#18191c' : TIERS[tier - 1].color + '15',
                         border: `1px solid ${isSlotSelected
                           ? comp.color
                           : isEmpty ? '#30363d' : TIERS[tier - 1].color + '60'}`,
@@ -2344,7 +2344,7 @@ export default function CommandShipPanel({
                           disabled={isCurrentTier}
                           className="flex items-center gap-2 p-1.5 rounded text-left transition-all"
                           style={{
-                            backgroundColor: isCurrentTier ? tierInfo.color + '20' : '#161b22',
+                            backgroundColor: isCurrentTier ? tierInfo.color + '20' : '#18191c',
                             border: `1px solid ${isCurrentTier ? tierInfo.color + '60' : '#2a3140'}`,
                             opacity: isCurrentTier ? 0.6 : 1,
                             cursor: isCurrentTier ? 'default' : 'pointer',
@@ -2428,7 +2428,7 @@ export default function CommandShipPanel({
                     </button>
 
                     {selectedMissile === 'ipbm' && (
-                      <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #d2992240' }}>
+                      <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#111214', border: '1px solid #d2992240' }}>
                         <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#d29922' }}>
                           IPBM Target
                         </div>
@@ -2457,7 +2457,7 @@ export default function CommandShipPanel({
                                 value={ipbmRow}
                                 onChange={e => setIpbmRow(e.target.value)}
                                 className="w-full px-2 py-1 rounded text-[11px] font-mono"
-                                style={{ backgroundColor: '#161b22', color: '#c9d1d9', border: '1px solid #30363d', outline: 'none' }}
+                                style={{ backgroundColor: '#18191c', color: '#c9d1d9', border: '1px solid #30363d', outline: 'none' }}
                                 placeholder="0"
                               />
                             </div>
@@ -2468,7 +2468,7 @@ export default function CommandShipPanel({
                                 value={ipbmCol}
                                 onChange={e => setIpbmCol(e.target.value)}
                                 className="w-full px-2 py-1 rounded text-[11px] font-mono"
-                                style={{ backgroundColor: '#161b22', color: '#c9d1d9', border: '1px solid #30363d', outline: 'none' }}
+                                style={{ backgroundColor: '#18191c', color: '#c9d1d9', border: '1px solid #30363d', outline: 'none' }}
                                 placeholder="0"
                               />
                             </div>
@@ -2485,7 +2485,7 @@ export default function CommandShipPanel({
                           value={selectedWarhead || ''}
                           onChange={e => setSelectedWarhead(e.target.value || null)}
                           className="w-full px-2 py-1.5 rounded text-[11px] font-semibold mb-2 cursor-pointer"
-                          style={{ backgroundColor: '#161b22', color: '#c9d1d9', border: '1px solid #30363d', outline: 'none' }}
+                          style={{ backgroundColor: '#18191c', color: '#c9d1d9', border: '1px solid #30363d', outline: 'none' }}
                         >
                           <option value="">None (Standard)</option>
                           {Object.entries(WARHEAD_TYPES).map(([key, wh]) => (
@@ -2559,7 +2559,7 @@ export default function CommandShipPanel({
                                   className="flex-1 rounded-sm"
                                   style={{
                                     height: 8,
-                                    backgroundColor: !locked && i < count ? m.color : '#1c2128',
+                                    backgroundColor: !locked && i < count ? m.color : '#1e2023',
                                     border: `1px solid ${!locked && i < count ? m.color + '80' : '#2a3140'}`,
                                     opacity: !locked && i < count ? 1 : 0.5,
                                   }}

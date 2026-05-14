@@ -29,8 +29,8 @@ export default function SetupProfile() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#0d1117' }}>
-      <div className="w-full max-w-md p-8 rounded-xl shadow-2xl" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+    <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#111214' }}>
+      <div className="w-full max-w-md p-8 rounded-xl shadow-2xl" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
         <h1 className="text-3xl font-bold mb-2 uppercase tracking-wide" style={{ color: '#c9d1d9' }}>Set Up Profile</h1>
         <p className="mb-8 text-sm" style={{ color: '#6e7681' }}>Choose your display name to get started</p>
 
@@ -49,7 +49,7 @@ export default function SetupProfile() {
               onChange={e => setDisplayName(e.target.value)}
               required
               className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent"
-              style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#c9d1d9' }}
+              style={{ backgroundColor: '#111214', border: '1px solid #30363d', color: '#c9d1d9' }}
               placeholder="WarLord42"
             />
           </div>

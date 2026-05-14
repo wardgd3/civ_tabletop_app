@@ -8,8 +8,8 @@ export default function Dashboard() {
   const [tab, setTab] = useState('games')
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0d1117' }}>
-      <header className="sticky top-0 z-10" style={{ backgroundColor: '#161b22', borderBottom: '1px solid #2a3140' }}>
+    <div className="min-h-screen" style={{ backgroundColor: '#111214' }}>
+      <header className="sticky top-0 z-10" style={{ backgroundColor: '#18191c', borderBottom: '1px solid #2a3140' }}>
         <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
           <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wide" style={{ color: '#c9d1d9' }}>War Game</h1>
           <div className="flex items-center gap-2 sm:gap-4">
@@ -35,7 +35,7 @@ export default function Dashboard() {
             className="flex-1 sm:flex-none px-4 py-2.5 sm:py-2 text-sm font-medium rounded transition-colors"
             style={tab === 'games'
               ? { backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }
-              : { backgroundColor: '#161b22', color: '#6e7681', border: '1px solid #2a3140' }}
+              : { backgroundColor: '#18191c', color: '#6e7681', border: '1px solid #2a3140' }}
           >
             Games
           </button>
@@ -44,7 +44,7 @@ export default function Dashboard() {
             className="flex-1 sm:flex-none px-4 py-2.5 sm:py-2 text-sm font-medium rounded transition-colors"
             style={tab === 'friends'
               ? { backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }
-              : { backgroundColor: '#161b22', color: '#6e7681', border: '1px solid #2a3140' }}
+              : { backgroundColor: '#18191c', color: '#6e7681', border: '1px solid #2a3140' }}
           >
             Friends
           </button>

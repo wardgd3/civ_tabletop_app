@@ -19,7 +19,10 @@
       "Bash(find \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\src\" -type f -name \"*CommandShip*\" -o -name \"*Compartment*\" | head -20)",
       "mcp__Claude_Preview__preview_start",
       "Bash(xargs wc -l)",
-      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__list_projects"
+      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__list_projects",
+      "Bash(git push *)",
+      "Bash(del \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\.claude\\\\worktrees\\\\tender-maxwell-38c7c4\\\\src\\\\theme.css\")",
+      "PowerShell(Remove-Item \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\.claude\\\\worktrees\\\\tender-maxwell-38c7c4\\\\src\\\\theme.css\" -Confirm:$false)"
     ]
   }
 }

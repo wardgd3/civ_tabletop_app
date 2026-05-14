@@ -461,8 +461,8 @@ export default function GameBoard({
           }
           if (emptyCount > 0) {
             const fadeAmt = Math.min(emptyCount * 0.06, 0.25)
-            baseColor = blendColors(baseColor, '#0d1117', fadeAmt)
-            baseDark = blendColors(baseDark, '#0d1117', fadeAmt)
+            baseColor = blendColors(baseColor, '#111214', fadeAmt)
+            baseDark = blendColors(baseDark, '#111214', fadeAmt)
           }
         }
         if (tile.terrain !== 'star') {
@@ -610,7 +610,7 @@ export default function GameBoard({
 
   function getTileColor(row, col, isVisible, isDiscovered) {
     const isSpace = activeBoard === 'space'
-    const fogColor = isSpace ? '#0d1117' : '#1a2029'
+    const fogColor = isSpace ? '#111214' : '#1a2029'
     const tile = tileMap.get(`${row}-${col}`)
     if (!tile) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : fogColor
     const terrain = TERRAIN_BY_ID[tile.terrain]
@@ -1635,7 +1635,7 @@ export default function GameBoard({
   const resources = currentPlayer?.resources || {}
 
   const mobileInspectPanel = inspectedUnit ? (
-    <div className="mb-3 p-3 rounded-lg flex items-center gap-3" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+    <div className="mb-3 p-3 rounded-lg flex items-center gap-3" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
       <img
         src={getUnitIcon(inspectedUnit.wg_unit_types, inspectedUnit)}
         alt={inspectedUnit.wg_unit_types?.name}
@@ -1682,7 +1682,7 @@ export default function GameBoard({
 
   const sidebarContent = (
     <div className="space-y-3">
-      <div className="p-3 rounded flex items-center justify-between lg:block cursor-pointer select-none" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }} onClick={() => setTurnExpanded(e => !e)}>
+      <div className="p-3 rounded flex items-center justify-between lg:block cursor-pointer select-none" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }} onClick={() => setTurnExpanded(e => !e)}>
         <div>
           <div className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>Turn {game.turn_number}</div>
           <div className="font-semibold text-sm mt-0.5" style={{ color: '#c9d1d9' }}>
@@ -1732,7 +1732,7 @@ export default function GameBoard({
         </button>
       )}
 
-      <div className="hidden lg:block p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+      <div className="hidden lg:block p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
         <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>Operatives</div>
         {(() => {
           const teamColors = [...new Set(players.map(p => p.color))]
@@ -1756,7 +1756,7 @@ export default function GameBoard({
       </div>
 
       {Object.keys(resources).length > 0 && (
-        <div className="hidden lg:block p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+        <div className="hidden lg:block p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
           <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>Resources</div>
           {Object.entries(resources).filter(([k, v]) => v > 0 && k !== 'excavations').map(([resId, amount]) => {
             const res = RESOURCE_BY_ID[resId]
@@ -1774,7 +1774,7 @@ export default function GameBoard({
       )}
 
       {isMyTurn && (
-        <div className="p-3 rounded space-y-2" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+        <div className="p-3 rounded space-y-2" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
 
           <div className="flex gap-2 lg:flex-col">
             <button
@@ -1962,7 +1962,7 @@ export default function GameBoard({
       })()}
 
       {mode === 'deploy' && isMyTurn && (
-        <div className="p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+        <div className="p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
           <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>
             Requisition — <span className="font-mono" style={{ color: '#8b949e' }}>⚒ {economy?.teamGold ?? currentPlayer?.gold}</span>
           </div>
@@ -1994,7 +1994,7 @@ export default function GameBoard({
                 className="flex flex-col lg:flex-row items-center lg:justify-between p-2 lg:p-3 rounded text-sm lg:text-base transition-colors disabled:opacity-20 cursor-pointer gap-1 lg:gap-3"
                 style={selectedUnitType === ut.id
                   ? { backgroundColor: '#1a2a3a', color: '#c9d1d9', border: '1px solid #3a4a5a' }
-                  : { backgroundColor: '#0d1117', color: '#c9d1d9', border: '1px solid #2a3140' }}
+                  : { backgroundColor: '#111214', color: '#c9d1d9', border: '1px solid #2a3140' }}
               >
                 <img src={getUnitIcon(ut)} alt={ut.name} className="w-10 h-10 lg:w-16 lg:h-16 object-contain shrink-0" />
                 <div className="flex flex-col items-center lg:items-start min-w-0 flex-1">
@@ -2042,7 +2042,7 @@ export default function GameBoard({
             <button
               onClick={() => { setBattleLogOpen(true); setChatOpen(false) }}
               className="w-full flex items-center justify-center gap-2 py-2 rounded text-xs font-semibold cursor-pointer"
-              style={{ backgroundColor: '#161b22', border: '1px solid #2a3140', color: '#8b949e' }}
+              style={{ backgroundColor: '#18191c', border: '1px solid #2a3140', color: '#8b949e' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" />
@@ -2061,7 +2061,7 @@ export default function GameBoard({
             <button
               onClick={() => { setChatOpen(true); setBattleLogOpen(false) }}
               className="w-full flex items-center justify-center gap-2 py-2 rounded text-xs font-semibold cursor-pointer"
-              style={{ backgroundColor: '#161b22', border: '1px solid #2a3140', color: '#8b949e' }}
+              style={{ backgroundColor: '#18191c', border: '1px solid #2a3140', color: '#8b949e' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -2561,7 +2561,7 @@ export default function GameBoard({
                 >
                   <div
                     className="rounded px-2 py-1.5 shadow-lg whitespace-nowrap"
-                    style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+                    style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}
                   >
                     {hShowUnit && (
                       <div className="flex flex-col items-center gap-1 mb-1">
@@ -2619,12 +2619,12 @@ export default function GameBoard({
           <button
             onClick={() => setPanelOpen(!panelOpen)}
             className="flex items-center justify-center px-1 cursor-pointer self-stretch"
-            style={{ backgroundColor: '#161b22', borderLeft: '1px solid #2a3140', color: '#4a5568', writingMode: 'vertical-rl' }}
+            style={{ backgroundColor: '#18191c', borderLeft: '1px solid #2a3140', color: '#4a5568', writingMode: 'vertical-rl' }}
           >
             <span className="text-xs font-semibold uppercase tracking-widest">{panelOpen ? 'Hide' : 'Menu'}</span>
           </button>
           {panelOpen && (
-            <div className="h-full overflow-y-auto p-3 flex flex-col" style={{ width: 260, backgroundColor: '#0d1117', borderLeft: '1px solid #2a3140' }}>
+            <div className="h-full overflow-y-auto p-3 flex flex-col" style={{ width: 260, backgroundColor: '#111214', borderLeft: '1px solid #2a3140' }}>
               <div className="flex items-center justify-between mb-3 shrink-0">
                 <div className="flex items-center gap-1.5">
                   <div className="flex rounded overflow-hidden" style={{ border: '1px solid #30363d' }}>
@@ -2732,7 +2732,7 @@ export default function GameBoard({
           >
             <div
               className="rounded-lg shadow-lg px-2 py-1 relative"
-              style={{ backgroundColor: '#161b22ee', border: '1px solid #2a3140', minWidth: 100 }}
+              style={{ backgroundColor: '#18191cee', border: '1px solid #2a3140', minWidth: 100 }}
             >
               <button
                 onClick={() => setTappedTile(null)}
@@ -2779,7 +2779,7 @@ export default function GameBoard({
       {inspectedUnit && (
         <div
           className="hidden lg:flex fixed bottom-16 left-1/2 -translate-x-1/2 lg:absolute lg:bottom-4 z-30 items-center gap-3 px-4 py-3 rounded-lg shadow-lg max-w-sm"
-          style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}
+          style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}
         >
           <img
             src={getUnitIcon(inspectedUnit.wg_unit_types, inspectedUnit)}
@@ -2827,7 +2827,7 @@ export default function GameBoard({
 
       {!isFullscreen && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20">
-          <div className="flex items-center justify-between px-3 py-1.5" style={{ backgroundColor: '#161b22', borderTop: '1px solid #2a3140' }}>
+          <div className="flex items-center justify-between px-3 py-1.5" style={{ backgroundColor: '#18191c', borderTop: '1px solid #2a3140' }}>
             <div className="flex items-center gap-1.5">
               <div className="flex rounded overflow-hidden" style={{ border: '1px solid #30363d' }}>
                 <button
@@ -2888,7 +2888,7 @@ export default function GameBoard({
             </button>
           </div>
           {battleLogOpen && (
-            <div className="px-2 pb-1" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #2a3140' }}>
+            <div className="px-2 pb-1" style={{ backgroundColor: '#111214', borderTop: '1px solid #2a3140' }}>
               <BattleLog
                 battleLog={battleLog || []}
                 currentPlayer={currentPlayer}
@@ -2897,7 +2897,7 @@ export default function GameBoard({
             </div>
           )}
           {chatOpen && !battleLogOpen && (
-            <div className="px-2 pb-1" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #2a3140' }}>
+            <div className="px-2 pb-1" style={{ backgroundColor: '#111214', borderTop: '1px solid #2a3140' }}>
               <TeamChat
                 gameId={game.id}
                 currentPlayer={currentPlayer}
@@ -2907,7 +2907,7 @@ export default function GameBoard({
             </div>
           )}
           {panelOpen && !chatOpen && !battleLogOpen && (
-            <div className="p-3 max-h-[50vh] overflow-y-auto" style={{ backgroundColor: '#0d1117', borderTop: '1px solid #2a3140' }}>
+            <div className="p-3 max-h-[50vh] overflow-y-auto" style={{ backgroundColor: '#111214', borderTop: '1px solid #2a3140' }}>
               {mobileInspectPanel}
               {sidebarContent}
             </div>
@@ -2917,7 +2917,7 @@ export default function GameBoard({
 
       {shipModelPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
-          <div className="rounded-lg p-6 w-full mx-4" style={{ maxWidth: 576, backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+          <div className="rounded-lg p-6 w-full mx-4" style={{ maxWidth: 576, backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
             <div className="text-base font-semibold mb-4 text-center" style={{ color: '#c9d1d9' }}>Select Your Command Ship</div>
             <div className="grid grid-cols-6 gap-3 mb-4">
               {[2, 3, 4, 5, 6, 7].map(n => {
@@ -2937,9 +2937,9 @@ export default function GameBoard({
                       }
                     }}
                     className="flex flex-col items-center gap-1.5 p-3 rounded cursor-pointer transition-all"
-                    style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}
+                    style={{ backgroundColor: '#111214', border: '1px solid #2a3140' }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = '#c060e0'; e.currentTarget.style.backgroundColor = '#1a1a2e' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a3140'; e.currentTarget.style.backgroundColor = '#0d1117' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a3140'; e.currentTarget.style.backgroundColor = '#111214' }}
                   >
                     <img src={`/assets/${model}.png`} alt={`Model ${n}`} className="w-18 h-18 object-contain" />
                     <span className="text-[11px] font-mono" style={{ color: '#8b949e' }}>Mk.{n - 1}</span>

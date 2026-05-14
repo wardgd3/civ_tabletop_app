@@ -41,7 +41,7 @@ export default function FriendsPanel() {
             onChange={e => setSearchName(e.target.value)}
             placeholder="Enter display name..."
             className="flex-1 px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/50"
-            style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#c9d1d9' }}
+            style={{ backgroundColor: '#111214', border: '1px solid #30363d', color: '#c9d1d9' }}
           />
           <button
             type="submit"
@@ -62,7 +62,7 @@ export default function FriendsPanel() {
           </h3>
           <ul className="space-y-2">
             {pendingReceived.map(req => (
-              <li key={req.friendshipId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+              <li key={req.friendshipId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
                 <div className="min-w-0">
                   <span className="font-medium" style={{ color: '#c9d1d9' }}>{req.display_name}</span>
                   <span className="ml-2 text-sm font-mono" style={{ color: '#4a5568' }}>ELO {req.elo_rating}</span>
@@ -94,7 +94,7 @@ export default function FriendsPanel() {
           <h3 className="text-lg font-semibold mb-3" style={{ color: '#c9d1d9' }}>Sent Requests</h3>
           <ul className="space-y-2">
             {pendingSent.map(req => (
-              <li key={req.friendshipId} className="flex items-center justify-between p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+              <li key={req.friendshipId} className="flex items-center justify-between p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
                 <span style={{ color: '#c9d1d9' }}>{req.display_name}</span>
                 <span className="text-xs font-mono uppercase tracking-widest" style={{ color: '#5a9abf' }}>Pending</span>
               </li>
@@ -112,7 +112,7 @@ export default function FriendsPanel() {
         ) : (
           <ul className="space-y-2">
             {friends.map(friend => (
-              <li key={friend.friendshipId} className="flex items-center justify-between p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+              <li key={friend.friendshipId} className="flex items-center justify-between p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
                 <div>
                   <span className="font-medium" style={{ color: '#c9d1d9' }}>{friend.display_name}</span>
                   <span className="ml-2 text-sm font-mono" style={{ color: '#4a5568' }}>ELO {friend.elo_rating}</span>

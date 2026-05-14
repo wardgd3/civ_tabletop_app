@@ -1,7 +1,7 @@
 export default function SpaceGuildPanel({ guildShips, onClose }) {
   if (!guildShips || guildShips.length === 0) {
     return (
-      <div className="p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+      <div className="p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <img src="/assets/spaceguild.png" alt="Space Guild" className="w-6 h-6 object-contain" />
@@ -30,7 +30,7 @@ export default function SpaceGuildPanel({ guildShips, onClose }) {
   const inTransit = allGuildConvoys.filter(gc => gc.inTransit)
 
   return (
-    <div className="p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+    <div className="p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <img src="/assets/spaceguild.png" alt="Space Guild" className="w-6 h-6 object-contain" />
@@ -45,7 +45,7 @@ export default function SpaceGuildPanel({ guildShips, onClose }) {
       </div>
 
       {inTransit.length === 0 ? (
-        <div className="p-2 rounded text-center" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
+        <div className="p-2 rounded text-center" style={{ backgroundColor: '#111214', border: '1px solid #2a3140' }}>
           <div className="text-[10px]" style={{ color: '#4a5568' }}>
             No convoys en route. Send one from your ship's Convoy Bay.
           </div>
@@ -57,7 +57,7 @@ export default function SpaceGuildPanel({ guildShips, onClose }) {
             const munCount = Object.values(gc.munitions || {}).reduce((s, v) => s + v, 0)
             const goldAmount = gc.cargo?.gold || 0
             return (
-              <div key={idx} className="p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #d2992240' }}>
+              <div key={idx} className="p-2 rounded" style={{ backgroundColor: '#111214', border: '1px solid #d2992240' }}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] font-semibold" style={{ color: '#d29922' }}>
                     Convoy — En Route
@@ -77,7 +77,7 @@ export default function SpaceGuildPanel({ guildShips, onClose }) {
                 {(gc.units || []).length > 0 && (
                   <div className="mt-1 flex flex-col gap-0.5">
                     {gc.units.map((u, uidx) => (
-                      <div key={uidx} className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: '#161b22', color: '#c9d1d9' }}>
+                      <div key={uidx} className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: '#18191c', color: '#c9d1d9' }}>
                         {u.typeName}
                       </div>
                     ))}

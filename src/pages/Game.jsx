@@ -42,7 +42,7 @@ export default function Game() {
 
   if (gameState.loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#0d1117' }}>
+      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#111214' }}>
         <div className="text-slate-500 text-lg font-mono uppercase tracking-widest">Loading...</div>
       </div>
     )
@@ -50,7 +50,7 @@ export default function Game() {
 
   if (!gameState.game) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#0d1117' }}>
+      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#111214' }}>
         <div className="text-center">
           <div className="text-slate-500 text-lg mb-4">Game not found</div>
           <button onClick={() => navigate('/')} className="text-slate-400 hover:text-slate-200 transition-colors text-sm uppercase tracking-wide">
@@ -72,7 +72,7 @@ export default function Game() {
   const boardUnitTypes = gameState.unitTypes.filter(ut => (ut.board || 'ground') === activeBoard)
 
   return (
-    <div className={`h-screen flex flex-col overflow-hidden ${isFullscreen ? 'p-0' : 'p-2 sm:p-4 pb-16 lg:pb-4'}`} style={{ backgroundColor: '#0d1117' }}>
+    <div className={`h-screen flex flex-col overflow-hidden ${isFullscreen ? 'p-0' : 'p-2 sm:p-4 pb-16 lg:pb-4'}`} style={{ backgroundColor: '#111214' }}>
       {!isFullscreen && (
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div className="flex items-center gap-2 sm:gap-4">

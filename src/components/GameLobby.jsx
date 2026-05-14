@@ -84,7 +84,7 @@ export default function GameLobby() {
       </div>
 
       {showAdminSize && (
-        <div className="p-3 rounded space-y-2" style={{ backgroundColor: '#161b22', border: '1px solid #3d2a3d' }}>
+        <div className="p-3 rounded space-y-2" style={{ backgroundColor: '#18191c', border: '1px solid #3d2a3d' }}>
           <div className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#c080c0' }}>Admin — Select Map Size</div>
           <div className="flex flex-wrap gap-1.5">
             {MAP_SIZES.map(s => (
@@ -138,7 +138,7 @@ export default function GameLobby() {
       )}
 
       {showCreate && (
-        <div className="p-3 rounded space-y-2" style={{ backgroundColor: '#161b22', border: '1px solid #30363d' }}>
+        <div className="p-3 rounded space-y-2" style={{ backgroundColor: '#18191c', border: '1px solid #30363d' }}>
           <form onSubmit={handleCreate} className="flex gap-2">
             <input
               type="text"
@@ -146,7 +146,7 @@ export default function GameLobby() {
               onChange={e => setGameName(e.target.value)}
               placeholder="Game name..."
               className="flex-1 px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/50"
-              style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#c9d1d9' }}
+              style={{ backgroundColor: '#111214', border: '1px solid #30363d', color: '#c9d1d9' }}
             />
             <button
               type="submit"
@@ -202,7 +202,7 @@ export default function GameLobby() {
           <h3 className="text-lg font-semibold mb-3" style={{ color: '#8b949e' }}>Game Invites</h3>
           <ul className="space-y-2">
             {invites.map(inv => (
-              <li key={inv.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+              <li key={inv.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
                 <div className="min-w-0">
                   <span className="font-medium truncate block" style={{ color: '#c9d1d9' }}>{inv.game?.name}</span>
                   <span className="text-sm" style={{ color: '#6e7681' }}>from {inv.inviter?.display_name}</span>
@@ -234,7 +234,7 @@ export default function GameLobby() {
           <p className="text-sm" style={{ color: '#6e7681' }}>No games yet. Create one to get started!</p>
         ) : (
           games.map(game => (
-            <div key={game.id} className="p-3 sm:p-4 rounded" style={{ backgroundColor: '#161b22', border: '1px solid #2a3140' }}>
+            <div key={game.id} className="p-3 sm:p-4 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                 <div className="min-w-0">
                   <span className="font-semibold text-base sm:text-lg truncate block" style={{ color: '#c9d1d9' }}>{game.name}</span>
@@ -293,7 +293,7 @@ export default function GameLobby() {
                     {menuOpenId === game.id && (
                       <div
                         className="absolute right-0 top-full mt-1 py-1 rounded shadow-lg z-50 min-w-[120px]"
-                        style={{ backgroundColor: '#1c2128', border: '1px solid #30363d' }}
+                        style={{ backgroundColor: '#1e2023', border: '1px solid #30363d' }}
                       >
                         <button
                           onClick={() => { setMenuOpenId(null); setConfirmDeleteId(game.id) }}
@@ -359,7 +359,7 @@ export default function GameLobby() {
               )}
 
               {invitingGameId === game.id && (
-                <div className="mt-3 p-3 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #30363d' }}>
+                <div className="mt-3 p-3 rounded" style={{ backgroundColor: '#111214', border: '1px solid #30363d' }}>
                   <p className="text-sm mb-2" style={{ color: '#8b949e' }}>Invite a friend:</p>
                   {friends.length === 0 ? (
                     <p className="text-sm" style={{ color: '#6e7681' }}>Add friends first to invite them.</p>
