@@ -54,7 +54,7 @@ function getHangarCapacity(unit) {
 function getConvoySlots(unit) {
   if (unit?.wg_unit_types?.name === 'Battleship') return 1
   if (unit?.wg_unit_types?.name === 'Base') return 1
-  return 2
+  return 3
 }
 
 const BATTLESHIP_MATERIAL_COST = { uranium: 1, iron: 50, aluminum: 30 }
@@ -1418,7 +1418,7 @@ export function useGameState(gameId) {
     if (!gc || gc.inTransit) throw new Error('No convoy docked at the Space Guild')
 
     const convoys = [...(upgrades.convoys || [])]
-    if (convoys.length >= 2) throw new Error('Convoy bays full')
+    if (convoys.length >= 3) throw new Error('Convoy bays full')
 
     const convoyMunitions = gc.munitions || {}
     const shipMunitions = { ...(upgrades.munitions || { tactical: 0, cruise: 0, ipbm: 0 }) }
@@ -1442,7 +1442,7 @@ export function useGameState(gameId) {
 
     const upgrades = unit.upgrades || {}
     const convoys = upgrades.convoys || []
-    if (convoys.length >= 2) throw new Error('Max 2 convoys')
+    if (convoys.length >= 3) throw new Error('Max 3 convoys')
 
     const convoyCost = 15
     if (!isAdmin && teamGold < convoyCost) throw new Error('Not enough gold')
@@ -1475,7 +1475,7 @@ export function useGameState(gameId) {
     const convoy = convoys[convoyIndex]
     if (!convoy) throw new Error('Convoy not found')
     if (convoy.inTransit) throw new Error('Convoy in transit')
-    if ((convoy.units || []).length >= 4) throw new Error('Convoy full')
+    if ((convoy.units || []).length >= 5) throw new Error('Convoy full')
 
     convoy.units = [...(convoy.units || []), {
       unitId: groundUnitId,
@@ -1929,7 +1929,7 @@ export function useGameState(gameId) {
     const convoy = convoys[convoyIndex]
     if (!convoy) throw new Error('Convoy not found')
     if (convoy.inTransit) throw new Error('Convoy in transit')
-    if ((convoy.units || []).length >= 4) throw new Error('Convoy full')
+    if ((convoy.units || []).length >= 5) throw new Error('Convoy full')
 
     const holdingBay = [...(upgrades.holdingBay || [])]
     if (bayIndex < 0 || bayIndex >= holdingBay.length) throw new Error('Invalid bay index')

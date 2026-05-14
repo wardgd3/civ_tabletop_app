@@ -432,7 +432,7 @@ const REPAIR_SHIP_COMPARTMENTS = [
 ]
 
 const CONVOY_COST = 15
-const CONVOY_CAPACITY = 4
+const CONVOY_CAPACITY = 5
 const CONVOY_TRANSIT_TURNS = 3
 const HOLDING_BAY_CAPACITY = 12
 
@@ -471,6 +471,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
   const [selectedDest, setSelectedDest] = useState(destinations?.length === 1 ? destinations[0].id : null)
   const [orderUnits, setOrderUnits] = useState([])
   const [orderMunitions, setOrderMunitions] = useState({ tactical: 0, cruise: 0, ipbm: 0 })
+  const [showBuyUnits, setShowBuyUnits] = useState(false)
   const cargo = convoy.cargo || { gold: 0, resources: {} }
   const hasAnyCargo = (cargo.gold || 0) > 0 || Object.values(cargo.resources || {}).some(v => v > 0)
   const hasAnyLoad = (convoy.units || []).length > 0 || hasAnyCargo
@@ -726,37 +727,45 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
 
             {availableUnitTypes && availableUnitTypes.length > 0 && (
               <>
-                <div className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
-                  Buy Units
+                <div
+                  onClick={() => setShowBuyUnits(v => !v)}
+                  className="flex items-center justify-between mb-1 cursor-pointer"
+                >
+                  <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>
+                    Buy Units
+                  </span>
+                  <span className="text-[9px]" style={{ color: '#4a5568' }}>{showBuyUnits ? '▴' : '▾'}</span>
                 </div>
-                <div className="flex flex-col gap-0.5 mb-2">
-                  {availableUnitTypes.map(ut => {
-                    const canAfford = effectiveGold >= totalOrderCost + ut.cost
-                    return (
-                      <button
-                        key={ut.id}
-                        onClick={() => canAfford && setOrderUnits(prev => [...prev, ut.id])}
-                        disabled={!canAfford}
-                        className="flex items-center justify-between p-1 rounded transition-colors"
-                        style={{
-                          backgroundColor: canAfford ? '#1a2a3a10' : '#0d1117',
-                          border: `1px solid ${canAfford ? '#6cb4e640' : '#2a3140'}`,
-                          cursor: canAfford ? 'pointer' : 'default',
-                          opacity: canAfford ? 1 : 0.4,
-                        }}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <img src={`/assets/${ut.name.toLowerCase().replace(/\s+/g, '')}.png`} alt={ut.name} className="w-5 h-5 object-contain" />
-                          <div className="text-left">
-                            <div className="text-[9px] font-semibold" style={{ color: '#c9d1d9' }}>{ut.name}</div>
-                            <div className="text-[7px]" style={{ color: '#6e7681' }}>ATK {ut.attack} DEF {ut.defense} HP {ut.hp}</div>
+                {showBuyUnits && (
+                  <div className="flex flex-col gap-0.5 mb-2">
+                    {availableUnitTypes.map(ut => {
+                      const canAfford = effectiveGold >= totalOrderCost + ut.cost
+                      return (
+                        <button
+                          key={ut.id}
+                          onClick={() => canAfford && setOrderUnits(prev => [...prev, ut.id])}
+                          disabled={!canAfford}
+                          className="flex items-center justify-between p-1 rounded transition-colors"
+                          style={{
+                            backgroundColor: canAfford ? '#1a2a3a10' : '#0d1117',
+                            border: `1px solid ${canAfford ? '#6cb4e640' : '#2a3140'}`,
+                            cursor: canAfford ? 'pointer' : 'default',
+                            opacity: canAfford ? 1 : 0.4,
+                          }}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <img src={`/assets/${ut.name.toLowerCase().replace(/\s+/g, '')}.png`} alt={ut.name} className="w-5 h-5 object-contain" />
+                            <div className="text-left">
+                              <div className="text-[9px] font-semibold" style={{ color: '#c9d1d9' }}>{ut.name}</div>
+                              <div className="text-[7px]" style={{ color: '#6e7681' }}>ATK {ut.attack} DEF {ut.defense} HP {ut.hp}</div>
+                            </div>
                           </div>
-                        </div>
-                        <span className="text-[9px] font-mono font-semibold" style={{ color: '#cca43b' }}>⚒{ut.cost}</span>
-                      </button>
-                    )
-                  })}
-                </div>
+                          <span className="text-[9px] font-mono font-semibold" style={{ color: '#cca43b' }}>{ut.cost}g</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </>
             )}
 
@@ -870,7 +879,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
           border: `1px solid ${selectedDest ? (selectedDest === 'space_guild' ? '#6cb4e640' : '#d29922' + '40') : '#30363d'}`,
         }}
       >
-        {selectedDest === 'space_guild' ? `Send & Order (${CONVOY_TRANSIT_TURNS} turn round trip)` : selectedDest ? `Send (${CONVOY_TRANSIT_TURNS} turns)` : 'Select Destination'}
+        {selectedDest === 'space_guild' ? 'Place Order' : selectedDest ? `Send (${CONVOY_TRANSIT_TURNS} turns)` : 'Select Destination'}
       </button>
     </div>
   )
