@@ -111,9 +111,9 @@ const NPC_UNIT_TYPES = {
     board: 'ground',
     isNPC: true,
   },
-  test2: {
-    id: 'npc-test2',
-    name: 'test2',
+  ravager: {
+    id: 'npc-ravager',
+    name: 'Ravager',
     description: 'A hostile space creature',
     cost: 0,
     attack: 4,
@@ -141,8 +141,8 @@ const NPC_UNIT_TYPES = {
     board: 'space',
     isNPC: true,
     hangar: [
-      { npcType: 'test2' },
-      { npcType: 'test2' },
+      { npcType: 'ravager' },
+      { npcType: 'ravager' },
     ],
     missiles: { tactical: 2 },
     missileDamage: 7,
@@ -2728,7 +2728,7 @@ export function useGameState(gameId) {
     npcSpawnedRef.current = true
     ;(async () => {
       await spawnNPCs(5, 'test1')
-      await spawnNPCs(10, 'test2')
+      await spawnNPCs(10, 'ravager')
       await spawnNPCs(3, 'warship')
     })()
   }, [isAdmin, game, tiles])

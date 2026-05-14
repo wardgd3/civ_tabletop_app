@@ -25,6 +25,7 @@ export default function GameLobby() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [showAdminSize, setShowAdminSize] = useState(false)
   const [adminMapSize, setAdminMapSize] = useState('standard')
+  const [mapSize, setMapSize] = useState('standard')
   const [terrainTheme, setTerrainTheme] = useState('default')
   const [adminTerrainTheme, setAdminTerrainTheme] = useState('default')
   const menuRef = useRef(null)
@@ -43,9 +44,11 @@ export default function GameLobby() {
     if (!gameName.trim()) return
     setCreating(true)
     try {
-      await createGame(gameName.trim(), 32, 48, 2, terrainTheme)
+      const size = MAP_SIZES.find(s => s.id === mapSize) || MAP_SIZES[1]
+      await createGame(gameName.trim(), size.rows, size.cols, 2, terrainTheme)
       setGameName('')
       setShowCreate(false)
+      setMapSize('standard')
       setTerrainTheme('default')
     } catch (err) {
       alert(err.message)
@@ -154,6 +157,25 @@ export default function GameLobby() {
               Create
             </button>
           </form>
+          <div>
+            <div className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#8b949e' }}>Map Size</div>
+            <div className="flex flex-wrap gap-1.5">
+              {MAP_SIZES.map(s => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setMapSize(s.id)}
+                  className="px-2.5 py-1.5 text-xs rounded transition-colors"
+                  style={mapSize === s.id
+                    ? { backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }
+                    : { backgroundColor: '#21262d', color: '#8b949e', border: '1px solid #30363d' }}
+                >
+                  {s.label}
+                  <span className="text-[9px] ml-1 opacity-50">{s.cols}x{s.rows}</span>
+                </button>
+              ))}
+            </div>
+          </div>
           <div>
             <div className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#8b949e' }}>World Theme</div>
             <div className="flex flex-wrap gap-1.5">
