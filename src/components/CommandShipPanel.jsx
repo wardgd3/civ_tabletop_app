@@ -165,7 +165,7 @@ const COMMAND_SHIP_COMPARTMENTS = [
     icon: 'transport',
     color: '#50b0b0',
     special: 'transport',
-    slots: 2,
+    slots: 3,
   },
   {
     id: 'holding_bay',
@@ -256,7 +256,7 @@ const COMMAND_CENTER_COMPARTMENTS = [
     icon: 'transport',
     color: '#50b0b0',
     special: 'transport',
-    slots: 2,
+    slots: 3,
   },
   {
     id: 'holding_bay',

@@ -2278,7 +2278,32 @@ export function useGameState(gameId) {
             }
           }
           upgrades.munitions = shipMunitions
-          newConvoys.push({ units: updated.units || [], cargo: updated.cargo || {}, inTransit: false })
+
+          const holdingBay = [...(upgrades.holdingBay || [])]
+          for (const u of (updated.units || [])) {
+            holdingBay.push(u)
+          }
+          upgrades.holdingBay = holdingBay
+
+          const cargo = updated.cargo || {}
+          if ((cargo.gold || 0) > 0 && teamPlayers.length > 0) {
+            const perPlayer = Math.ceil(cargo.gold / teamPlayers.length)
+            for (const tp of teamPlayers) {
+              await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) + perPlayer }).eq('id', tp.id)
+            }
+          }
+          if (cargo.resources && Object.keys(cargo.resources).length > 0) {
+            const { data: freshPlayer } = await supabase.from('wg_game_players').select('*').eq('player_id', userId).eq('game_id', struct.game_id).single()
+            if (freshPlayer) {
+              const playerRes = { ...(freshPlayer.resources || {}) }
+              for (const [key, amount] of Object.entries(cargo.resources)) {
+                if (amount > 0) playerRes[key] = (playerRes[key] || 0) + amount
+              }
+              await supabase.from('wg_game_players').update({ resources: playerRes }).eq('id', freshPlayer.id)
+            }
+          }
+
+          newConvoys.push({ units: [], cargo: {}, inTransit: false })
           changed = true
         } else {
           remainingGuildConvoys.push(updated)
