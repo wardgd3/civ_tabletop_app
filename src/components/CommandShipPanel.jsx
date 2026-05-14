@@ -461,9 +461,16 @@ function getSlots(upgrades, compartmentId, slotCount) {
   return slots
 }
 
-function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isCC, teamGold, playerResources, destinations }) {
+const RESOURCE_VALUES = {
+  coal: 3, iron: 5, uranium: 8, aluminum: 4, tritium: 10,
+  ruby: 15, sapphire: 15, diamond: 20, amethyst: 12, quasicrystals: 25,
+}
+
+function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isCC, teamGold, playerResources, destinations, availableUnitTypes, missileLevel, isAdmin }) {
   const [goldAmount, setGoldAmount] = useState('')
   const [selectedDest, setSelectedDest] = useState(destinations?.length === 1 ? destinations[0].id : null)
+  const [orderUnits, setOrderUnits] = useState([])
+  const [orderMunitions, setOrderMunitions] = useState({ tactical: 0, cruise: 0, ipbm: 0 })
   const cargo = convoy.cargo || { gold: 0, resources: {} }
   const hasAnyCargo = (cargo.gold || 0) > 0 || Object.values(cargo.resources || {}).some(v => v > 0)
   const hasAnyLoad = (convoy.units || []).length > 0 || hasAnyCargo
@@ -670,23 +677,206 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
         </div>
       )}
 
+      {selectedDest === 'space_guild' && (() => {
+        const cargo = convoy.cargo || { gold: 0, resources: {} }
+        let sellValue = 0
+        for (const [key, amount] of Object.entries(cargo.resources || {})) {
+          if (amount > 0) sellValue += amount * (RESOURCE_VALUES[key] || 5)
+        }
+        for (const u of (convoy.units || [])) {
+          sellValue += u.cost || 10
+        }
+
+        const MISSILE_COSTS = { tactical: 5, cruise: 10, ipbm: 20 }
+        const mlSlots = Array.isArray(missileLevel) ? missileLevel : []
+        const effectiveLevel = isAdmin ? 3 : mlSlots.reduce((max, v) => Math.max(max, v || 0), 0)
+        const MISSILE_TYPES = [
+          { key: 'tactical', name: 'Tactical', color: '#8b949e', cost: 5, reqLevel: 1 },
+          { key: 'cruise', name: 'Cruise', color: '#3fb950', cost: 10, reqLevel: 2 },
+          { key: 'ipbm', name: 'IPBM', color: '#d29922', cost: 20, reqLevel: 3 },
+        ]
+
+        const orderUnitCost = orderUnits.reduce((s, id) => {
+          const ut = (availableUnitTypes || []).find(t => t.id === id)
+          return s + (ut?.cost || 0)
+        }, 0)
+        const orderMunCost = Object.entries(orderMunitions).reduce((s, [k, v]) => s + (MISSILE_COSTS[k] || 0) * v, 0)
+        const totalOrderCost = orderUnitCost + orderMunCost
+        const effectiveGold = teamGold + sellValue
+
+        return (
+          <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0a1929', border: '1px solid #6cb4e640' }}>
+            <div className="flex items-center gap-1.5 mb-2">
+              <img src="/assets/spaceguild.png" alt="Space Guild" className="w-4 h-4 object-contain" />
+              <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#6cb4e6' }}>
+                Space Guild Order
+              </span>
+            </div>
+
+            {sellValue > 0 && (
+              <div className="p-1.5 rounded mb-2" style={{ backgroundColor: '#cca43b10', border: '1px solid #cca43b30' }}>
+                <div className="text-[9px]" style={{ color: '#cca43b' }}>
+                  Auto-sell cargo: +{sellValue}g
+                </div>
+                <div className="text-[8px]" style={{ color: '#6e7681' }}>
+                  All units and resources in the convoy will be sold
+                </div>
+              </div>
+            )}
+
+            {availableUnitTypes && availableUnitTypes.length > 0 && (
+              <>
+                <div className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
+                  Buy Units
+                </div>
+                <div className="flex flex-col gap-0.5 mb-2">
+                  {availableUnitTypes.map(ut => {
+                    const canAfford = effectiveGold >= totalOrderCost + ut.cost
+                    return (
+                      <button
+                        key={ut.id}
+                        onClick={() => canAfford && setOrderUnits(prev => [...prev, ut.id])}
+                        disabled={!canAfford}
+                        className="flex items-center justify-between p-1 rounded transition-colors"
+                        style={{
+                          backgroundColor: canAfford ? '#1a2a3a10' : '#0d1117',
+                          border: `1px solid ${canAfford ? '#6cb4e640' : '#2a3140'}`,
+                          cursor: canAfford ? 'pointer' : 'default',
+                          opacity: canAfford ? 1 : 0.4,
+                        }}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <img src={`/assets/${ut.name.toLowerCase().replace(/\s+/g, '')}.png`} alt={ut.name} className="w-5 h-5 object-contain" />
+                          <div className="text-left">
+                            <div className="text-[9px] font-semibold" style={{ color: '#c9d1d9' }}>{ut.name}</div>
+                            <div className="text-[7px]" style={{ color: '#6e7681' }}>ATK {ut.attack} DEF {ut.defense} HP {ut.hp}</div>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-mono font-semibold" style={{ color: '#cca43b' }}>⚒{ut.cost}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+
+            {effectiveLevel > 0 && (
+              <>
+                <div className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
+                  Buy Munitions
+                </div>
+                <div className="flex gap-1 mb-2">
+                  {MISSILE_TYPES.map(m => {
+                    const locked = effectiveLevel < m.reqLevel
+                    const canAfford = effectiveGold >= totalOrderCost + m.cost
+                    const disabled = locked || !canAfford
+                    return (
+                      <button
+                        key={m.key}
+                        onClick={() => !disabled && setOrderMunitions(prev => ({ ...prev, [m.key]: (prev[m.key] || 0) + 1 }))}
+                        disabled={disabled}
+                        className="flex-1 rounded p-1 text-center transition-all"
+                        style={{
+                          backgroundColor: disabled ? '#161b22' : m.color + '15',
+                          border: `1px solid ${disabled ? '#2a3140' : m.color + '60'}`,
+                          cursor: disabled ? 'default' : 'pointer',
+                          opacity: disabled ? 0.4 : 1,
+                        }}
+                      >
+                        <div className="text-[8px] font-semibold" style={{ color: locked ? '#4a5568' : m.color }}>
+                          {locked ? 'Locked' : m.name}
+                        </div>
+                        {!locked && (
+                          <div className="text-[8px] font-mono" style={{ color: '#cca43b' }}>{m.cost}g</div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+
+            {(orderUnits.length > 0 || Object.values(orderMunitions).some(v => v > 0)) && (
+              <div className="p-1.5 rounded mb-2" style={{ backgroundColor: '#161b22', border: '1px solid #30363d' }}>
+                <div className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
+                  Order Summary
+                </div>
+                {orderUnits.length > 0 && (() => {
+                  const counts = {}
+                  for (const id of orderUnits) {
+                    const ut = (availableUnitTypes || []).find(t => t.id === id)
+                    if (ut) counts[ut.name] = (counts[ut.name] || { count: 0, cost: ut.cost, id: ut.id })
+                    if (ut) counts[ut.name].count++
+                  }
+                  return Object.entries(counts).map(([name, { count, cost }]) => (
+                    <div key={name} className="flex items-center justify-between mb-0.5">
+                      <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{name} x{count}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[8px] font-mono" style={{ color: '#cca43b' }}>{cost * count}g</span>
+                        <button
+                          onClick={() => setOrderUnits(prev => {
+                            const idx = prev.lastIndexOf((availableUnitTypes || []).find(t => t.name === name)?.id)
+                            if (idx >= 0) { const n = [...prev]; n.splice(idx, 1); return n }
+                            return prev
+                          })}
+                          className="text-[8px] px-1 rounded cursor-pointer"
+                          style={{ color: '#f47067', backgroundColor: '#4c1a1a', border: '1px solid #6e2b2b' }}
+                        >−</button>
+                      </div>
+                    </div>
+                  ))
+                })()}
+                {Object.entries(orderMunitions).filter(([, v]) => v > 0).map(([key, count]) => (
+                  <div key={key} className="flex items-center justify-between mb-0.5">
+                    <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{key} x{count}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[8px] font-mono" style={{ color: '#cca43b' }}>{(MISSILE_COSTS[key] || 0) * count}g</span>
+                      <button
+                        onClick={() => setOrderMunitions(prev => ({ ...prev, [key]: Math.max(0, (prev[key] || 0) - 1) }))}
+                        className="text-[8px] px-1 rounded cursor-pointer"
+                        style={{ color: '#f47067', backgroundColor: '#4c1a1a', border: '1px solid #6e2b2b' }}
+                      >−</button>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between mt-1 pt-1" style={{ borderTop: '1px solid #30363d' }}>
+                  <span className="text-[9px] font-semibold" style={{ color: '#c9d1d9' }}>Total</span>
+                  <span className="text-[9px] font-mono font-semibold" style={{ color: '#cca43b' }}>{totalOrderCost}g</span>
+                </div>
+              </div>
+            )}
+
+            <div className="text-[8px] mb-1" style={{ color: '#6e7681' }}>
+              Available: <span style={{ color: '#cca43b' }}>{effectiveGold - totalOrderCost}g</span>
+              {sellValue > 0 && <span> (incl. {sellValue}g from sales)</span>}
+            </div>
+          </div>
+        )
+      })()}
+
       <button
-        onClick={() => onSendConvoy(unit.id, convoyIndex, selectedDest)}
+        onClick={() => {
+          if (selectedDest === 'space_guild') {
+            onSendConvoy(unit.id, convoyIndex, selectedDest, { buyUnits: orderUnits, buyMunitions: orderMunitions })
+          } else {
+            onSendConvoy(unit.id, convoyIndex, selectedDest)
+          }
+        }}
         disabled={!selectedDest}
         className="w-full mt-1 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
         style={{
-          backgroundColor: selectedDest ? '#d29922' + '20' : '#21262d',
-          color: selectedDest ? '#d29922' : '#8b949e',
-          border: `1px solid ${selectedDest ? '#d29922' + '40' : '#30363d'}`,
+          backgroundColor: selectedDest ? (selectedDest === 'space_guild' ? '#6cb4e620' : '#d29922' + '20') : '#21262d',
+          color: selectedDest ? (selectedDest === 'space_guild' ? '#6cb4e6' : '#d29922') : '#8b949e',
+          border: `1px solid ${selectedDest ? (selectedDest === 'space_guild' ? '#6cb4e640' : '#d29922' + '40') : '#30363d'}`,
         }}
       >
-        {selectedDest ? `Send (${CONVOY_TRANSIT_TURNS} turns)` : 'Select Destination'}
+        {selectedDest === 'space_guild' ? `Send & Order (${CONVOY_TRANSIT_TURNS} turn round trip)` : selectedDest ? `Send (${CONVOY_TRANSIT_TURNS} turns)` : 'Select Destination'}
       </button>
     </div>
   )
 }
 
-function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isAdmin, teamGold, playerResources, destinations, onSetNumberedOverlays }) {
+function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isAdmin, teamGold, playerResources, destinations, onSetNumberedOverlays, availableUnitTypes, unitTypes: allUnitTypes }) {
   const [selectedConvoy, setSelectedConvoy] = useState(null)
   const convoys = upgrades.convoys || []
   const maxConvoys = comp.slots
@@ -764,6 +954,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
             groundUnits={groundUnits} comp={comp} isCC={true}
             teamGold={teamGold} playerResources={playerResources}
             destinations={destinations}
+            availableUnitTypes={availableUnitTypes} missileLevel={upgrades.missiles} isAdmin={isAdmin}
           />
         )}
 
@@ -917,6 +1108,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
           groundUnits={groundUnits} comp={comp} isCC={false}
           teamGold={teamGold} playerResources={playerResources}
           destinations={destinations}
+          availableUnitTypes={availableUnitTypes} missileLevel={upgrades.missiles} isAdmin={isAdmin}
         />
       )}
     </div>
@@ -2019,6 +2211,14 @@ export default function CommandShipPanel({
               playerResources={playerResources}
               destinations={allDestinations}
               onSetNumberedOverlays={onSetNumberedOverlays}
+              availableUnitTypes={(unitTypes || []).filter(ut =>
+                (ut.board || 'ground') === 'ground' &&
+                ut.name !== 'Command Center' &&
+                ut.name !== 'Base' &&
+                ut.name !== 'Factory' &&
+                ut.name !== 'Mining Station'
+              )}
+              unitTypes={unitTypes}
             />
           ) : comp.special === 'holding_bay' ? (
             <HoldingBayPanel

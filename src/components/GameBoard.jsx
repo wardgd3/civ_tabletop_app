@@ -107,7 +107,7 @@ export default function GameBoard({
   game, players, units, allUnits, unitTypes, allUnitTypes, tiles, discoveredTiles, persistDiscoveredTiles,
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-  excavate, upgradeShipCompartment, levelUpUnit, buyMissile, fireMissile, produceWarhead, missileFiredShips, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
+  excavate, upgradeShipCompartment, levelUpUnit, buyMissile, fireMissile, produceWarhead, missileFiredShips, sendConvoyToGuild,
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
   setAutoPath, clearAutoPath,
@@ -1851,8 +1851,8 @@ export default function GameBoard({
             onUnloadToHoldingBay={async (shipId, convoyIdx, unitIdx) => {
               try { await unloadToHoldingBay(shipId, convoyIdx, unitIdx) } catch (err) { setError(err.message) }
             }}
-            onSendConvoy={async (shipId, convoyIdx, destId) => {
-              try { await sendConvoy(shipId, convoyIdx, destId) } catch (err) { setError(err.message) }
+            onSendConvoy={async (shipId, convoyIdx, destId, order) => {
+              try { await sendConvoy(shipId, convoyIdx, destId, order) } catch (err) { setError(err.message) }
             }}
             onDeployFromBay={(shipId, bayIdx) => {
               setBayDeployInfo({ shipId, bayIndex: bayIdx })
@@ -1957,39 +1957,6 @@ export default function GameBoard({
           <SpaceGuildPanel
             guildShips={myGuildShips}
             onClose={() => setSpaceGuildOpen(false)}
-            onSendToGuild={async (shipId, convoyIdx) => {
-              try { await sendConvoyToGuild(shipId, convoyIdx) } catch (err) { setError(err.message) }
-            }}
-            onSellAtGuild={async (shipId, gcIdx, sellUnits, sellResources) => {
-              try { return await sellAtGuild(shipId, gcIdx, sellUnits, sellResources) } catch (err) { setError(err.message) }
-            }}
-            onBuyUnit={async (shipId, gcIdx, unitTypeId) => {
-              try { await buyUnitAtGuild(shipId, gcIdx, unitTypeId) } catch (err) { setError(err.message) }
-            }}
-            onBuyMunition={async (shipId, gcIdx, missileType) => {
-              try { await buyMunitionAtGuild(shipId, gcIdx, missileType) } catch (err) { setError(err.message) }
-            }}
-            onReturnFromGuild={async (shipId, gcIdx) => {
-              try { await returnConvoyFromGuild(shipId, gcIdx) } catch (err) { setError(err.message) }
-            }}
-            playerResources={currentPlayer?.resources || {}}
-            teamGold={economy?.teamGold ?? currentPlayer?.gold ?? 0}
-            commandShipUpgrades={(() => {
-              const myShip = allUnits.find(u =>
-                u.owner_id === currentPlayer?.player_id &&
-                u.wg_unit_types?.name === 'Command Ship' &&
-                u.is_alive
-              )
-              return myShip?.upgrades || {}
-            })()}
-            availableUnitTypes={(allUnitTypes || unitTypes).filter(ut =>
-              (ut.board || 'ground') === 'ground' &&
-              ut.name !== 'Command Center' &&
-              ut.name !== 'Base' &&
-              ut.name !== 'Factory' &&
-              ut.name !== 'Mining Station'
-            )}
-            isAdmin={isAdmin}
           />
         )
       })()}

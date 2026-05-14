@@ -143,10 +143,6 @@ export default function Game() {
           produceWarhead={gameState.produceWarhead}
           missileFiredShips={gameState.missileFiredShips}
           sendConvoyToGuild={gameState.sendConvoyToGuild}
-          sellAtGuild={gameState.sellAtGuild}
-          buyUnitAtGuild={gameState.buyUnitAtGuild}
-          buyMunitionAtGuild={gameState.buyMunitionAtGuild}
-          returnConvoyFromGuild={gameState.returnConvoyFromGuild}
           buildConvoy={gameState.buildConvoy}
           loadUnitToConvoy={gameState.loadUnitToConvoy}
           loadFromBayToConvoy={gameState.loadFromBayToConvoy}

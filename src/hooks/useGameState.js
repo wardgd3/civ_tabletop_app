@@ -1163,7 +1163,7 @@ export function useGameState(gameId) {
     return []
   }
 
-  async function sendConvoyToGuild(shipId, convoyIndex) {
+  async function sendConvoyToGuild(shipId, convoyIndex, order = {}) {
     const ship = units.find(u => u.id === shipId)
     if (!ship) throw new Error('Ship not found')
     if ((ship.board || 'ground') !== 'space') throw new Error('Only space units can trade with the Space Guild')
@@ -1177,11 +1177,76 @@ export function useGameState(gameId) {
     if (guildConvoys.length >= 8) throw new Error('Guild convoy bay is full')
     if (guildConvoys.some(gc => gc.inTransit)) throw new Error('A convoy is already en route to the Space Guild')
 
+    const RESOURCE_VALUES = {
+      coal: 3, iron: 5, uranium: 8, aluminum: 4, tritium: 10,
+      ruby: 15, sapphire: 15, diamond: 20, amethyst: 12, quasicrystals: 25,
+    }
+
+    let goldEarned = 0
+    const cargo = { ...(convoy.cargo || {}), resources: { ...(convoy.cargo?.resources || {}) } }
+
+    for (const [key, amount] of Object.entries(cargo.resources)) {
+      if (amount > 0) {
+        goldEarned += amount * (RESOURCE_VALUES[key] || 5)
+      }
+    }
+    cargo.resources = {}
+
+    const unitsToSell = convoy.units || []
+    for (const u of unitsToSell) {
+      goldEarned += u.cost || 10
+    }
+
+    if (goldEarned > 0 && !isAdmin) {
+      const perPlayer = Math.ceil(goldEarned / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) + perPlayer }).eq('id', tp.id)
+      }
+    }
+
+    const { buyUnits = [], buyMunitions = {} } = order
+    let totalCost = 0
+
+    const orderedUnits = []
+    for (const unitTypeId of buyUnits) {
+      const ut = unitTypes.find(t => t.id === unitTypeId)
+      if (ut) {
+        totalCost += ut.cost
+        orderedUnits.push({ typeName: ut.name, typeId: ut.id, hp: ut.hp, cost: ut.cost })
+      }
+    }
+
+    const MISSILE_COSTS = { tactical: 5, cruise: 10, ipbm: 20 }
+    const orderedMunitions = { tactical: 0, cruise: 0, ipbm: 0 }
+    for (const [key, amount] of Object.entries(buyMunitions)) {
+      if (amount > 0 && MISSILE_COSTS[key]) {
+        totalCost += MISSILE_COSTS[key] * amount
+        orderedMunitions[key] = amount
+      }
+    }
+
+    if (totalCost > 0 && !isAdmin) {
+      const totalGold = teamPlayers.reduce((s, p) => s + (p.gold || 0), 0) + goldEarned
+      if (totalGold < totalCost) throw new Error('Not enough gold')
+
+      let remaining = totalCost
+      const { data: freshPlayers } = await supabase.from('wg_game_players').select('*').eq('game_id', ship.game_id).eq('team', teamPlayers[0]?.team)
+      for (const tp of (freshPlayers || teamPlayers)) {
+        if (remaining <= 0) break
+        const deduct = Math.min(tp.gold || 0, remaining)
+        if (deduct > 0) {
+          await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) - deduct }).eq('id', tp.id)
+          remaining -= deduct
+        }
+      }
+    }
+
     convoys.splice(convoyIndex, 1)
 
     guildConvoys.push({
-      units: [...(convoy.units || [])],
-      cargo: { ...(convoy.cargo || {}) },
+      units: orderedUnits,
+      cargo: { gold: cargo.gold || 0 },
+      munitions: orderedMunitions,
       inTransit: true,
       turnsLeft: 3,
     })
@@ -1448,7 +1513,7 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
-  async function sendConvoy(shipId, convoyIndex, destinationId) {
+  async function sendConvoy(shipId, convoyIndex, destinationId, order) {
     const ship = units.find(u => u.id === shipId)
     if (!ship) throw new Error('Ship not found')
 
@@ -1458,7 +1523,7 @@ export function useGameState(gameId) {
     if (!convoy || convoy.inTransit) throw new Error('Already in transit')
 
     if (destinationId === 'space_guild') {
-      return sendConvoyToGuild(shipId, convoyIndex)
+      return sendConvoyToGuild(shipId, convoyIndex, order)
     }
 
     let dest
@@ -2197,20 +2262,32 @@ export function useGameState(gameId) {
         return updated
       })
 
-      const newGuildConvoys = guildConvoys.map(c => {
-        if (!c.inTransit) return c
+      const remainingGuildConvoys = []
+      for (const c of guildConvoys) {
+        if (!c.inTransit) {
+          remainingGuildConvoys.push(c)
+          continue
+        }
         const updated = { ...c, turnsLeft: (c.turnsLeft || 1) - 1 }
         if (updated.turnsLeft <= 0) {
-          updated.inTransit = false
-          updated.turnsLeft = 0
+          const convoyMunitions = updated.munitions || {}
+          const shipMunitions = { ...(upgrades.munitions || { tactical: 0, cruise: 0, ipbm: 0 }) }
+          for (const [key, amount] of Object.entries(convoyMunitions)) {
+            if (amount > 0) {
+              shipMunitions[key] = Math.min(10, (shipMunitions[key] || 0) + amount)
+            }
+          }
+          upgrades.munitions = shipMunitions
+          newConvoys.push({ units: updated.units || [], cargo: updated.cargo || {}, inTransit: false })
+          changed = true
+        } else {
+          remainingGuildConvoys.push(updated)
+          changed = true
         }
-        changed = true
-        return updated
-      })
+      }
 
       if (changed) {
-        const newUpgrades = { ...upgrades, convoys: newConvoys }
-        if (guildConvoys.length > 0) newUpgrades.guildConvoys = newGuildConvoys
+        const newUpgrades = { ...upgrades, convoys: newConvoys, guildConvoys: remainingGuildConvoys }
         await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', struct.id)
       }
     }
@@ -2635,7 +2712,7 @@ export function useGameState(gameId) {
     game, players, units, unitTypes, tiles, discoveredTiles, loading,
     currentPlayer, isMyTurn, isAdmin, battleLog,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
-    excavate, upgradeShipCompartment, levelUpUnit, buyMissile, fireMissile, produceWarhead, sendConvoyToGuild, sellAtGuild, buyUnitAtGuild, buyMunitionAtGuild, returnConvoyFromGuild,
+    excavate, upgradeShipCompartment, levelUpUnit, buyMissile, fireMissile, produceWarhead, sendConvoyToGuild,
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
     setAutoPath, clearAutoPath,
