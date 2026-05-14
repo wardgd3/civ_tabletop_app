@@ -2214,6 +2214,21 @@ export default function GameBoard({
                       </svg>
                     )
                   })()}
+                  {isInAttackRange && mode === 'attack' && (() => {
+                    const p = 3
+                    const w = RENDER_W, h = RENDER_H
+                    return (
+                      <svg className="absolute inset-0 z-[5] pointer-events-none" width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+                        <polygon
+                          points={`${w/2},${p} ${w-p},${h*0.25+p*0.5} ${w-p},${h*0.75-p*0.5} ${w/2},${h-p} ${p},${h*0.75-p*0.5} ${p},${h*0.25+p*0.5}`}
+                          fill="none"
+                          stroke="rgba(244, 112, 103, 0.7)"
+                          strokeWidth="2"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )
+                  })()}
                   {moveOverlay && (
                     <div className="absolute inset-0 z-[1]" style={{ backgroundColor: (activeBoard || 'ground') === 'space' ? 'rgba(180, 200, 220, 0.18)' : 'rgba(0, 0, 0, 0.3)', clipPath: hexClip }} />
                   )}

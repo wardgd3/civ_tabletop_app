@@ -1895,7 +1895,8 @@ export default function CommandShipPanel({
     })
     .map(u => ({ id: u.id, label: u.wg_unit_types?.name }))
   const isSpaceUnit = unit.board === 'space'
-  const spaceGuildDest = isSpaceUnit ? [{ id: 'space_guild', label: 'Space Guild' }] : []
+  const canTradeWithGuild = isSpaceUnit && unitName !== 'Command Center'
+  const spaceGuildDest = canTradeWithGuild ? [{ id: 'space_guild', label: 'Space Guild' }] : []
   const allDestinations = [...destinations, ...spaceGuildDest]
 
   useEffect(() => {

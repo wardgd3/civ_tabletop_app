@@ -174,6 +174,7 @@ export function useGameState(gameId) {
   const pendingFetchRef = useRef(false)
   const attackingRef = useRef(new Set())
   const npcSpawnedRef = useRef(false)
+  const missileFiredShipsRef = useRef(new Set())
   const [missileFiredShips, setMissileFiredShips] = useState(new Set())
 
   const currentPlayer = players.find(p => p.player_id === userId)
@@ -930,7 +931,7 @@ export function useGameState(gameId) {
     if (!ship) throw new Error('Ship not found')
 
     const upgrades = ship.upgrades || {}
-    if (missileFiredShips.has(shipId)) throw new Error('Already fired a missile this turn')
+    if (missileFiredShipsRef.current.has(shipId)) throw new Error('Already fired a missile this turn')
     const munitions = { ...(upgrades.munitions || {}) }
     if ((munitions[missileType] || 0) <= 0) throw new Error('No munitions of this type')
 
@@ -959,7 +960,8 @@ export function useGameState(gameId) {
       pendingStrikes.push({ row: targetRow, col: targetCol, damage, missileType, warheadType: warheadType || null, splashRadius })
       const newUpgrades = { ...upgrades, munitions, pendingStrikes }
       await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
-      setMissileFiredShips(prev => new Set(prev).add(shipId))
+      missileFiredShipsRef.current = new Set(missileFiredShipsRef.current).add(shipId)
+      setMissileFiredShips(new Set(missileFiredShipsRef.current))
 
       if (warheadType) {
         const craterRadius = warheadType === 'thermonuclear' ? 5 : 3
@@ -2246,7 +2248,8 @@ export function useGameState(gameId) {
     const myStructures = units.filter(u => u.owner_id === userId && CONVOY_HOSTS.has(u.wg_unit_types?.name))
 
     for (const struct of myStructures) {
-      const upgrades = struct.upgrades || {}
+      const { data: freshStruct } = await supabase.from('wg_units').select('upgrades').eq('id', struct.id).single()
+      const upgrades = { ...(freshStruct?.upgrades || struct.upgrades || {}) }
       const convoys = upgrades.convoys || []
       const guildConvoys = upgrades.guildConvoys || []
       let changed = false
@@ -2660,6 +2663,7 @@ export function useGameState(gameId) {
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
+    missileFiredShipsRef.current = new Set()
     setMissileFiredShips(new Set())
 
     await processAutoPathMovement()
