@@ -1532,7 +1532,7 @@ export default function GameBoard({
     }
 
     if (showUnit) {
-      if ((unit.wg_unit_types?.name === 'Command Ship' || unit.wg_unit_types?.name === 'Command Center' || unit.wg_unit_types?.name === 'Base' || unit.wg_unit_types?.name === 'Battleship' || unit.wg_unit_types?.name === 'Repair Ship') && unit.owner_id === currentPlayer?.player_id) {
+      if (unit.owner_id === currentPlayer?.player_id) {
         const toggling = commandShipUnitId === unit.id
         setCommandShipUnitId(toggling ? null : unit.id)
         setSelectedUnitId(toggling ? null : unit.id)
@@ -1540,14 +1540,6 @@ export default function GameBoard({
         setSpaceGuildOpen(false)
         setInspectedUnitId(null)
         setPanelOpen(!toggling)
-        return
-      }
-      if (unit.owner_id === currentPlayer?.player_id && isMyTurn) {
-        setSelectedUnitId(unit.id)
-        setCommandShipUnitId(null)
-        setSpaceGuildOpen(false)
-        setMode('select')
-        setInspectedUnitId(null)
         return
       }
       setInspectedUnitId(prev => prev === unit.id ? null : unit.id)
@@ -1696,19 +1688,22 @@ export default function GameBoard({
           <div className="font-semibold text-sm mt-0.5" style={{ color: '#c9d1d9' }}>
             {isMyTurn ? 'YOUR TURN' : 'Waiting...'}
           </div>
-          <div className="text-[10px] font-mono mt-0.5" style={{ color: '#8b949e' }}>
+          <div className="text-[10px] font-mono mt-0.5" style={{ color: '#cca43b' }}>
             ⚒ {economy?.teamGold ?? (currentPlayer?.gold || 0)}
             {economy && (
-              <span style={{ color: economy.net >= 0 ? '#6a9a72' : '#e05050' }}>
-                {' '}({economy.net >= 0 ? '+' : ''}{economy.net}/turn)
+              <span style={{ color: economy.netGold >= 0 ? '#6a9a72' : '#e05050' }}>
+                {' '}({economy.netGold >= 0 ? '+' : ''}{economy.netGold}/turn)
               </span>
             )}
+          </div>
+          <div className="text-[10px] font-mono mt-0.5" style={{ color: '#8b949e' }}>
+            +{economy?.net ?? 0} prod/turn
           </div>
           {turnExpanded && economy && (
             <div className="text-[9px] font-mono mt-1" style={{ color: '#6e7681' }}>
               <span style={{ color: '#6a9a72' }}>+{economy.production} prod</span>
               {economy.excavationIncome > 0 && <span style={{ color: '#c080e0' }}> +{economy.excavationIncome} excav</span>}
-              <span style={{ color: '#e07050' }}> -{economy.upkeep} upkeep</span>
+              <span style={{ color: '#e07050' }}> -{economy.goldUpkeep} gold upkeep</span>
             </div>
           )}
         </div>
@@ -1810,6 +1805,18 @@ export default function GameBoard({
             onAttack={() => {
               setSelectedUnitId(csUnit.id)
               setMode('attack')
+              setCommandShipUnitId(null)
+              setPanelOpen(false)
+            }}
+            onBuild={() => {
+              setSelectedUnitId(csUnit.id)
+              setMode('build')
+              setCommandShipUnitId(null)
+              setPanelOpen(false)
+            }}
+            onDestroy={() => {
+              setSelectedUnitId(csUnit.id)
+              setMode('destroy')
               setCommandShipUnitId(null)
               setPanelOpen(false)
             }}
@@ -1920,6 +1927,21 @@ export default function GameBoard({
               hexDistance(csUnit.grid_row, csUnit.grid_col, u.grid_row, u.grid_col) <= 4
             )}
             onSetNumberedOverlays={setNumberedOverlays}
+            onLevelUp={async (unitId) => {
+              try { await levelUpUnit(unitId) } catch (err) { setError(err.message) }
+            }}
+            onExcavate={async (unitId) => {
+              try { await excavate(unitId) } catch (err) { setError(err.message) }
+            }}
+            onClearAutoPath={async (unitId) => {
+              try { await clearAutoPath(unitId) } catch (err) { setError(err.message) }
+            }}
+            onDeployFromTransportUnit={(transportId) => {
+              setUnitDeployFromTransportInfo({ transportId })
+              setCommandShipUnitId(null)
+              setPanelOpen(false)
+            }}
+            economy={economy}
           />
         )
       })()}

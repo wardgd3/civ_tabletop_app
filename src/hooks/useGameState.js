@@ -188,7 +188,8 @@ export function useGameState(gameId) {
   const teamGold = teamPlayers.reduce((sum, p) => sum + (p.gold || 0), 0)
 
   const economy = (() => {
-    if (!currentPlayer) return { production: 0, upkeep: 0, excavationIncome: 0, net: 0, teamGold }
+    if (!currentPlayer) return { production: 0, goldUpkeep: 0, excavationIncome: 0, net: 0, teamGold, netGold: 0 }
+    const effectiveGold = isAdmin ? 1000000 : teamGold
     const teamUnits = units.filter(u => teamPlayerIds.includes(u.owner_id))
     const ccCount = teamUnits.filter(u =>
       u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'
@@ -209,9 +210,10 @@ export function useGameState(gameId) {
     }
     const activeFactories = Math.min(factoryCount, totalCoal)
     const production = (ccCount * 4) + (baseCount * 2) + activeFactories
-    const upkeep = teamUnits.length
     const excavationIncome = totalExcavations + luxuryIncome
-    return { production, upkeep, excavationIncome, net: production + excavationIncome - upkeep, teamGold }
+    const goldUpkeep = teamUnits.length
+    const netGold = production + excavationIncome - goldUpkeep
+    return { production, goldUpkeep, excavationIncome, net: Math.max(0, production + excavationIncome), teamGold: effectiveGold, netGold }
   })()
   const productionPerTurn = economy.production
 
@@ -409,6 +411,9 @@ export function useGameState(gameId) {
       }
     }
     if (opts?.shipModel) defaultUpgrades.shipModel = opts.shipModel
+    if (unitType.name === 'Command Ship') {
+      defaultUpgrades.convoys = [{ units: [], cargo: {}, inTransit: false }]
+    }
 
     const insertData = {
       game_id: gameId,
@@ -2502,11 +2507,60 @@ export function useGameState(gameId) {
     }
   }
 
+  async function processAutoPathMovement() {
+    const myAutoPathUnits = units.filter(u =>
+      u.owner_id === userId && u.is_alive && u.upgrades?.autoPath?.length > 0
+    )
+    for (const unit of myAutoPathUnits) {
+      const path = [...unit.upgrades.autoPath]
+      const unitBoard = unit.board || 'ground'
+      let maxRange = unit.wg_unit_types?.movement || 0
+      if (unitBoard === 'space') maxRange += 3
+      let curRow = unit.grid_row
+      let curCol = unit.grid_col
+      let stepsTaken = 0
+
+      while (stepsTaken < maxRange && path.length > 0) {
+        const [nextRow, nextCol] = path[0]
+        const dist = hexDistance(curRow, curCol, nextRow, nextCol)
+        if (dist > maxRange - stepsTaken) break
+        const occupied = units.find(u =>
+          u.id !== unit.id && u.grid_row === nextRow && u.grid_col === nextCol && (u.board || 'ground') === unitBoard
+        )
+        if (occupied) break
+        const blocked = units.find(u =>
+          u.id !== unit.id && (u.board || 'ground') === unitBoard
+          && (u.wg_unit_types?.name === 'Command Ship' || u.wg_unit_types?.name === 'Command Center')
+          && hexNeighborsOf(u.grid_row, u.grid_col).some(([nr, nc]) => nr === nextRow && nc === nextCol)
+        )
+        if (blocked) break
+        curRow = nextRow
+        curCol = nextCol
+        stepsTaken += dist
+        path.shift()
+      }
+
+      if (stepsTaken > 0) {
+        const newUpgrades = { ...unit.upgrades }
+        if (path.length === 0) delete newUpgrades.autoPath
+        else newUpgrades.autoPath = path
+        await supabase.from('wg_units').update({
+          grid_row: curRow,
+          grid_col: curCol,
+          has_moved: true,
+          moves_used: stepsTaken,
+          upgrades: newUpgrades,
+        }).eq('id', unit.id)
+      }
+    }
+  }
+
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
     setMissileFiredShips(new Set())
 
+    await processAutoPathMovement()
     await processConvoyTicks()
     await processMiningTicks()
     await processMissileStrikes()

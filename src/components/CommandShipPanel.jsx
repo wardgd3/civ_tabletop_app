@@ -138,11 +138,11 @@ const COMMAND_SHIP_COMPARTMENTS = [
     description: 'Weapon systems. Each slot mounts a weapon.',
     icon: 'cannon',
     color: '#e05050',
-    slots: 3,
+    slots: 1,
     tiers: [
-      { name: 'Railgun Turret', desc: 'Basic kinetic weapon' },
-      { name: 'Plasma Cannon', desc: 'Energy weapon' },
-      { name: 'Antimatter Cannon', desc: 'Maximum firepower' },
+      { name: '500mm Light Cannon', desc: 'Light kinetic weapon' },
+      { name: '640mm Medium Cannon', desc: 'Medium caliber weapon' },
+      { name: '820mm Heavy Cannon', desc: 'Heavy caliber weapon' },
     ],
   },
   {
@@ -216,11 +216,11 @@ const COMMAND_CENTER_COMPARTMENTS = [
     description: 'Base defense turrets.',
     icon: 'cannon',
     color: '#e05050',
-    slots: 3,
+    slots: 1,
     tiers: [
-      { name: 'Turret Emplacement', desc: 'Basic turret' },
-      { name: 'Plasma Turrets', desc: 'Heavy turrets' },
-      { name: 'Strike Cannon', desc: 'Maximum firepower' },
+      { name: '500mm Light Cannon', desc: 'Light kinetic weapon' },
+      { name: '640mm Medium Cannon', desc: 'Medium caliber weapon' },
+      { name: '820mm Heavy Cannon', desc: 'Heavy caliber weapon' },
     ],
   },
   {
@@ -341,11 +341,11 @@ const BATTLESHIP_COMPARTMENTS = [
     description: 'Weapon systems. Each slot mounts a weapon.',
     icon: 'cannon',
     color: '#e05050',
-    slots: 3,
+    slots: 1,
     tiers: [
-      { name: 'Railgun Turret', desc: 'Basic kinetic weapon' },
-      { name: 'Plasma Cannon', desc: 'Energy weapon' },
-      { name: 'Antimatter Cannon', desc: 'Maximum firepower' },
+      { name: '500mm Light Cannon', desc: 'Light kinetic weapon' },
+      { name: '640mm Medium Cannon', desc: 'Medium caliber weapon' },
+      { name: '820mm Heavy Cannon', desc: 'Heavy caliber weapon' },
     ],
   },
   {
@@ -406,11 +406,11 @@ const FIGHTER_COMPARTMENTS = [
     description: 'Weapon systems. Each slot mounts a weapon.',
     icon: 'cannon',
     color: '#e05050',
-    slots: 2,
+    slots: 1,
     tiers: [
-      { name: 'Railgun Turret', desc: 'Basic kinetic weapon' },
-      { name: 'Plasma Cannon', desc: 'Energy weapon' },
-      { name: 'Antimatter Cannon', desc: 'Maximum firepower' },
+      { name: '500mm Light Cannon', desc: 'Light kinetic weapon' },
+      { name: '640mm Medium Cannon', desc: 'Medium caliber weapon' },
+      { name: '820mm Heavy Cannon', desc: 'Heavy caliber weapon' },
     ],
   },
 ]
@@ -1663,7 +1663,7 @@ function InventoryPanel({ unit, upgrades, isCommandShip }) {
 }
 
 export default function CommandShipPanel({
-  unit, onClose, onUpgrade, onMove, onAttack, isAdmin,
+  unit, onClose, onUpgrade, onMove, onAttack, onBuild, onDestroy, isAdmin,
   onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay, onProduceUnit,
   onLoadCargo, onUnloadCargo,
   onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
@@ -1671,6 +1671,7 @@ export default function CommandShipPanel({
   onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar,
   groundUnits, unitTypes, teamGold, playerResources, allUnits, nearbyUnits,
   onSetNumberedOverlays,
+  onLevelUp, onExcavate, onClearAutoPath, onBoardTransport, onDockTransport, onDeployFromTransportUnit, economy,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
@@ -1717,7 +1718,7 @@ export default function CommandShipPanel({
         </div>
         <div className="flex flex-col items-center gap-2">
           <img
-            src={isCommandShip ? `/assets/${unit.upgrades?.shipModel || 'commandship2'}.png` : unitName === 'Battleship' ? '/assets/battleship.png' : unitName === 'Repair Ship' ? '/assets/medicship.png' : unitName === 'Base' ? '/assets/base.png' : '/assets/command center.png'}
+            src={isCommandShip ? `/assets/${unit.upgrades?.shipModel || 'commandship2'}.png` : unit.wg_unit_types?.icon ? `/assets/${unit.wg_unit_types.icon}` : '/assets/infantry.png'}
             alt={unitName}
             className="w-24 h-24 object-contain"
           />
@@ -1742,17 +1743,147 @@ export default function CommandShipPanel({
               Move
             </button>
           )}
-          {(isAdmin || !unit.has_attacked) && getEffectiveAttackRange(unit) > 0 && (
-            <button
-              onClick={onAttack}
-              className="flex-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
-              style={{ backgroundColor: '#4c1a1a', color: '#f47067', border: '1px solid #6e2b2b' }}
-            >
-              Attack
-            </button>
+          {unitName === 'Engineer' ? (
+            <>
+              {(isAdmin || !unit.has_attacked) && (
+                <button
+                  onClick={() => onBuild?.()}
+                  className="flex-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                  style={{ backgroundColor: '#1a3a2a', color: '#7ee787', border: '1px solid #2a5a3a' }}
+                >
+                  Build
+                </button>
+              )}
+              {(isAdmin || !unit.has_attacked) && (
+                <button
+                  onClick={() => onDestroy?.()}
+                  className="flex-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                  style={{ backgroundColor: '#4c1a1a', color: '#f47067', border: '1px solid #6e2b2b' }}
+                >
+                  Destroy
+                </button>
+              )}
+            </>
+          ) : (
+            (isAdmin || !unit.has_attacked) && getEffectiveAttackRange(unit) > 0 && (
+              <button
+                onClick={onAttack}
+                className="flex-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                style={{ backgroundColor: '#4c1a1a', color: '#f47067', border: '1px solid #6e2b2b' }}
+              >
+                Attack
+              </button>
+            )
           )}
         </div>
       )}
+
+      {unit.upgrades?.autoPath && (
+        <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #1a2a4a' }}>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#6090c0' }}>
+              Auto-path ({unit.upgrades.autoPath.length} tiles)
+            </span>
+            <button
+              onClick={() => onClearAutoPath?.(unit.id)}
+              className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded cursor-pointer"
+              style={{ backgroundColor: '#2a1a1a', color: '#f47067', border: '1px solid #4a2a2a' }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {(() => {
+        const canExcavate = unitName === 'Mining Station' || unitName === 'Excavator'
+        if (!canExcavate) return null
+        const isMining = unit.upgrades?.mining?.active
+        const isMiningExhausted = unit.upgrades?.miningDisabled
+        if (isMining) return (
+          <div className="w-full mb-3 py-1.5 text-xs font-semibold uppercase tracking-wide rounded text-center"
+            style={{ backgroundColor: '#1a2a1a', color: '#50b050', border: '1px solid #2a4a2a' }}>
+            Mining — Layer {unit.upgrades.mining.layer}/120
+          </div>
+        )
+        if (isMiningExhausted) return (
+          <div className="w-full mb-3 py-1.5 text-xs font-semibold uppercase tracking-wide rounded text-center"
+            style={{ backgroundColor: '#2a1a1a', color: '#8b949e', border: '1px solid #3a2a2a' }}>
+            Mining Exhausted
+          </div>
+        )
+        return (
+          <button
+            onClick={() => onExcavate?.(unit.id)}
+            className="w-full mb-3 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+            style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
+          >
+            Start Mining
+          </button>
+        )
+      })()}
+
+      {unitName === 'Armor Transport' && unit.upgrades?.loadedUnits?.length > 0 && (
+        <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
+          <div className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
+            Loaded Units ({unit.upgrades.loadedUnits.length}/4)
+          </div>
+          {unit.upgrades.loadedUnits.map((lu, li) => (
+            <div key={li} className="flex items-center gap-2 py-0.5">
+              <span className="text-xs" style={{ color: '#c9d1d9' }}>{lu.typeName}</span>
+              <span className="text-[10px] font-mono ml-auto" style={{ color: '#8b949e' }}>HP {lu.hp}</span>
+            </div>
+          ))}
+          <button
+            onClick={() => onDeployFromTransportUnit?.(unit.id)}
+            className="w-full mt-2 py-1.5 text-xs font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+            style={{ backgroundColor: '#1a3a2a', color: '#7ee787', border: '1px solid #2a5a3a' }}
+          >
+            Deploy Unit
+          </button>
+        </div>
+      )}
+
+      {(() => {
+        const unitLevel = unit.upgrades?.level || 0
+        const maxLevel = 5
+        const upgradeCost = (unitLevel + 1) * 5
+        const canAfford = isAdmin || (economy?.teamGold ?? 0) >= upgradeCost
+        return (
+          <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#0d1117', border: '1px solid #2a3140' }}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>Unit Level</span>
+              <span className="text-[10px] font-mono" style={{ color: '#8b949e' }}>Lv {unitLevel}/{maxLevel}</span>
+            </div>
+            <div className="flex gap-0.5 mb-2">
+              {Array.from({ length: maxLevel }, (_, i) => (
+                <div
+                  key={i}
+                  className="flex-1 h-1.5 rounded-full"
+                  style={{
+                    backgroundColor: i < unitLevel ? '#cca43b' : '#21262d',
+                    border: `1px solid ${i < unitLevel ? '#cca43b' : '#30363d'}`,
+                  }}
+                />
+              ))}
+            </div>
+            {unitLevel < maxLevel ? (
+              <button
+                onClick={() => onLevelUp?.(unit.id)}
+                disabled={!canAfford}
+                className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
+                style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
+              >
+                Level Up (⚒{upgradeCost})
+              </button>
+            ) : (
+              <div className="text-[10px] font-semibold text-center py-1" style={{ color: '#cca43b' }}>
+                MAX LEVEL
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {compartments.length > 0 && <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>
         Compartments
