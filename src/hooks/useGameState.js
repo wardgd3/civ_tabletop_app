@@ -48,7 +48,7 @@ function getBarracksCapacity(unit) {
 }
 
 function getHangarCapacity(unit) {
-  return unit?.wg_unit_types?.name === 'Battleship' ? 4 : 12
+  return unit?.wg_unit_types?.name === 'Battleship' ? 4 : 8
 }
 
 function getConvoySlots(unit) {

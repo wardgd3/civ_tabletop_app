@@ -210,11 +210,11 @@ const COMMAND_SHIP_COMPARTMENTS = [
   {
     id: 'hangar',
     name: 'Hangar',
-    description: 'Store and deploy aircraft and space ships. Capacity: 12.',
+    description: 'Store and deploy aircraft and space ships. Capacity: 8.',
     icon: 'hangar',
     color: '#7060c0',
     special: 'hangar',
-    slots: 12,
+    slots: 8,
   },
   {
     id: 'inventory',
