@@ -1522,7 +1522,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                 <>
                   {(() => {
                     const ut = (unitTypes || []).find(t => t.name === stored.typeName)
-                    return ut?.icon ? <img src={`/assets/${ut.icon}`} alt={stored.typeName} className="object-contain mb-0.5" style={{ width: 32, height: 32 }} /> : null
+                    return ut?.icon ? <img src={`/assets/${ut.icon}`} alt={stored.typeName} className="object-contain mb-0.5" style={{ width: 44, height: 44 }} /> : null
                   })()}
                   <div className="text-[7px] font-semibold leading-tight" style={{ color: stored.transferredThisTurn ? '#6e7681' : '#c9d1d9' }}>
                     {stored.typeName}
@@ -1671,7 +1671,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                 >
                   {bs ? (
                     <>
-                      <img src="/assets/battleship.png" alt="Battleship" className="object-contain mb-0.5" style={{ width: 45, height: 45 }} />
+                      <img src="/assets/battleship.png" alt="Battleship" className="object-contain mb-0.5" style={{ width: 60, height: 60 }} />
                       <div className="text-[8px] font-semibold" style={{ color: '#c9d1d9' }}>{bs.upgrades?.customName || bs.typeName}</div>
                       <div className="text-[7px] font-mono" style={{ color: '#6e7681' }}>HP {bs.hp}</div>
                     </>
