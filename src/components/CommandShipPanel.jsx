@@ -968,7 +968,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
   )
 }
 
-function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isAdmin, teamGold, playerResources, destinations, onSetNumberedOverlays, availableUnitTypes, unitTypes: allUnitTypes }) {
+function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, onLoadInventoryToConvoy, groundUnits, comp, isAdmin, teamGold, playerResources, destinations, onSetNumberedOverlays, availableUnitTypes, unitTypes: allUnitTypes }) {
   const [selectedConvoy, setSelectedConvoy] = useState(null)
   const convoys = upgrades.convoys || []
   const maxConvoys = comp.slots
@@ -2567,6 +2567,7 @@ export default function CommandShipPanel({
               onSendConvoy={onSendConvoy}
               onLoadCargo={onLoadCargo}
               onUnloadCargo={onUnloadCargo}
+              onLoadInventoryToConvoy={onLoadInventoryToConvoy}
               groundUnits={groundUnits || []}
               comp={comp}
               isAdmin={isAdmin}
