@@ -337,7 +337,8 @@ export function useGameState(gameId) {
   async function deployUnit(unitTypeId, row, col, opts) {
     const unitType = unitTypes.find(t => t.id === unitTypeId)
     if (!unitType || !currentPlayer) throw new Error('Invalid deployment')
-    if (!isAdmin && teamGold < unitType.cost) throw new Error('Not enough production')
+    const isFreeCC = unitType.name === 'Command Center' || unitType.name === 'Command Ship'
+    if (!isAdmin && !isFreeCC && teamGold < unitType.cost) throw new Error('Not enough production')
 
     const unitBoard = unitType.board || 'ground'
 
@@ -441,7 +442,8 @@ export function useGameState(gameId) {
     const { error: unitError } = await supabase.from('wg_units').insert(insertData)
     if (unitError) throw unitError
 
-    if (!isAdmin) {
+    const isFreeCC = unitType.name === 'Command Center' || unitType.name === 'Command Ship'
+    if (!isAdmin && !isFreeCC) {
       let remaining = unitType.cost
       for (const tp of teamPlayers) {
         if (remaining <= 0) break

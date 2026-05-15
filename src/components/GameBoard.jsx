@@ -2081,51 +2081,68 @@ export default function GameBoard({
 
       {mode === 'deploy' && isMyTurn && (
         <div className="p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
-          <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>
-            Requisition — <span className="font-mono" style={{ color: '#8b949e' }}>⚒ {economy?.teamGold ?? currentPlayer?.gold}</span>
-          </div>
-          {!hasCommandCenter && (
-            <div className="text-xs mb-2 px-2 py-1 rounded" style={{ backgroundColor: '#1a1a0d', border: '1px solid #3d3d1a', color: '#cca43b' }}>
-              Deploy a Command Center first
-            </div>
+          {!hasCommandCenter ? (
+            <>
+              <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>
+                Select a location on the map
+              </div>
+              {(() => {
+                const ccType = unitTypes.find(ut => ut.name === (activeBoard === 'space' ? 'Command Ship' : 'Command Center'))
+                if (!ccType) return null
+                return (
+                  <button
+                    onClick={() => setSelectedUnitType(ccType.id)}
+                    className="w-full flex items-center justify-center gap-3 p-3 rounded text-sm transition-colors cursor-pointer"
+                    style={selectedUnitType === ccType.id
+                      ? { backgroundColor: '#1a2a3a', color: '#c9d1d9', border: '1px solid #3a4a5a' }
+                      : { backgroundColor: '#111214', color: '#c9d1d9', border: '1px solid #2a3140' }}
+                  >
+                    <img src={getUnitIcon(ccType)} alt={ccType.name} className="w-12 h-12 object-contain shrink-0" />
+                    <span className="font-semibold text-sm uppercase tracking-wide">Deploy {ccType.name}</span>
+                  </button>
+                )
+              })()}
+            </>
+          ) : (
+            <>
+              <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>
+                Requisition — <span className="font-mono" style={{ color: '#8b949e' }}>⚒ {economy?.teamGold ?? currentPlayer?.gold}</span>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-1 gap-1.5">
+                {sortedUnitTypes.filter(ut => ut.name !== 'Command Center' && ut.name !== 'Command Ship').map(ut => {
+                  const isBuilding = ut.name === 'Base' || ut.name === 'Factory'
+                  const cantAfford = !isAdmin && (economy?.teamGold ?? currentPlayer?.gold ?? 0) < ut.cost
+                  const isBattleship = ut.name === 'Battleship'
+                  let missingMats = false
+                  if (isBattleship && !isAdmin) {
+                    const csUnit = units.find(u => u.owner_id === currentPlayer?.player_id && u.wg_unit_types?.name === 'Command Ship')
+                    const inv = csUnit?.upgrades?.inventory || {}
+                    missingMats = !csUnit || (inv.uranium || 0) < 1 || (inv.iron || 0) < 50 || (inv.aluminum || 0) < 30
+                  }
+                  return (
+                  <button
+                    key={ut.id}
+                    onClick={() => setSelectedUnitType(ut.id)}
+                    disabled={cantAfford || missingMats}
+                    className="flex flex-col lg:flex-row items-center lg:justify-between p-2 lg:p-3 rounded text-sm lg:text-base transition-colors disabled:opacity-20 cursor-pointer gap-1 lg:gap-3"
+                    style={selectedUnitType === ut.id
+                      ? { backgroundColor: '#1a2a3a', color: '#c9d1d9', border: '1px solid #3a4a5a' }
+                      : { backgroundColor: '#111214', color: '#c9d1d9', border: '1px solid #2a3140' }}
+                  >
+                    <img src={getUnitIcon(ut)} alt={ut.name} className="w-10 h-10 lg:w-16 lg:h-16 object-contain shrink-0" />
+                    <div className="flex flex-col items-center lg:items-start min-w-0 flex-1">
+                      <span className="font-medium text-xs lg:text-sm truncate max-w-full">{ut.name}</span>
+                      {isBattleship && (
+                        <span className="text-[8px] lg:text-[10px] font-mono" style={{ color: '#6e7681' }}>1 uranium · 50 iron · 30 aluminum</span>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>⚒{ut.cost}</span>
+                  </button>
+                  )
+                })}
+              </div>
+            </>
           )}
-          <div className="grid grid-cols-2 lg:grid-cols-1 gap-1.5">
-            {sortedUnitTypes.map(ut => {
-              const isBuilding = ut.name === 'Base' || ut.name === 'Factory'
-              const isCC = ut.name === 'Command Center' || ut.name === 'Command Ship'
-              const needsCC = !isCC && !isBuilding && !hasCommandCenter
-              const alreadyHasCC = isCC && hasCommandStructureOnThisBoard
-              const buildingNeedsCC = isBuilding && !hasCommandCenter
-              const cantAfford = !isAdmin && (economy?.teamGold ?? currentPlayer?.gold ?? 0) < ut.cost
-              const isBattleship = ut.name === 'Battleship'
-              let missingMats = false
-              if (isBattleship && !isAdmin) {
-                const csUnit = units.find(u => u.owner_id === currentPlayer?.player_id && u.wg_unit_types?.name === 'Command Ship')
-                const inv = csUnit?.upgrades?.inventory || {}
-                missingMats = !csUnit || (inv.uranium || 0) < 1 || (inv.iron || 0) < 50 || (inv.aluminum || 0) < 30
-              }
-              return (
-              <button
-                key={ut.id}
-                onClick={() => setSelectedUnitType(ut.id)}
-                disabled={cantAfford || needsCC || alreadyHasCC || buildingNeedsCC || missingMats}
-                className="flex flex-col lg:flex-row items-center lg:justify-between p-2 lg:p-3 rounded text-sm lg:text-base transition-colors disabled:opacity-20 cursor-pointer gap-1 lg:gap-3"
-                style={selectedUnitType === ut.id
-                  ? { backgroundColor: '#1a2a3a', color: '#c9d1d9', border: '1px solid #3a4a5a' }
-                  : { backgroundColor: '#111214', color: '#c9d1d9', border: '1px solid #2a3140' }}
-              >
-                <img src={getUnitIcon(ut)} alt={ut.name} className="w-10 h-10 lg:w-16 lg:h-16 object-contain shrink-0" />
-                <div className="flex flex-col items-center lg:items-start min-w-0 flex-1">
-                  <span className="font-medium text-xs lg:text-sm truncate max-w-full">{ut.name}</span>
-                  {isBattleship && (
-                    <span className="text-[8px] lg:text-[10px] font-mono" style={{ color: '#6e7681' }}>1 uranium · 50 iron · 30 aluminum</span>
-                  )}
-                </div>
-                <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>⚒{ut.cost}</span>
-              </button>
-              )
-            })}
-          </div>
         </div>
       )}
 
