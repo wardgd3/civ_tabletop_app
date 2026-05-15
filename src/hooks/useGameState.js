@@ -199,7 +199,14 @@ export function useGameState(gameId) {
     ).length
     const baseCount = teamUnits.filter(u => u.wg_unit_types?.name === 'Base').length
 
-    const production = ccCount * 5
+    const isSpaceGeneral = !!currentPlayer?.is_space_general
+    const myBoardCCs = teamUnits.filter(u => {
+      const board = u.board || 'ground'
+      const name = u.wg_unit_types?.name
+      if (isSpaceGeneral) return board === 'space' && name === 'Command Ship'
+      return board === 'ground' && (name === 'Command Center' || name === 'Command Ship')
+    }).length
+    const production = myBoardCCs * 5
     const goldIncome = (ccCount * 5) + (baseCount * 3)
 
     let gemTradeIncome = 0
@@ -1965,8 +1972,9 @@ export function useGameState(gameId) {
   }
 
   function getUsedProduction() {
+    const myBoard = currentPlayer?.is_space_general ? 'space' : 'ground'
     return units
-      .filter(u => teamPlayerIds.includes(u.owner_id))
+      .filter(u => teamPlayerIds.includes(u.owner_id) && (u.board || 'ground') === myBoard)
       .reduce((sum, u) => sum + ((u.upgrades || {}).productionUsed || 0), 0)
   }
 
