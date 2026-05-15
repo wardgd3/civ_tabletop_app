@@ -2179,7 +2179,7 @@ export default function CommandShipPanel({
           <img
             src={isCommandShip ? `/assets/${unit.upgrades?.shipModel || 'commandship2'}.png` : unit.wg_unit_types?.icon ? `/assets/${unit.wg_unit_types.icon}` : '/assets/infantry.png'}
             alt={unitName}
-            className="w-24 h-24 object-contain"
+            className="object-contain" style={{ width: 163, height: 163 }}
           />
           <div className="text-center">
             {isRenaming ? (
