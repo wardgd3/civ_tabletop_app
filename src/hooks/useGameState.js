@@ -3027,17 +3027,16 @@ export function useGameState(gameId) {
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
-    await supabase.from('wg_game_players').update({ has_ended_turn: true }).eq('id', currentPlayer.id)
+    let edgeResult = null
+    try {
+      const { data } = await supabase.functions.invoke('end-turn', {
+        body: { gameId },
+      })
+      edgeResult = data
+      if (data?.error) console.warn('end-turn edge function:', data.error)
+    } catch {}
 
-    const { data: freshTeam } = await supabase
-      .from('wg_game_players')
-      .select('id, has_ended_turn')
-      .eq('game_id', gameId)
-      .eq('color', myColor)
-
-    const allDone = (freshTeam || []).every(p => p.has_ended_turn)
-
-    if (!allDone) {
+    if (edgeResult?.waiting) {
       await fetchAll()
       return
     }
@@ -3046,14 +3045,12 @@ export function useGameState(gameId) {
     setMissileFiredShips(new Set())
 
     await processGemTradeTicks()
-    await processAutoPathMovement()
     await processConvoyTicks()
     await processMiningTicks()
     await processMissileStrikes()
     await processHangarCooldowns()
     await processShieldRegen()
     await processRepairTicks()
-    await processNPCTicks()
 
     const teamUnitsWithProd = units.filter(u => teamPlayerIds.includes(u.owner_id) && (u.upgrades?.productionUsed || 0) > 0)
     for (const u of teamUnitsWithProd) {
@@ -3061,17 +3058,6 @@ export function useGameState(gameId) {
       delete upg.productionUsed
       await supabase.from('wg_units').update({ upgrades: upg }).eq('id', u.id)
     }
-
-    for (const p of (freshTeam || [])) {
-      await supabase.from('wg_game_players').update({ has_ended_turn: false }).eq('id', p.id)
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('end-turn', {
-        body: { gameId },
-      })
-      if (data?.error) console.warn('end-turn edge function:', data.error)
-    } catch {}
 
     await fetchAll()
   }
