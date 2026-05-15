@@ -211,10 +211,12 @@ export function useGameState(gameId) {
     const activeFactories = factoryCount
     const production = (ccCount * 4) + (baseCount * 2) + activeFactories
     let gemTradeIncome = 0
-    for (const u of teamUnits) {
-      const trades = Array.isArray(u.upgrades?.gemTrades) ? u.upgrades.gemTrades : []
-      for (const t of trades) gemTradeIncome += (t.goldPerTurn || 0)
-    }
+    try {
+      for (const u of teamUnits) {
+        const trades = Array.isArray(u.upgrades?.gemTrades) ? u.upgrades.gemTrades : []
+        for (const tr of trades) gemTradeIncome += (tr.goldPerTurn || 0)
+      }
+    } catch (e) { console.error('gemTradeIncome calc error:', e) }
     const excavationIncome = totalExcavations + luxuryIncome + gemTradeIncome
     const goldUpkeep = teamUnits.length
     const netGold = production + excavationIncome - goldUpkeep
