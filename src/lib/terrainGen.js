@@ -1482,16 +1482,42 @@ function generateNebulaFlow(tiles, rows, cols, rand, noise) {
     tileAt(r, c).terrain = 'nebula_hotspot'
   }
 
-  // Fill void holes inside nebula: any void tile with 4+ nebula neighbors becomes nebula
+  // Fill void holes inside nebula using flood-fill: find void regions that don't touch the board edge
   const nebulaTerrains = new Set(['nebula', 'nebula_core', 'nebula_bright', 'nebula_hotspot'])
-  for (let pass = 0; pass < 3; pass++) {
+  const visited = new Uint8Array(rows * cols)
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (visited[r * cols + c] || tileAt(r, c).terrain !== 'void') continue
+      const region = []
+      const queue = [[r, c]]
+      visited[r * cols + c] = 1
+      let touchesEdge = false
+      while (queue.length) {
+        const [cr, cc] = queue.shift()
+        region.push([cr, cc])
+        if (cr === 0 || cr === rows - 1 || cc === 0 || cc === cols - 1) touchesEdge = true
+        for (const [nr, nc] of hexNeighbors(cr, cc, rows, cols)) {
+          if (visited[nr * cols + nc]) continue
+          if (tileAt(nr, nc).terrain === 'void') {
+            visited[nr * cols + nc] = 1
+            queue.push([nr, nc])
+          }
+        }
+      }
+      if (!touchesEdge) {
+        for (const [fr, fc] of region) tileAt(fr, fc).terrain = 'nebula'
+      }
+    }
+  }
+  // Secondary pass: fill straggler void tiles with 3+ nebula neighbors
+  for (let pass = 0; pass < 5; pass++) {
     let changed = false
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         if (tileAt(r, c).terrain !== 'void') continue
         const neighbors = hexNeighbors(r, c, rows, cols)
         const nebCount = neighbors.filter(([nr, nc]) => nebulaTerrains.has(tileAt(nr, nc).terrain)).length
-        if (nebCount >= 4) {
+        if (nebCount >= 3) {
           tileAt(r, c).terrain = 'nebula'
           changed = true
         }
