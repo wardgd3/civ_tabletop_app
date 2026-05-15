@@ -1680,7 +1680,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
           ) : (
             <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
               {producibleTypes.map(ut => {
-                const canAfford = (availableProduction ?? 0) >= ut.cost
+                const canAfford = isAdmin || (availableProduction ?? 0) >= ut.cost
                 return (
                   <button
                     key={ut.id}
