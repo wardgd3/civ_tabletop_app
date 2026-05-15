@@ -525,6 +525,7 @@ const RESOURCE_VALUES = {
 
 function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, onLoadInventoryToConvoy, groundUnits, comp, isCC, teamGold, playerResources, destinations, availableUnitTypes, missileLevel, isAdmin }) {
   const [goldAmount, setGoldAmount] = useState('')
+  const [selectedLoadItem, setSelectedLoadItem] = useState(null)
   const [selectedDest, setSelectedDest] = useState(destinations?.length === 1 ? destinations[0].id : null)
   const [orderUnits, setOrderUnits] = useState([])
   const [orderMunitions, setOrderMunitions] = useState({ tactical: 0, cruise: 0, ipbm: 0 })
@@ -700,71 +701,67 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
         </div>
       )}
 
-      <div className="flex gap-1 mb-1">
-        <input
-          type="number"
-          min="1"
-          max={teamGold}
-          value={goldAmount}
-          onChange={e => setGoldAmount(e.target.value)}
-          placeholder="Gold amt"
-          className="flex-1 px-1.5 py-1 text-[9px] rounded"
-          style={{ backgroundColor: '#18191c', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
-        />
-        <button
-          onClick={() => {
-            const amt = parseInt(goldAmount)
-            if (amt > 0) { onLoadCargo(unit.id, convoyIndex, { gold: amt }); setGoldAmount('') }
-          }}
-          disabled={!goldAmount || parseInt(goldAmount) <= 0 || parseInt(goldAmount) > teamGold}
-          className="px-2 py-1 text-[8px] font-semibold uppercase rounded cursor-pointer disabled:opacity-30"
-          style={{ backgroundColor: '#cca43b20', color: '#cca43b', border: '1px solid #cca43b40' }}
-        >
-          + Gold
-        </button>
-      </div>
-
-      {availableResources.length > 0 && (
-        <div className="flex flex-wrap gap-0.5 mb-2">
-          {availableResources.map(([key, amount]) => (
-            <button
-              key={key}
-              onClick={() => onLoadCargo(unit.id, convoyIndex, { resources: { [key]: amount } })}
-              className="px-1.5 py-0.5 text-[8px] rounded cursor-pointer"
-              style={{ backgroundColor: '#18191c', border: '1px solid #2a3140', color: '#c9d1d9' }}
-            >
-              {key} ({amount})
-            </button>
-          ))}
-        </div>
-      )}
-
       {(() => {
         const inv = upgrades.inventory || {}
-        const invItems = PRODUCED_ITEMS.filter(p => (inv[p.id] || 0) > 0)
-        if (invItems.length === 0) return null
+        const loadOptions = []
+        if (teamGold > 0) loadOptions.push({ key: '_gold', label: `Gold (${teamGold})`, type: 'gold' })
+        for (const [key, amount] of availableResources) {
+          const RLABELS = { coal: 'Coal', iron: 'Iron', uranium: 'Uranium', aluminum: 'Aluminum', tritium: 'Tritium', ruby: 'Ruby', sapphire: 'Sapphire', diamond: 'Diamond', amethyst: 'Amethyst', quasicrystals: 'Quasicrystals', oil: 'Oil' }
+          loadOptions.push({ key, label: `${RLABELS[key] || key} (${amount})`, type: 'resource', amount })
+        }
+        for (const item of PRODUCED_ITEMS) {
+          const amt = inv[item.id] || 0
+          if (amt > 0) loadOptions.push({ key: item.id, label: `${item.name} (${amt})`, type: 'inventory', amount: amt })
+        }
+        if (loadOptions.length === 0) return null
         return (
-          <div className="flex flex-col gap-0.5 mb-2">
-            <div className="text-[9px] uppercase tracking-widest font-semibold mb-0.5" style={{ color: '#4a5568' }}>
-              Load from Inventory
-            </div>
-            {invItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => onLoadInventoryToConvoy?.(unit.id, convoyIndex, item.id, inv[item.id])}
-                className="flex items-center justify-between p-1.5 rounded cursor-pointer transition-all"
-                style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}
+          <div className="mb-2">
+            <div className="flex gap-1">
+              <select
+                value={selectedLoadItem || ''}
+                onChange={e => setSelectedLoadItem(e.target.value || null)}
+                className="flex-1 px-1.5 py-1.5 text-[10px] rounded"
+                style={{ backgroundColor: '#18191c', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
               >
-                <div className="flex items-center gap-1.5">
-                  <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="#8b949e" strokeWidth="1.5" strokeLinecap="round">
-                    <circle cx="8" cy="6" r="3" />
-                    <path d="M5 9 L3 14 L8 12 L13 14 L11 9" />
-                  </svg>
-                  <span className="text-[10px] font-semibold" style={{ color: item.color }}>{item.name}</span>
-                </div>
-                <span className="text-[10px] font-mono font-bold" style={{ color: item.color }}>{inv[item.id]}</span>
+                <option value="">Select item to load...</option>
+                {loadOptions.map(opt => (
+                  <option key={opt.key} value={opt.key}>{opt.label}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => {
+                  if (!selectedLoadItem) return
+                  const opt = loadOptions.find(o => o.key === selectedLoadItem)
+                  if (!opt) return
+                  if (opt.type === 'gold') {
+                    const amt = parseInt(goldAmount) || teamGold
+                    if (amt > 0) { onLoadCargo(unit.id, convoyIndex, { gold: amt }); setGoldAmount('') }
+                  } else if (opt.type === 'resource') {
+                    onLoadCargo(unit.id, convoyIndex, { resources: { [opt.key]: opt.amount } })
+                  } else if (opt.type === 'inventory') {
+                    onLoadInventoryToConvoy?.(unit.id, convoyIndex, opt.key, opt.amount)
+                  }
+                  setSelectedLoadItem(null)
+                }}
+                disabled={!selectedLoadItem}
+                className="px-3 py-1.5 text-[9px] font-semibold uppercase rounded cursor-pointer disabled:opacity-30"
+                style={{ backgroundColor: '#21262d', color: '#c9d1d9', border: '1px solid #30363d' }}
+              >
+                Load
               </button>
-            ))}
+            </div>
+            {selectedLoadItem === '_gold' && (
+              <input
+                type="number"
+                min="1"
+                max={teamGold}
+                value={goldAmount}
+                onChange={e => setGoldAmount(e.target.value)}
+                placeholder="Amount (leave blank for all)"
+                className="w-full mt-1 px-1.5 py-1.5 text-[10px] rounded"
+                style={{ backgroundColor: '#18191c', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
+              />
+            )}
           </div>
         )
       })()}
