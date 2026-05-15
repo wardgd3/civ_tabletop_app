@@ -2337,16 +2337,26 @@ export function useGameState(gameId) {
       const guildConvoys = upgrades.guildConvoys || []
       let changed = false
 
+      const isCC = struct.wg_unit_types?.name === 'Command Center'
+      const holdingBay = [...(upgrades.holdingBay || [])]
+      const barracksCapacity = isCC ? 12 : 0
       const newConvoys = convoys.map(c => {
         if (!c.inTransit) return c
         const updated = { ...c, turnsLeft: (c.turnsLeft || 1) - 1 }
         if (updated.turnsLeft <= 0) {
           updated.inTransit = false
           updated.turnsLeft = 0
+          if (isCC && updated.units?.length > 0) {
+            for (const u of updated.units) {
+              if (holdingBay.length < barracksCapacity) holdingBay.push(u)
+            }
+            updated.units = []
+          }
         }
         changed = true
         return updated
       })
+      if (isCC) upgrades.holdingBay = holdingBay
 
       const remainingGuildConvoys = []
       for (const c of guildConvoys) {
