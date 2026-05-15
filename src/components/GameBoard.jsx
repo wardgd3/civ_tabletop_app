@@ -1818,6 +1818,14 @@ export default function GameBoard({
           End Turn
         </button>
       )}
+      {!isMyTurn && game?.current_team_color === currentPlayer?.color && currentPlayer?.has_ended_turn && (
+        <div
+          className="w-full px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded text-center"
+          style={{ backgroundColor: '#1a1a2a', color: '#6e7681', border: '1px solid #2a2a3d' }}
+        >
+          Waiting for teammate...
+        </div>
+      )}
 
       <div className="hidden lg:block p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
         <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>Operatives</div>

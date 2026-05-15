@@ -3027,6 +3027,21 @@ export function useGameState(gameId) {
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
+    await supabase.from('wg_game_players').update({ has_ended_turn: true }).eq('id', currentPlayer.id)
+
+    const { data: freshTeam } = await supabase
+      .from('wg_game_players')
+      .select('id, has_ended_turn')
+      .eq('game_id', gameId)
+      .eq('color', myColor)
+
+    const allDone = (freshTeam || []).every(p => p.has_ended_turn)
+
+    if (!allDone) {
+      await fetchAll()
+      return
+    }
+
     missileFiredShipsRef.current = new Set()
     setMissileFiredShips(new Set())
 
@@ -3045,6 +3060,10 @@ export function useGameState(gameId) {
       const upg = { ...u.upgrades }
       delete upg.productionUsed
       await supabase.from('wg_units').update({ upgrades: upg }).eq('id', u.id)
+    }
+
+    for (const p of (freshTeam || [])) {
+      await supabase.from('wg_game_players').update({ has_ended_turn: false }).eq('id', p.id)
     }
 
     try {
