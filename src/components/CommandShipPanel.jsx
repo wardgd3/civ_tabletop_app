@@ -1387,7 +1387,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
 
 const HANGAR_UNIT_NAMES = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter', 'Repair Ship', 'Recon Drone'])
 
-function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar, onProduceBattleshipToBay, onBuyMissileForDockedBs, onRenameDockedBs, onLoadToBsHangar, onDeployDockedBs, nearbyUnits, comp, unitTypes, teamGold, allUnits, onSetNumberedOverlays, isAdmin }) {
+function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar, onProduceBattleshipToBay, onBuyMissileForDockedBs, onRenameDockedBs, onLoadToBsHangar, onDeployDockedBs, nearbyUnits, comp, unitTypes, teamGold, allUnits, onSetNumberedOverlays, isAdmin, availableProduction }) {
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [showProduceMenu, setShowProduceMenu] = useState(false)
   const [showTransferMenu, setShowTransferMenu] = useState(false)
@@ -1673,14 +1673,14 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
       {showProduceMenu && !isFull && (
         <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#111214', border: `1px solid ${comp.color}40` }}>
           <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-            Produce Ship — <span className="font-mono" style={{ color: '#8b949e' }}>⚒{teamGold}</span>
+            Produce Ship
           </div>
           {producibleTypes.length === 0 ? (
             <div className="text-[9px]" style={{ color: '#4a5568' }}>No ship types available</div>
           ) : (
             <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
               {producibleTypes.map(ut => {
-                const canAfford = teamGold >= ut.cost
+                const canAfford = (availableProduction ?? 0) >= ut.cost
                 return (
                   <button
                     key={ut.id}
@@ -1701,7 +1701,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                         <div className="text-[8px]" style={{ color: '#6e7681' }}>ATK {ut.attack} DEF {ut.defense} HP {ut.hp}</div>
                       </div>
                     </div>
-                    <span className="text-[9px] font-mono" style={{ color: canAfford ? '#cca43b' : '#e05050' }}>{ut.cost}g</span>
+                    <span className="text-[9px] font-mono" style={{ color: canAfford ? '#60b060' : '#e05050' }}>⚒{ut.cost}</span>
                   </button>
                 )
               })}
@@ -2663,6 +2663,7 @@ export default function CommandShipPanel({
               allUnits={allUnits}
               onSetNumberedOverlays={onSetNumberedOverlays}
               isAdmin={isAdmin}
+              availableProduction={availableProduction}
             />
           ) : comp.special === 'inventory' ? (
             <InventoryPanel unit={unit} upgrades={upgrades} isCommandShip={isCommandShip} />

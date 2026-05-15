@@ -1798,17 +1798,8 @@ export function useGameState(gameId) {
     const hangar = [...(upgrades.hangar || [])]
     if (hangar.length >= getHangarCapacity(ship)) throw new Error('Hangar full')
 
-    if (!isAdmin && teamGold < ut.cost) throw new Error('Not enough gold')
-
-    if (!isAdmin) {
-      const perPlayer = Math.ceil(ut.cost / teamPlayers.length)
-      for (const tp of teamPlayers) {
-        await supabase
-          .from('wg_game_players')
-          .update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) })
-          .eq('id', tp.id)
-      }
-    }
+    const availableProduction = productionPerTurn - getUsedProduction()
+    if (!isAdmin && availableProduction < ut.cost) throw new Error('Not enough production')
 
     hangar.push({
       typeId: unitTypeId,
@@ -1816,7 +1807,8 @@ export function useGameState(gameId) {
       hp: ut.hp,
     })
 
-    const newUpgrades = { ...upgrades, hangar }
+    const productionUsed = (upgrades.productionUsed || 0) + (isAdmin ? 0 : ut.cost)
+    const newUpgrades = { ...upgrades, hangar, productionUsed }
     await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
     await fetchAll()
   }
