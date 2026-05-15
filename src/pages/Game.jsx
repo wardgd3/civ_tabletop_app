@@ -167,6 +167,10 @@ export default function Game() {
           transferHangarUnit={gameState.transferHangarUnit}
           transferAllHangar={gameState.transferAllHangar}
           addToHangar={gameState.addToHangar}
+          renameUnit={gameState.renameUnit}
+          produceBattleshipToBay={gameState.produceBattleshipToBay}
+          buyMissileForDockedBs={gameState.buyMissileForDockedBs}
+          renameDockedBattleship={gameState.renameDockedBattleship}
           battleLog={gameState.battleLog}
           isAdmin={gameState.isAdmin}
           productionPerTurn={gameState.productionPerTurn}
