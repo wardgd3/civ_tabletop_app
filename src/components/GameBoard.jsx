@@ -1777,7 +1777,7 @@ export default function GameBoard({
             </div>
             <div className="text-[10px] font-mono mt-0.5 flex items-center gap-1" style={{ color: '#8b949e' }}>
               <span style={{ fontSize: 14 }}>⚒</span>
-              <span>{economy?.net ?? 0}</span>
+              <span>{economy?.teamGold ?? (currentPlayer?.gold || 0)}</span>
               <span style={{ color: economy?.production > 0 ? '#6a9a72' : '#4a5568' }}>+{economy?.production ?? 0}/turn</span>
             </div>
             <div className="text-[10px] font-mono mt-0.5 flex items-center gap-1" style={{ color: '#cca43b' }}>

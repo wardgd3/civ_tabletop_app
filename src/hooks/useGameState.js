@@ -217,8 +217,8 @@ export function useGameState(gameId) {
     } catch (e) { console.error('gemTradeIncome calc error:', e) }
     const excavationIncome = totalExcavations + luxuryIncome + gemTradeIncome
     const goldUpkeep = teamUnits.length
-    const netGold = excavationIncome - goldUpkeep
-    return { production, goldUpkeep, excavationIncome, gemTradeIncome, net: production, teamGold: effectiveGold, netGold }
+    const netGold = production + excavationIncome - goldUpkeep
+    return { production, goldUpkeep, excavationIncome, gemTradeIncome, teamGold: effectiveGold, netGold }
   })()
   const productionPerTurn = economy.production
 
