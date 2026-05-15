@@ -108,7 +108,7 @@ const COMMANDERS = [
   { file: 'comm_harkon_mast', name: 'Harkon Mast' },
   { file: 'comm_corvine_yunso', name: 'Corvine Yunso' },
   { file: 'comm_kito_bore', name: 'Kito Bore' },
-  { file: 'comm_catherine_hale', name: 'Catherine Hale' },
+  { file: 'comm_catherine_hale', name: 'Catherine Hartwell' },
   { file: 'comm_P62', name: 'P-62' },
   { file: 'comm_P79', name: 'P-79' },
 ]
