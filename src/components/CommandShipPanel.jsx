@@ -1673,7 +1673,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
       {showProduceMenu && !isFull && (
         <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#111214', border: `1px solid ${comp.color}40` }}>
           <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-            Produce Ship
+            Produce Ship — <span className="font-mono" style={{ color: '#60b060' }}>⚒{availableProduction ?? 0}</span>
           </div>
           {producibleTypes.length === 0 ? (
             <div className="text-[9px]" style={{ color: '#4a5568' }}>No ship types available</div>
