@@ -630,7 +630,7 @@ export default function GameBoard({
 
   function getTileColor(row, col, isVisible, isDiscovered) {
     const isSpace = activeBoard === 'space'
-    const fogColor = isSpace ? '#e8e8ec' : '#eaeaea'
+    const fogColor = isSpace ? '#1a2029' : '#d8d8dc'
     const tile = tileMap.get(`${row}-${col}`)
     if (!tile) return isVisible ? '#232a35' : isDiscovered ? '#1e2530' : fogColor
     const terrain = TERRAIN_BY_ID[tile.terrain]
