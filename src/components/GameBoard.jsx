@@ -111,7 +111,7 @@ export default function GameBoard({
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
   setAutoPath, clearAutoPath,
-  deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar,
+  deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship,
   battleLog,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
@@ -1881,6 +1881,18 @@ export default function GameBoard({
             onCancelDeployAll={() => setHangarDeployAllInfo(null)}
             onAddToHangar={async (shipId, unitId) => {
               try { await addToHangar(shipId, unitId) } catch (err) { setError(err.message) }
+            }}
+            onRenameUnit={async (unitId, newName) => {
+              try { await renameUnit(unitId, newName) } catch (err) { setError(err.message) }
+            }}
+            onProduceBattleshipToBay={async (shipId, unitTypeId) => {
+              try { await produceBattleshipToBay(shipId, unitTypeId) } catch (err) { setError(err.message) }
+            }}
+            onBuyMissileForDockedBs={async (shipId, missileType, bayIndex) => {
+              try { await buyMissileForDockedBs(shipId, missileType, bayIndex) } catch (err) { setError(err.message) }
+            }}
+            onRenameDockedBs={async (shipId, bayIndex, newName) => {
+              try { await renameDockedBattleship(shipId, bayIndex, newName) } catch (err) { setError(err.message) }
             }}
             onProduceUnit={async (shipId, unitTypeId, unitTypeName) => {
               try { await produceUnitToBay(shipId, unitTypeId, unitTypeName) } catch (err) { setError(err.message) }

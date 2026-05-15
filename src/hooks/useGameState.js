@@ -48,7 +48,7 @@ function getBarracksCapacity(unit) {
 }
 
 function getHangarCapacity(unit) {
-  return unit?.wg_unit_types?.name === 'Battleship' ? 4 : 8
+  return unit?.wg_unit_types?.name === 'Battleship' ? 4 : 12
 }
 
 function getConvoySlots(unit) {
@@ -1886,6 +1886,89 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function renameUnit(unitId, newName) {
+    const unit = units.find(u => u.id === unitId)
+    if (!unit) throw new Error('Unit not found')
+    const upgrades = { ...(unit.upgrades || {}), customName: newName.trim() || null }
+    await supabase.from('wg_units').update({ upgrades }).eq('id', unitId)
+    await fetchAll()
+  }
+
+  async function produceBattleshipToBay(shipId, unitTypeId) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+    const ut = unitTypes.find(t => t.id === unitTypeId)
+    if (!ut) throw new Error('Unit type not found')
+    const upgrades = ship.upgrades || {}
+    const bay = [...(upgrades.battleshipBay || [null, null])]
+    const emptyIdx = bay.findIndex(s => !s)
+    if (emptyIdx === -1) throw new Error('Battleship bay full')
+    if (!isAdmin && teamGold < ut.cost) throw new Error('Not enough gold')
+    const bsType = unitTypes.find(t => t.name === 'Battleship')
+    if (!bsType) throw new Error('Battleship type not found')
+    if (!isAdmin) {
+      const matCheck = (inv) => (inv?.uranium || 0) >= 1 && (inv?.iron || 0) >= 50 && (inv?.aluminum || 0) >= 30
+      const inv = upgrades.inventory || {}
+      if (!matCheck(inv)) throw new Error('Missing materials: 1 uranium, 50 iron, 30 aluminum')
+      upgrades.inventory = { ...inv, uranium: (inv.uranium || 0) - 1, iron: (inv.iron || 0) - 50, aluminum: (inv.aluminum || 0) - 30 }
+    }
+    if (!isAdmin) {
+      const perPlayer = Math.ceil(ut.cost / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase.from('wg_game_players').update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) }).eq('id', tp.id)
+      }
+    }
+    bay[emptyIdx] = {
+      typeId: unitTypeId,
+      typeName: 'Battleship',
+      hp: ut.hp,
+      upgrades: { hangar: [], missiles: {}, shields: [0], reactor: [0], cannon: [0], inventory: {} },
+    }
+    const newUpgrades = { ...upgrades, battleshipBay: bay }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
+  async function renameDockedBattleship(shipId, bayIndex, newName) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+    const upgrades = { ...(ship.upgrades || {}) }
+    const bay = [...(upgrades.battleshipBay || [null, null])]
+    const bs = bay[bayIndex]
+    if (!bs) throw new Error('No battleship in that dock')
+    bay[bayIndex] = { ...bs, upgrades: { ...(bs.upgrades || {}), customName: newName.trim() || null } }
+    upgrades.battleshipBay = bay
+    await supabase.from('wg_units').update({ upgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
+  async function buyMissileForDockedBs(shipId, missileType, bayIndex) {
+    const MISSILE_COSTS = { tactical: 5, cruise: 18, icbm: 28 }
+    const cost = MISSILE_COSTS[missileType]
+    if (!cost) throw new Error('Invalid missile type')
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+    if (!isAdmin && teamGold < cost) throw new Error('Not enough gold')
+    if (!isAdmin) {
+      const perPlayer = Math.ceil(cost / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase.from('wg_game_players').update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) }).eq('id', tp.id)
+      }
+    }
+    const upgrades = { ...(ship.upgrades || {}) }
+    const bay = [...(upgrades.battleshipBay || [null, null])]
+    const bs = bay[bayIndex]
+    if (!bs) throw new Error('No battleship in that dock')
+    const bsUpgrades = { ...(bs.upgrades || {}) }
+    const missiles = { ...(bsUpgrades.missiles || {}) }
+    missiles[missileType] = (missiles[missileType] || 0) + 1
+    bsUpgrades.missiles = missiles
+    bay[bayIndex] = { ...bs, upgrades: bsUpgrades }
+    upgrades.battleshipBay = bay
+    await supabase.from('wg_units').update({ upgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
   async function buyAndLoadToTransport(structId, transportIndex, unitTypeId, unitTypeName) {
     const struct = units.find(u => u.id === structId)
     if (!struct) throw new Error('Structure not found')
@@ -2745,7 +2828,7 @@ export function useGameState(gameId) {
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
     setAutoPath, clearAutoPath,
-    deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar,
+    deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship,
     persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
     missileFiredShips,
     refresh: fetchAll,

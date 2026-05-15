@@ -179,11 +179,11 @@ const COMMAND_SHIP_COMPARTMENTS = [
   {
     id: 'hangar',
     name: 'Hangar',
-    description: 'Store and deploy aircraft and space ships. Capacity: 8.',
+    description: 'Store and deploy aircraft and space ships. Capacity: 12.',
     icon: 'hangar',
     color: '#7060c0',
     special: 'hangar',
-    slots: 8,
+    slots: 12,
   },
   {
     id: 'inventory',
@@ -1280,15 +1280,21 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
 
 const HANGAR_UNIT_NAMES = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter', 'Repair Ship'])
 
-function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar, nearbyUnits, comp, unitTypes, teamGold, allUnits, onSetNumberedOverlays }) {
+function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar, onProduceBattleshipToBay, onBuyMissileForDockedBs, onRenameDockedBs, nearbyUnits, comp, unitTypes, teamGold, allUnits, onSetNumberedOverlays, isAdmin }) {
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [showProduceMenu, setShowProduceMenu] = useState(false)
   const [showTransferMenu, setShowTransferMenu] = useState(false)
   const [showTransferAllMenu, setShowTransferAllMenu] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
+  const [selectedBsSlot, setSelectedBsSlot] = useState(null)
+  const [bsSubPanel, setBsSubPanel] = useState(null)
+  const [bsRenaming, setBsRenaming] = useState(false)
+  const [bsRenameValue, setBsRenameValue] = useState('')
   const hangar = upgrades.hangar || []
   const capacity = comp.slots
   const isFull = hangar.length >= capacity
+  const battleshipBay = upgrades.battleshipBay || [null, null]
+  const isCommandShip = unit.wg_unit_types?.name === 'Command Ship'
 
   const producibleTypes = (unitTypes || []).filter(ut => HANGAR_UNIT_NAMES.has(ut.name))
   const allSlots = Array.from({ length: capacity }, (_, i) => hangar[i] || null)
@@ -1592,6 +1598,200 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
           )}
         </div>
       )}
+
+      {isCommandShip && (
+        <>
+          <div className="text-[9px] uppercase tracking-widest font-semibold mt-3 mb-1.5" style={{ color: '#4a5568' }}>
+            Battleship Docks ({battleshipBay.filter(Boolean).length}/2)
+          </div>
+          <div className="grid grid-cols-2 gap-1.5 mb-2">
+            {battleshipBay.map((bs, i) => {
+              const isSelected = selectedBsSlot === i
+              return (
+                <button
+                  key={i}
+                  onClick={() => {
+                    if (bs) { setSelectedBsSlot(isSelected ? null : i); setBsSubPanel(null); setSelectedSlot(null) }
+                  }}
+                  className="rounded p-2 text-center transition-all flex flex-col items-center justify-center"
+                  style={{
+                    backgroundColor: isSelected ? '#1a2a3a' : bs ? '#18191c' : '#111214',
+                    border: `2px ${bs ? 'solid' : 'dashed'} ${isSelected ? '#6cb4e6' : bs ? '#3a4a5a' : '#2a3140'}`,
+                    cursor: bs ? 'pointer' : 'default',
+                    minHeight: '56px',
+                  }}
+                >
+                  {bs ? (
+                    <>
+                      <img src="/assets/hostilebattleship.png" alt="Battleship" className="w-8 h-8 object-contain mb-0.5" />
+                      <div className="text-[8px] font-semibold" style={{ color: '#c9d1d9' }}>{bs.upgrades?.customName || bs.typeName}</div>
+                      <div className="text-[7px] font-mono" style={{ color: '#6e7681' }}>HP {bs.hp}</div>
+                    </>
+                  ) : (
+                    <span className="text-[10px]" style={{ color: '#30363d' }}>Empty Dock</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {(() => {
+            const bsType = (unitTypes || []).find(t => t.name === 'Battleship')
+            const bsFull = battleshipBay.every(Boolean)
+            const inv = upgrades.inventory || {}
+            const hasMats = isAdmin || ((inv.uranium || 0) >= 1 && (inv.iron || 0) >= 50 && (inv.aluminum || 0) >= 30)
+            const canAfford = isAdmin || teamGold >= (bsType?.cost || 0)
+            if (!bsType || bsFull) return null
+            return (
+              <button
+                onClick={() => { if (canAfford && hasMats) onProduceBattleshipToBay?.(unit.id, bsType.id) }}
+                disabled={!canAfford || !hasMats}
+                className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30 mb-2"
+                style={{ backgroundColor: '#1a2a3a', color: '#6cb4e6', border: '1px solid #3a4a5a' }}
+              >
+                Build Battleship — <span className="font-mono">⚒{bsType.cost}</span>
+                <span className="text-[8px] ml-1 font-normal opacity-60">1 uranium · 50 iron · 30 aluminum</span>
+              </button>
+            )
+          })()}
+
+          {selectedBsSlot !== null && battleshipBay[selectedBsSlot] && (() => {
+            const bs = battleshipBay[selectedBsSlot]
+            const bsUpgrades = bs.upgrades || {}
+            const bsCompartments = BATTLESHIP_COMPARTMENTS
+            const bsHangar = bsUpgrades.hangar || []
+            const bsMissiles = bsUpgrades.missiles || {}
+            const MISSILE_TYPES = [
+              { key: 'tactical', name: 'Tactical', cost: 5, color: '#6cb4e6', reqLevel: 0 },
+              { key: 'cruise', name: 'Cruise', cost: 18, color: '#cca43b', reqLevel: 0 },
+              { key: 'icbm', name: 'IPBM', cost: 28, color: '#e05050', reqLevel: 0 },
+            ]
+            return (
+              <div className="p-2 rounded mb-2" style={{ backgroundColor: '#111214', border: '1px solid #3a4a5a' }}>
+                <div className="flex items-center justify-between mb-2">
+                  {bsRenaming ? (
+                    <form
+                      onSubmit={(e) => { e.preventDefault(); onRenameDockedBs?.(unit.id, selectedBsSlot, bsRenameValue); setBsRenaming(false) }}
+                      className="flex items-center gap-1"
+                    >
+                      <input
+                        autoFocus
+                        value={bsRenameValue}
+                        onChange={e => setBsRenameValue(e.target.value)}
+                        onBlur={() => { onRenameDockedBs?.(unit.id, selectedBsSlot, bsRenameValue); setBsRenaming(false) }}
+                        maxLength={24}
+                        className="text-[11px] font-semibold rounded px-2 py-0.5 w-28 focus:outline-none"
+                        style={{ backgroundColor: '#18191c', border: '1px solid #30363d', color: '#c9d1d9' }}
+                      />
+                    </form>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-semibold" style={{ color: '#c9d1d9' }}>{bsUpgrades.customName || 'Battleship'}</span>
+                      <button
+                        onClick={() => { setBsRenameValue(bsUpgrades.customName || ''); setBsRenaming(true) }}
+                        className="p-0.5 rounded transition-colors hover:bg-white/10 cursor-pointer"
+                        style={{ color: '#6e7681' }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                  <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>HP {bs.hp}</span>
+                </div>
+
+                <div className="flex gap-1 mb-2">
+                  {['hangar', 'missiles'].map(panel => (
+                    <button
+                      key={panel}
+                      onClick={() => setBsSubPanel(bsSubPanel === panel ? null : panel)}
+                      className="flex-1 py-1 text-[9px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                      style={{
+                        backgroundColor: bsSubPanel === panel ? '#1a2a3a' : '#18191c',
+                        color: bsSubPanel === panel ? '#6cb4e6' : '#8b949e',
+                        border: `1px solid ${bsSubPanel === panel ? '#6cb4e6' : '#30363d'}`,
+                      }}
+                    >
+                      {panel === 'hangar' ? `Hangar (${bsHangar.length}/4)` : `Missiles`}
+                    </button>
+                  ))}
+                </div>
+
+                {bsSubPanel === 'hangar' && (() => {
+                  const bsHangarSlots = Array.from({ length: 4 }, (_, i) => bsHangar[i] || null)
+                  return (
+                    <div>
+                      <div className="grid grid-cols-4 gap-1 mb-1.5">
+                        {bsHangarSlots.map((stored, i) => (
+                          <div
+                            key={i}
+                            className="rounded p-1 text-center aspect-square flex flex-col items-center justify-center"
+                            style={{
+                              backgroundColor: stored ? '#7060c015' : '#18191c',
+                              border: `1px solid ${stored ? '#7060c050' : '#30363d'}`,
+                            }}
+                          >
+                            {stored ? (
+                              <div className="text-[7px] font-semibold" style={{ color: '#c9d1d9' }}>{stored.typeName}</div>
+                            ) : (
+                              <span className="text-[10px]" style={{ color: '#30363d' }}>&ndash;</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {bsHangar.length < 4 && (
+                        <div className="text-[8px] mb-1" style={{ color: '#6e7681' }}>
+                          Transfer ships from the main hangar above to load this battleship.
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {bsSubPanel === 'missiles' && (
+                  <div>
+                    <div className="flex gap-1 mb-1.5">
+                      {MISSILE_TYPES.map(m => {
+                        const count = bsMissiles[m.key] || 0
+                        return (
+                          <div
+                            key={m.key}
+                            className="flex-1 rounded p-1 text-center"
+                            style={{ backgroundColor: m.color + '10', border: `1px solid ${m.color}40` }}
+                          >
+                            <div className="text-[8px] font-semibold" style={{ color: m.color }}>{m.name}</div>
+                            <div className="text-[10px] font-mono font-bold" style={{ color: '#c9d1d9' }}>{count}</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="flex gap-1">
+                      {MISSILE_TYPES.map(m => {
+                        const canAfford = teamGold >= m.cost
+                        return (
+                          <button
+                            key={m.key}
+                            onClick={() => {
+                              if (!canAfford) return
+                              onBuyMissileForDockedBs?.(unit.id, m.key, selectedBsSlot)
+                            }}
+                            disabled={!canAfford}
+                            className="flex-1 py-1 text-[8px] font-semibold rounded transition-colors cursor-pointer disabled:opacity-30"
+                            style={{ backgroundColor: m.color + '15', color: m.color, border: `1px solid ${m.color}40` }}
+                          >
+                            Buy {m.cost}g
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+        </>
+      )}
     </div>
   )
 }
@@ -1876,6 +2076,7 @@ export default function CommandShipPanel({
   onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
   onBuyMissile, onFireMissile, onProduceWarhead, missileFiredShips,
   onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar,
+  onRenameUnit, onProduceBattleshipToBay, onBuyMissileForDockedBs, onRenameDockedBs,
   groundUnits, unitTypes, teamGold, playerResources, allUnits, nearbyUnits,
   onSetNumberedOverlays,
   onLevelUp, onExcavate, onClearAutoPath, onBoardTransport, onDockTransport, onDeployFromTransportUnit, economy,
@@ -1887,6 +2088,8 @@ export default function CommandShipPanel({
   const [ipbmTarget, setIpbmTarget] = useState('space')
   const [ipbmRow, setIpbmRow] = useState('')
   const [ipbmCol, setIpbmCol] = useState('')
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
   const upgrades = unit.upgrades || {}
   const unitName = unit.wg_unit_types?.name || 'Command Ship'
   const compartments = getCompartments(unitName)
@@ -1931,7 +2134,37 @@ export default function CommandShipPanel({
             className="w-24 h-24 object-contain"
           />
           <div className="text-center">
-            <div className="text-sm font-semibold" style={{ color: '#c9d1d9' }}>{unitName}</div>
+            {isRenaming ? (
+              <form
+                onSubmit={(e) => { e.preventDefault(); onRenameUnit?.(unit.id, renameValue); setIsRenaming(false) }}
+                className="flex items-center gap-1 justify-center"
+              >
+                <input
+                  autoFocus
+                  value={renameValue}
+                  onChange={e => setRenameValue(e.target.value)}
+                  onBlur={() => { onRenameUnit?.(unit.id, renameValue); setIsRenaming(false) }}
+                  maxLength={24}
+                  className="text-sm font-semibold text-center rounded px-2 py-0.5 w-36 focus:outline-none"
+                  style={{ backgroundColor: '#111214', border: '1px solid #30363d', color: '#c9d1d9' }}
+                />
+              </form>
+            ) : (
+              <div className="flex items-center justify-center gap-1.5">
+                <span className="text-sm font-semibold" style={{ color: '#c9d1d9' }}>{upgrades.customName || unitName}</span>
+                {(unitName === 'Command Ship' || unitName === 'Battleship') && (
+                  <button
+                    onClick={() => { setRenameValue(upgrades.customName || ''); setIsRenaming(true) }}
+                    className="p-0.5 rounded transition-colors hover:bg-white/10 cursor-pointer"
+                    style={{ color: '#6e7681' }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            )}
             <div className="text-xs font-mono mt-0.5" style={{ color: '#6e7681' }}>HP {unit.current_hp}/{unit.wg_unit_types?.hp}</div>
             <div className="text-[11px] font-mono mt-0.5" style={{ color: '#6e7681' }}>
               ATK {unit.wg_unit_types?.attack} | DEF {unit.wg_unit_types?.defense} | MOV {Math.max(0, (unit.wg_unit_types?.movement || 0) - (unit.moves_used || 0))}/{unit.wg_unit_types?.movement}
@@ -2273,12 +2506,16 @@ export default function CommandShipPanel({
               isDeployAllActive={isDeployAllActive}
               onCancelDeployAll={onCancelDeployAll}
               onAddToHangar={onAddToHangar}
+              onProduceBattleshipToBay={onProduceBattleshipToBay}
+              onBuyMissileForDockedBs={onBuyMissileForDockedBs}
+              onRenameDockedBs={onRenameDockedBs}
               nearbyUnits={nearbyUnits}
               comp={comp}
               unitTypes={unitTypes}
               teamGold={teamGold}
               allUnits={allUnits}
               onSetNumberedOverlays={onSetNumberedOverlays}
+              isAdmin={isAdmin}
             />
           ) : comp.special === 'inventory' ? (
             <InventoryPanel unit={unit} upgrades={upgrades} isCommandShip={isCommandShip} />
