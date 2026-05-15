@@ -84,6 +84,24 @@ const ICONS = {
       <circle cx="8" cy="8" r="1" />
     </svg>
   ),
+  hull: (
+    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
+      <path d="M3 14 L3 4 L8 2 L13 4 L13 14" />
+      <line x1="3" y1="14" x2="13" y2="14" />
+      <line x1="3" y1="7" x2="13" y2="7" />
+      <line x1="3" y1="10.5" x2="13" y2="10.5" />
+    </svg>
+  ),
+  walls: (
+    <svg viewBox="0 0 16 16" style={ICON_STYLE}>
+      <rect x="2" y="4" width="12" height="10" />
+      <line x1="2" y1="9" x2="14" y2="9" />
+      <line x1="5" y1="4" x2="5" y2="9" />
+      <line x1="11" y1="4" x2="11" y2="9" />
+      <line x1="8" y1="9" x2="8" y2="14" />
+      <rect x="4" y="5" width="2" height="3" fill="none" />
+    </svg>
+  ),
 }
 
 const TIERS = [
