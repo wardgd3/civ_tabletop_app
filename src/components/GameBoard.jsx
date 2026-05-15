@@ -2297,7 +2297,7 @@ export default function GameBoard({
                     const pColor = getPlayerColor(unit.owner_id, unit)
                     const hpRatio = unit.current_hp / getMaxHp(unit)
                     const isReconDrone = unit.wg_unit_types?.name === 'Recon Drone'
-                    const sizeMultiplier = isReconDrone ? 0.877 : 1.032
+                    const sizeMultiplier = isReconDrone ? 0.774 : 1.032
                     const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * sizeMultiplier
                     const fadeIn = unitAnimations.get(unit.id)?.type === 'fadeIn'
                     return (
