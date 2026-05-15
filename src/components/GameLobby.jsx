@@ -2,7 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGames } from '../hooks/useGames'
 import { useFriends } from '../hooks/useFriends'
+import { useAuth } from '../contexts/AuthContext'
 import { TERRAIN_THEMES } from '../lib/terrainGen'
+
+const TEAM_COLORS = [
+  { id: '#3b82f6', label: 'Blue' },
+  { id: '#ef4444', label: 'Red' },
+  { id: '#22c55e', label: 'Green' },
+  { id: '#eab308', label: 'Yellow' },
+  { id: '#a855f7', label: 'Purple' },
+  { id: '#f97316', label: 'Orange' },
+]
 
 const MAP_SIZES = [
   { id: 'small',    label: 'Small',       rows: 24, cols: 36 },
@@ -15,6 +25,8 @@ const MAP_SIZES = [
 export default function GameLobby() {
   const { games, invites, loading, createGame, createAdminGame, inviteToGame, acceptInvite, declineInvite, startGame, deleteGame, updatePlayerColor, updatePlayerSpace } = useGames()
   const { friends } = useFriends()
+  const { session } = useAuth()
+  const userId = session?.user?.id
   const navigate = useNavigate()
 
   const [showCreate, setShowCreate] = useState(false)
@@ -308,23 +320,37 @@ export default function GameLobby() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2 mb-2">
-                {game.players?.map((p, i) => {
-                  const tagColors = [
-                    { bg: '#15253a', color: '#5a9abf', border: '#1e3550' },
-                    { bg: '#2a1a1a', color: '#b07070', border: '#3a2a2a' },
-                    { bg: '#1a2a1e', color: '#6a9a72', border: '#2a3a2e' },
-                    { bg: '#2a2518', color: '#b0953a', border: '#3a3528' },
-                  ]
-                  const tc = tagColors[i % tagColors.length]
+              <div className="flex flex-col gap-2 mb-2">
+                {game.players?.map((p) => {
+                  const isMe = p.player_id === userId
+                  const isLobby = game.status === 'lobby'
                   return (
-                    <span
-                      key={p.player_id}
-                      className="text-xs px-2 py-0.5 rounded font-mono"
-                      style={{ backgroundColor: tc.bg, border: `1px solid ${tc.border}`, color: tc.color }}
-                    >
-                      {p.wg_profiles?.display_name}
-                    </span>
+                    <div key={p.player_id} className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: p.color || '#3b82f6', border: '1px solid rgba(255,255,255,0.15)' }}
+                      />
+                      <span className="text-xs font-mono" style={{ color: '#c9d1d9' }}>
+                        {p.wg_profiles?.display_name}
+                      </span>
+                      {isLobby && isMe && (
+                        <div className="flex gap-1 ml-1">
+                          {TEAM_COLORS.map(tc => (
+                            <button
+                              key={tc.id}
+                              onClick={() => updatePlayerColor(p.id, tc.id)}
+                              className="w-4 h-4 rounded-full transition-transform hover:scale-125 cursor-pointer"
+                              style={{
+                                backgroundColor: tc.id,
+                                border: p.color === tc.id ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)',
+                                transform: p.color === tc.id ? 'scale(1.2)' : undefined,
+                              }}
+                              title={tc.label}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </div>
