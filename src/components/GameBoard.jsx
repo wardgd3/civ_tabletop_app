@@ -638,10 +638,10 @@ export default function GameBoard({
       const t = noise - 0.5
       if (t > 0) {
         const f = t * 2
-        return toHex(212 - f * 10, 214 - f * 5, 220 + f * 7)
+        return toHex(212 - f * 40, 214 - f * 30, 220 - f * 20)
       } else {
         const f = -t * 2
-        return toHex(220 + f * 10, 214 + f * 4, 210 - f * 6)
+        return toHex(220 + f * 15, 218 + f * 10, 225 + f * 15)
       }
     })()
     const tile = tileMap.get(`${row}-${col}`)
