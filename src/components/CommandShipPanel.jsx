@@ -2314,7 +2314,7 @@ export default function CommandShipPanel({
         </div>
         <div className="flex flex-col items-center gap-0.5">
           <img
-            src={isCommandShip ? `/assets/${unit.upgrades?.shipModel || 'commandship2'}.png` : unit.wg_unit_types?.icon ? `/assets/${unit.wg_unit_types.icon}` : '/assets/infantry.png'}
+            src={isCommandShip ? `/assets/${unit.upgrades?.shipModel || 'commandship2'}.png` : unitName === 'Command Center' ? `/assets/${unit.upgrades?.ccModel || 'command center'}.png` : unit.wg_unit_types?.icon ? `/assets/${unit.wg_unit_types.icon}` : '/assets/infantry.png'}
             alt={unitName}
             className="object-contain" style={{ width: 249, height: 249, margin: '-10px 12px' }}
           />

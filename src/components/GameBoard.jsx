@@ -80,6 +80,10 @@ function getUnitIcon(unitType, unit) {
     const model = unit?.upgrades?.shipModel || 'commandship7'
     return `/assets/${model}.png`
   }
+  if (unitType.name === 'Command Center') {
+    const model = unit?.upgrades?.ccModel || 'command center'
+    return `/assets/${encodeURIComponent(model)}.png`
+  }
   return `/assets/${encodeURIComponent(unitType.icon)}`
 }
 
@@ -1588,7 +1592,11 @@ export default function GameBoard({
         }
         const deployingType = unitTypes.find(t => t.id === selectedUnitType) || allUnitTypes?.find(t => t.id === selectedUnitType)
         if (deployingType?.name === 'Command Ship') {
-          setShipModelPicker({ unitTypeId: selectedUnitType, row, col })
+          setShipModelPicker({ unitTypeId: selectedUnitType, row, col, type: 'ship' })
+          return
+        }
+        if (deployingType?.name === 'Command Center') {
+          setShipModelPicker({ unitTypeId: selectedUnitType, row, col, type: 'cc' })
           return
         }
         await deployUnit(selectedUnitType, row, col)
@@ -2919,21 +2927,27 @@ export default function GameBoard({
         </div>
       )}
 
-      {shipModelPicker && (
+      {shipModelPicker && (() => {
+        const isCC = shipModelPicker.type === 'cc'
+        const models = isCC
+          ? [{ file: 'command center', label: 'Mk.1' }, ...Array.from({ length: 5 }, (_, i) => ({ file: `commandcenter${i + 1}`, label: `Mk.${i + 2}` }))]
+          : [2, 3, 4, 5, 6, 7].map(n => ({ file: `commandship${n}`, label: `Mk.${n - 1}` }))
+        const accentColor = isCC ? '#6cb4e6' : '#c060e0'
+        const hoverBg = isCC ? '#1a2a3e' : '#1a1a2e'
+        return (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <div className="rounded-lg p-6 w-full mx-4" style={{ maxWidth: 576, backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
-            <div className="text-base font-semibold mb-4 text-center" style={{ color: '#c9d1d9' }}>Select Your Command Ship</div>
+            <div className="text-base font-semibold mb-4 text-center" style={{ color: '#c9d1d9' }}>{isCC ? 'Select Your Command Center' : 'Select Your Command Ship'}</div>
             <div className="grid grid-cols-6 gap-3 mb-4">
-              {[2, 3, 4, 5, 6, 7].map(n => {
-                const model = `commandship${n}`
-                return (
+              {models.map((m, i) => (
                   <button
-                    key={n}
+                    key={i}
                     onClick={async () => {
                       const { unitTypeId, row, col } = shipModelPicker
                       setShipModelPicker(null)
                       try {
-                        await deployUnit(unitTypeId, row, col, { shipModel: model })
+                        const opts = isCC ? { ccModel: m.file } : { shipModel: m.file }
+                        await deployUnit(unitTypeId, row, col, opts)
                         setMode('select')
                         setSelectedUnitType(null)
                       } catch (err) {
@@ -2942,14 +2956,13 @@ export default function GameBoard({
                     }}
                     className="flex flex-col items-center gap-1.5 p-3 rounded cursor-pointer transition-all"
                     style={{ backgroundColor: '#111214', border: '1px solid #2a3140' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#c060e0'; e.currentTarget.style.backgroundColor = '#1a1a2e' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.backgroundColor = hoverBg }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a3140'; e.currentTarget.style.backgroundColor = '#111214' }}
                   >
-                    <img src={`/assets/${model}.png`} alt={`Model ${n}`} className="w-18 h-18 object-contain" />
-                    <span className="text-[11px] font-mono" style={{ color: '#8b949e' }}>Mk.{n - 1}</span>
+                    <img src={`/assets/${m.file}.png`} alt={m.label} className="w-18 h-18 object-contain" />
+                    <span className="text-[11px] font-mono" style={{ color: '#8b949e' }}>{m.label}</span>
                   </button>
-                )
-              })}
+              ))}
             </div>
             <button
               onClick={() => setShipModelPicker(null)}
@@ -2960,7 +2973,8 @@ export default function GameBoard({
             </button>
           </div>
         </div>
-      )}
+        )
+      })()}
     </div>
     </>
   )

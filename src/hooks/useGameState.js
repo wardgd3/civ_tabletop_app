@@ -413,6 +413,7 @@ export function useGameState(gameId) {
       }
     }
     if (opts?.shipModel) defaultUpgrades.shipModel = opts.shipModel
+    if (opts?.ccModel) defaultUpgrades.ccModel = opts.ccModel
     if (unitType.name === 'Command Ship') {
       defaultUpgrades.convoys = [{ units: [], cargo: {}, inTransit: false }]
     }
