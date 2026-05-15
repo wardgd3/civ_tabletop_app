@@ -101,6 +101,18 @@ function getUnitShield(unit) {
   return { current, max }
 }
 
+const COMMANDERS = [
+  { file: 'comm_orin_zahn', name: 'Orin Zahn' },
+  { file: 'comm_aldara_morne', name: 'Aldara Morne' },
+  { file: 'comm_maren_vale', name: 'Maren Vale' },
+  { file: 'comm_harkon_mast', name: 'Harkon Mast' },
+  { file: 'comm_corvine_yunso', name: 'Corvine Yunso' },
+  { file: 'comm_kito_bore', name: 'Kito Bore' },
+  { file: 'comm_catherine_hale', name: 'Catherine Hale' },
+  { file: 'comm_P62', name: 'P-62' },
+  { file: 'comm_P79', name: 'P-79' },
+]
+
 const GROUND_IMPASSABLE = new Set(['ocean', 'mountain', 'lake', 'river'])
 const SPACE_IMPASSABLE = new Set(['asteroid', 'large_asteroid', 'star'])
 const MINING_PASSABLE = new Set(['asteroid', 'large_asteroid'])
@@ -131,6 +143,7 @@ export default function GameBoard({
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
   productionPerTurn, economy, getUsedProduction,
+  selectCommander,
 }) {
   const [selectedUnitId, setSelectedUnitId] = useState(null)
   const [selectedUnitType, setSelectedUnitType] = useState(null)
@@ -153,6 +166,7 @@ export default function GameBoard({
   const [bsDeployInfo, setBsDeployInfo] = useState(null)
   const [missileTargetInfo, setMissileTargetInfo] = useState(null)
   const [shipModelPicker, setShipModelPicker] = useState(null)
+  const [commanderPicker, setCommanderPicker] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   const [battleLogOpen, setBattleLogOpen] = useState(false)
   const [spaceGuildOpen, setSpaceGuildOpen] = useState(false)
@@ -172,6 +186,12 @@ export default function GameBoard({
   const velocityRef = useRef({ vx: 0, vy: 0 })
   const lastMoveRef = useRef({ x: 0, y: 0, t: 0 })
   const inertiaRef = useRef(null)
+
+  useEffect(() => {
+    if (currentPlayer && !currentPlayer.commander && game?.status === 'active') {
+      setCommanderPicker(true)
+    }
+  }, [currentPlayer, game?.status])
 
   const prevUnitMapRef = useRef(null)
   const prevBoardRef = useRef(activeBoard)
@@ -1738,29 +1758,39 @@ export default function GameBoard({
   const sidebarContent = (
     <div className="space-y-3">
       <div className="p-3 rounded flex items-center justify-between lg:block cursor-pointer select-none" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }} onClick={() => setTurnExpanded(e => !e)}>
-        <div>
-          <div className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>Turn {game.turn_number}</div>
-          <div className="font-semibold text-sm mt-0.5" style={{ color: '#c9d1d9' }}>
-            {isMyTurn ? 'YOUR TURN' : 'Waiting...'}
-          </div>
-          <div className="text-[10px] font-mono mt-0.5" style={{ color: '#cca43b' }}>
-            ⚒ {economy?.teamGold ?? (currentPlayer?.gold || 0)}
-            {economy && (
-              <span style={{ color: economy.netGold >= 0 ? '#6a9a72' : '#e05050' }}>
-                {' '}({economy.netGold >= 0 ? '+' : ''}{economy.netGold}/turn)
-              </span>
+        <div className="flex items-center gap-3">
+          {currentPlayer?.commander && (
+            <img
+              src={`/assets/${currentPlayer.commander}.png`}
+              alt=""
+              className="w-11 h-11 rounded-full object-cover shrink-0"
+              style={{ border: '2px solid #2a3140' }}
+            />
+          )}
+          <div>
+            <div className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>Turn {game.turn_number}</div>
+            <div className="font-semibold text-sm mt-0.5" style={{ color: '#c9d1d9' }}>
+              {isMyTurn ? 'YOUR TURN' : 'Waiting...'}
+            </div>
+            <div className="text-[10px] font-mono mt-0.5" style={{ color: '#cca43b' }}>
+              ⚒ {economy?.teamGold ?? (currentPlayer?.gold || 0)}
+              {economy && (
+                <span style={{ color: economy.netGold >= 0 ? '#6a9a72' : '#e05050' }}>
+                  {' '}({economy.netGold >= 0 ? '+' : ''}{economy.netGold}/turn)
+                </span>
+              )}
+            </div>
+            <div className="text-[10px] font-mono mt-0.5" style={{ color: '#8b949e' }}>
+              +{economy?.net ?? 0} prod/turn
+            </div>
+            {turnExpanded && economy && (
+              <div className="text-[9px] font-mono mt-1" style={{ color: '#6e7681' }}>
+                <span style={{ color: '#6a9a72' }}>+{economy.production} prod</span>
+                {economy.excavationIncome > 0 && <span style={{ color: '#c080e0' }}> +{economy.excavationIncome} excav</span>}
+                <span style={{ color: '#e07050' }}> -{economy.goldUpkeep} gold upkeep</span>
+              </div>
             )}
           </div>
-          <div className="text-[10px] font-mono mt-0.5" style={{ color: '#8b949e' }}>
-            +{economy?.net ?? 0} prod/turn
-          </div>
-          {turnExpanded && economy && (
-            <div className="text-[9px] font-mono mt-1" style={{ color: '#6e7681' }}>
-              <span style={{ color: '#6a9a72' }}>+{economy.production} prod</span>
-              {economy.excavationIncome > 0 && <span style={{ color: '#c080e0' }}> +{economy.excavationIncome} excav</span>}
-              <span style={{ color: '#e07050' }}> -{economy.goldUpkeep} gold upkeep</span>
-            </div>
-          )}
         </div>
         <div className="flex gap-3 lg:hidden">
           {[...new Set(players.map(p => p.color))].map(color => {
@@ -2951,6 +2981,32 @@ export default function GameBoard({
               {sidebarContent}
             </div>
           )}
+        </div>
+      )}
+
+      {commanderPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+          <div className="rounded-lg p-6 sm:p-10 w-full mx-4" style={{ maxWidth: 1036, backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
+            <div className="text-base sm:text-xl font-semibold mb-4 sm:mb-6 text-center" style={{ color: '#c9d1d9' }}>Select Your Commander</div>
+            <div className="grid grid-cols-3 gap-3 sm:gap-5 mb-4 sm:mb-6">
+              {COMMANDERS.map((c) => (
+                <button
+                  key={c.file}
+                  onClick={async () => {
+                    setCommanderPicker(false)
+                    await selectCommander(c.file)
+                  }}
+                  className="flex flex-col items-center gap-2 px-4 py-3 rounded cursor-pointer transition-all"
+                  style={{ backgroundColor: '#111214', border: '1px solid #2a3140' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#c9a227'; e.currentTarget.style.backgroundColor = '#1a1a14' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a3140'; e.currentTarget.style.backgroundColor = '#111214' }}
+                >
+                  <img src={`/assets/${c.file}.png`} alt={c.name} className="w-full object-contain rounded" />
+                  <span className="text-[11px] sm:text-sm font-mono" style={{ color: '#8b949e' }}>{c.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

@@ -3075,9 +3075,15 @@ export function useGameState(gameId) {
     e => e.attackerId === userId || e.targetId === userId
   )
 
+  async function selectCommander(commanderFile) {
+    if (!currentPlayer) return
+    await supabase.from('wg_game_players').update({ commander: commanderFile }).eq('id', currentPlayer.id)
+    await fetchAll()
+  }
+
   return {
     game, players, units, unitTypes, tiles, discoveredTiles, loading,
-    currentPlayer, isMyTurn, isAdmin, battleLog,
+    currentPlayer, isMyTurn, isAdmin, battleLog, selectCommander,
     deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
     excavate, upgradeShipCompartment, levelUpUnit, buyMissile, fireMissile, produceWarhead, sendConvoyToGuild,
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,

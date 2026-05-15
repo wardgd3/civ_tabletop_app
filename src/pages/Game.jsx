@@ -187,6 +187,7 @@ export default function Game() {
           canActOnBoard={canActOnBoard}
           allPlayers={gameState.players}
           realIsMyTurn={gameState.isMyTurn}
+          selectCommander={gameState.selectCommander}
         />
       </div>
     </div>
