@@ -3044,6 +3044,10 @@ export function useGameState(gameId) {
 
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
+    const myBoard = currentPlayer?.is_space_general ? 'space' : 'ground'
+    const hasCC = units.some(u => u.owner_id === userId && (u.board || 'ground') === myBoard &&
+      (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
+    if (!hasCC && !isAdmin) throw new Error(`Deploy your ${myBoard === 'space' ? 'Command Ship' : 'Command Center'} before ending your turn`)
 
     let edgeResult = null
     try {
