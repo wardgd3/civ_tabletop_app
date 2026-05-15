@@ -190,7 +190,7 @@ export function useGameState(gameId) {
   const teamGold = teamPlayers.reduce((sum, p) => sum + (p.gold || 0), 0)
 
   const economy = (() => {
-    if (!currentPlayer) return { production: 0, goldUpkeep: 0, excavationIncome: 0, net: 0, teamGold, netGold: 0 }
+    if (!currentPlayer) return { production: 0, goldUpkeep: 0, excavationIncome: 0, gemTradeIncome: 0, net: 0, teamGold, netGold: 0 }
     const effectiveGold = isAdmin ? 1000000 : teamGold
     const teamUnits = units.filter(u => teamPlayerIds.includes(u.owner_id))
     const ccCount = teamUnits.filter(u =>
@@ -212,7 +212,7 @@ export function useGameState(gameId) {
     const production = (ccCount * 4) + (baseCount * 2) + activeFactories
     let gemTradeIncome = 0
     for (const u of teamUnits) {
-      const trades = u.upgrades?.gemTrades || []
+      const trades = Array.isArray(u.upgrades?.gemTrades) ? u.upgrades.gemTrades : []
       for (const t of trades) gemTradeIncome += (t.goldPerTurn || 0)
     }
     const excavationIncome = totalExcavations + luxuryIncome + gemTradeIncome
@@ -3002,7 +3002,7 @@ export function useGameState(gameId) {
   }
 
   async function processGemTradeTicks() {
-    const myStructs = units.filter(u => u.owner_id === userId && (u.upgrades?.gemTrades?.length > 0))
+    const myStructs = units.filter(u => u.owner_id === userId && Array.isArray(u.upgrades?.gemTrades) && u.upgrades.gemTrades.length > 0)
     let totalGemGold = 0
     for (const struct of myStructs) {
       const trades = (struct.upgrades.gemTrades || [])

@@ -2200,7 +2200,7 @@ const ALL_GEMS = Object.fromEntries(
 
 function InventoryPanel({ unit, upgrades, isCommandShip }) {
   const inventory = upgrades.inventory || {}
-  const gemTrades = upgrades.gemTrades || []
+  const gemTrades = Array.isArray(upgrades.gemTrades) ? upgrades.gemTrades : []
   const oreTable = isCommandShip ? SPACE_ORES : GROUND_ORES
   const allOres = Object.values(oreTable).filter(o => !o.deep)
   const hasProduced = PRODUCED_ITEMS.some(p => (inventory[p.id] || 0) > 0)
