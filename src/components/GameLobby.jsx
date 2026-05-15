@@ -333,22 +333,36 @@ export default function GameLobby() {
                       <span className="text-xs font-mono" style={{ color: '#c9d1d9' }}>
                         {p.wg_profiles?.display_name}
                       </span>
+                      <span className="text-[9px] font-mono uppercase" style={{ color: p.is_space_general ? '#c080e0' : '#6a9a72' }}>
+                        {p.is_space_general ? 'Space' : 'Ground'}
+                      </span>
                       {isLobby && isMe && (
-                        <div className="flex gap-1 ml-1">
-                          {TEAM_COLORS.map(tc => (
-                            <button
-                              key={tc.id}
-                              onClick={() => updatePlayerColor(p.id, tc.id)}
-                              className="w-4 h-4 rounded-full transition-transform hover:scale-125 cursor-pointer"
-                              style={{
-                                backgroundColor: tc.id,
-                                border: p.color === tc.id ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)',
-                                transform: p.color === tc.id ? 'scale(1.2)' : undefined,
-                              }}
-                              title={tc.label}
-                            />
-                          ))}
-                        </div>
+                        <>
+                          <div className="flex gap-1 ml-1">
+                            {TEAM_COLORS.map(tc => (
+                              <button
+                                key={tc.id}
+                                onClick={() => updatePlayerColor(p.id, tc.id)}
+                                className="w-4 h-4 rounded-full transition-transform hover:scale-125 cursor-pointer"
+                                style={{
+                                  backgroundColor: tc.id,
+                                  border: p.color === tc.id ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)',
+                                  transform: p.color === tc.id ? 'scale(1.2)' : undefined,
+                                }}
+                                title={tc.label}
+                              />
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => updatePlayerSpace(p.id, !p.is_space_general)}
+                            className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+                            style={p.is_space_general
+                              ? { backgroundColor: '#2a1a3a', color: '#c080e0', border: '1px solid #3d2a4d' }
+                              : { backgroundColor: '#21262d', color: '#6e7681', border: '1px solid #30363d' }}
+                          >
+                            {p.is_space_general ? '✓ Space' : 'Space'}
+                          </button>
+                        </>
                       )}
                     </div>
                   )
