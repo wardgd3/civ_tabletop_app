@@ -424,7 +424,12 @@ export function useGameState(gameId) {
       unit_type_id: unitTypeId,
       grid_row: row,
       grid_col: col,
-      current_hp: (unitType.name === 'Command Center' || unitType.name === 'Command Ship') ? 100 : unitType.hp,
+      current_hp: (() => {
+        const base = (unitType.name === 'Command Center' || unitType.name === 'Command Ship') ? 100 : unitType.hp
+        const hullSlots = defaultUpgrades.hull || defaultUpgrades.walls || []
+        const maxTier = Array.isArray(hullSlots) ? Math.max(0, ...hullSlots.filter(t => t > 0)) : 0
+        return base + maxTier * 30
+      })(),
       board: unitBoard,
     }
     if (Object.keys(defaultUpgrades).length > 0) {
