@@ -2905,11 +2905,12 @@ export function useGameState(gameId) {
     await processRepairTicks()
     await processNPCTicks()
 
-    const { data, error } = await supabase.functions.invoke('end-turn', {
-      body: { gameId },
-    })
-    if (error) throw new Error(error.message || 'End turn failed')
-    if (data?.error) throw new Error(data.error)
+    try {
+      const { data, error } = await supabase.functions.invoke('end-turn', {
+        body: { gameId },
+      })
+      if (data?.error) console.warn('end-turn edge function:', data.error)
+    } catch {}
 
     await fetchAll()
   }
