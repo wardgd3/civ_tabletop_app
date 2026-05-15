@@ -271,7 +271,7 @@ export default function GameLobby() {
                       Play
                     </button>
                   )}
-                  {game.status === 'lobby' && game.host_id === game.players?.[0]?.player_id && (
+                  {game.status === 'lobby' && game.host_id === userId && (
                     <>
                       <button
                         onClick={() => setInvitingGameId(invitingGameId === game.id ? null : game.id)}
