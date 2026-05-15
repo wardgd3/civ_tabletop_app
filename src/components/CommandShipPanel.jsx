@@ -727,15 +727,18 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
 
             {availableUnitTypes && availableUnitTypes.length > 0 && (
               <>
-                <div
+                <button
                   onClick={() => setShowBuyUnits(v => !v)}
-                  className="flex items-center justify-between mb-1 cursor-pointer"
+                  className="w-full flex items-center justify-between mb-1 px-2 py-1.5 rounded text-[10px] uppercase tracking-widest font-bold transition-colors"
+                  style={{
+                    backgroundColor: showBuyUnits ? '#1a2a3a' : '#18191c',
+                    border: `1px solid ${showBuyUnits ? '#6cb4e650' : '#30363d'}`,
+                    color: showBuyUnits ? '#6cb4e6' : '#8b949e',
+                  }}
                 >
-                  <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>
-                    Buy Units
-                  </span>
-                  <span className="text-[9px]" style={{ color: '#4a5568' }}>{showBuyUnits ? '▴' : '▾'}</span>
-                </div>
+                  Buy Units
+                  <span className="text-[9px]">{showBuyUnits ? '▴' : '▾'}</span>
+                </button>
                 {showBuyUnits && (
                   <div className="flex flex-col gap-0.5 mb-2">
                     {availableUnitTypes.map(ut => {
@@ -771,7 +774,10 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
 
             {effectiveLevel > 0 && (
               <>
-                <div className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
+                <div
+                  className="w-full flex items-center px-2 py-1.5 rounded text-[10px] uppercase tracking-widest font-bold mb-1"
+                  style={{ backgroundColor: '#1a2a3a', border: '1px solid #6cb4e650', color: '#6cb4e6' }}
+                >
                   Buy Munitions
                 </div>
                 <div className="flex gap-1 mb-2">
