@@ -2936,9 +2936,9 @@ export default function GameBoard({
         const hoverBg = isCC ? '#1a2a3e' : '#1a1a2e'
         return (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
-          <div className="rounded-lg p-6 w-full mx-4" style={{ maxWidth: 576, backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
-            <div className="text-base font-semibold mb-4 text-center" style={{ color: '#c9d1d9' }}>{isCC ? 'Select Your Command Center' : 'Select Your Command Ship'}</div>
-            <div className="grid grid-cols-6 gap-3 mb-4">
+          <div className="rounded-lg p-6 sm:p-10 w-full mx-4" style={{ maxWidth: 1036, backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
+            <div className="text-base sm:text-xl font-semibold mb-4 sm:mb-6 text-center" style={{ color: '#c9d1d9' }}>{isCC ? 'Select Your Command Center' : 'Select Your Command Ship'}</div>
+            <div className="grid grid-cols-6 gap-3 sm:gap-5 mb-4 sm:mb-6">
               {models.map((m, i) => (
                   <button
                     key={i}
@@ -2954,13 +2954,13 @@ export default function GameBoard({
                         setError(err.message)
                       }
                     }}
-                    className="flex flex-col items-center gap-1.5 p-3 rounded cursor-pointer transition-all"
+                    className="flex flex-col items-center gap-1.5 sm:gap-3 p-3 sm:p-5 rounded cursor-pointer transition-all"
                     style={{ backgroundColor: '#111214', border: '1px solid #2a3140' }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.backgroundColor = hoverBg }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a3140'; e.currentTarget.style.backgroundColor = '#111214' }}
                   >
-                    <img src={`/assets/${m.file}.png`} alt={m.label} className="w-18 h-18 object-contain" />
-                    <span className="text-[11px] font-mono" style={{ color: '#8b949e' }}>{m.label}</span>
+                    <img src={`/assets/${m.file}.png`} alt={m.label} className="w-18 h-18 sm:w-32 sm:h-32 object-contain" />
+                    <span className="text-[11px] sm:text-sm font-mono" style={{ color: '#8b949e' }}>{m.label}</span>
                   </button>
               ))}
             </div>
