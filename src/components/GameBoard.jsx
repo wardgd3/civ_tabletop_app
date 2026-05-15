@@ -251,7 +251,7 @@ export default function GameBoard({
   const myBuildings = units.filter(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Base' || u.wg_unit_types?.name === 'Factory'))
   const myStructures = myCommandCenter ? [myCommandCenter, ...myBuildings] : []
 
-  const DEPLOY_HIDDEN = new Set(['Convoy Ship', 'Mother Ship'])
+  const DEPLOY_HIDDEN = new Set(['Convoy Ship', 'Mother Ship', 'Recon Drone'])
   const sortedUnitTypes = [...unitTypes].filter(ut => !DEPLOY_HIDDEN.has(ut.name)).sort((a, b) => {
     if (a.name === 'Command Center' || a.name === 'Command Ship') return -1
     if (b.name === 'Command Center' || b.name === 'Command Ship') return 1
@@ -344,7 +344,7 @@ export default function GameBoard({
     const teamPlayerIds = (allPlayers || players).filter(p => p.color === myColor).map(p => p.player_id)
     const teamUnits = units.filter(u => teamPlayerIds.includes(u.owner_id))
     for (const u of teamUnits) {
-      const vis = u.wg_unit_types?.visibility ?? 2
+      const vis = u.wg_unit_types?.name === 'Recon Drone' ? 5 : (u.wg_unit_types?.visibility ?? 2)
       const rMin = Math.max(0, u.grid_row - vis)
       const rMax = Math.min(rows - 1, u.grid_row + vis)
       const cMin = Math.max(0, u.grid_col - vis)
