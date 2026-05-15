@@ -210,10 +210,15 @@ export function useGameState(gameId) {
     }
     const activeFactories = factoryCount
     const production = (ccCount * 4) + (baseCount * 2) + activeFactories
-    const excavationIncome = totalExcavations + luxuryIncome
+    let gemTradeIncome = 0
+    for (const u of teamUnits) {
+      const trades = u.upgrades?.gemTrades || []
+      for (const t of trades) gemTradeIncome += (t.goldPerTurn || 0)
+    }
+    const excavationIncome = totalExcavations + luxuryIncome + gemTradeIncome
     const goldUpkeep = teamUnits.length
     const netGold = production + excavationIncome - goldUpkeep
-    return { production, goldUpkeep, excavationIncome, net: Math.max(0, production + excavationIncome), teamGold: effectiveGold, netGold }
+    return { production, goldUpkeep, excavationIncome, gemTradeIncome, net: Math.max(0, production + excavationIncome), teamGold: effectiveGold, netGold }
   })()
   const productionPerTurn = economy.production
 
@@ -2405,6 +2410,7 @@ export function useGameState(gameId) {
           if (ccUnit) {
             const ccUpgrades = { ...(ccUnit.upgrades || {}) }
             const inventory = { ...(ccUpgrades.inventory || {}) }
+            const gemTrades = [...(ccUpgrades.gemTrades || [])]
             let changed = false
 
             for (let t = 0; t < mineTiles.length; t++) {
@@ -2413,8 +2419,12 @@ export function useGameState(gameId) {
                 const depthFrac = Math.min(mining.layer / 120, 1)
                 const depthBonus = ore.deep ? depthFrac * 0.06 : depthFrac * 0.02
                 if (roll < ore.chance + depthBonus) {
-                  const amt = ore.minAmt + Math.floor(rand() * (ore.maxAmt - ore.minAmt + 1))
-                  inventory[ore.id] = (inventory[ore.id] || 0) + amt
+                  if (ore.deep) {
+                    gemTrades.push({ gem: ore.id, turnsRemaining: 30, goldPerTurn: 8 })
+                  } else {
+                    const amt = ore.minAmt + Math.floor(rand() * (ore.maxAmt - ore.minAmt + 1))
+                    inventory[ore.id] = (inventory[ore.id] || 0) + amt
+                  }
                   changed = true
                   break
                 }
@@ -2423,6 +2433,7 @@ export function useGameState(gameId) {
 
             if (changed) {
               ccUpgrades.inventory = inventory
+              ccUpgrades.gemTrades = gemTrades
               await supabase.from('wg_units').update({ upgrades: ccUpgrades }).eq('id', ccUnit.id)
             }
           }
@@ -2990,12 +3001,33 @@ export function useGameState(gameId) {
     }
   }
 
+  async function processGemTradeTicks() {
+    const myStructs = units.filter(u => u.owner_id === userId && (u.upgrades?.gemTrades?.length > 0))
+    let totalGemGold = 0
+    for (const struct of myStructs) {
+      const trades = (struct.upgrades.gemTrades || [])
+        .map(t => ({ ...t, turnsRemaining: t.turnsRemaining - 1 }))
+      totalGemGold += trades.filter(t => t.turnsRemaining >= 0).reduce((s, t) => s + (t.goldPerTurn || 0), 0)
+      const remaining = trades.filter(t => t.turnsRemaining > 0)
+      const upg = { ...struct.upgrades, gemTrades: remaining }
+      if (remaining.length === 0) delete upg.gemTrades
+      await supabase.from('wg_units').update({ upgrades: upg }).eq('id', struct.id)
+    }
+    if (totalGemGold > 0) {
+      const perPlayer = Math.floor(totalGemGold / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) + perPlayer }).eq('id', tp.id)
+      }
+    }
+  }
+
   async function endTurn() {
     if (!isMyTurn) throw new Error('Not your turn')
 
     missileFiredShipsRef.current = new Set()
     setMissileFiredShips(new Set())
 
+    await processGemTradeTicks()
     await processAutoPathMovement()
     await processConvoyTicks()
     await processMiningTicks()

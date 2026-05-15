@@ -2192,15 +2192,47 @@ const PRODUCED_ITEMS = [
   { id: 'large_spaceship_parts', name: 'Large Spaceship Parts', color: '#e0d060', icon: 'parts' },
 ]
 
+const ALL_GEMS = Object.fromEntries(
+  [...Object.values(GROUND_ORES), ...Object.values(SPACE_ORES)]
+    .filter(o => o.deep)
+    .map(o => [o.id, o])
+)
+
 function InventoryPanel({ unit, upgrades, isCommandShip }) {
   const inventory = upgrades.inventory || {}
+  const gemTrades = upgrades.gemTrades || []
   const oreTable = isCommandShip ? SPACE_ORES : GROUND_ORES
-  const allOres = Object.values(oreTable)
+  const allOres = Object.values(oreTable).filter(o => !o.deep)
   const hasProduced = PRODUCED_ITEMS.some(p => (inventory[p.id] || 0) > 0)
   const hasAny = allOres.some(o => (inventory[o.id] || 0) > 0) || hasProduced
 
   return (
     <div>
+      {gemTrades.length > 0 && (
+        <div className="mb-3">
+          <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#cca43b' }}>
+            Active Trades — Space Guild
+          </div>
+          <div className="flex flex-col gap-1">
+            {gemTrades.map((trade, i) => {
+              const gem = ALL_GEMS[trade.gem]
+              return (
+                <div key={i} className="flex items-center justify-between p-1.5 rounded"
+                  style={{ backgroundColor: '#1a1a14', border: '1px solid #3d3d1a' }}>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: gem?.color || '#b9f2ff' }} />
+                    <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{gem?.name || trade.gem}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold" style={{ color: '#cca43b' }}>+{trade.goldPerTurn} GOLD</span>
+                    <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>{trade.turnsRemaining}t</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
       <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
         Items
       </div>
