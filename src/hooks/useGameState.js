@@ -2455,24 +2455,42 @@ export function useGameState(gameId) {
 
       const isCC = struct.wg_unit_types?.name === 'Command Center'
       const holdingBay = [...(upgrades.holdingBay || [])]
-      const barracksCapacity = isCC ? 12 : 0
+      const bayCapacity = isCC ? 12 : 8
+      const inventory = { ...(upgrades.inventory || {}) }
+      let goldToDistribute = 0
       const newConvoys = convoys.map(c => {
         if (!c.inTransit) return c
         const updated = { ...c, turnsLeft: (c.turnsLeft || 1) - 1 }
         if (updated.turnsLeft <= 0) {
           updated.inTransit = false
           updated.turnsLeft = 0
-          if (isCC && updated.units?.length > 0) {
+          if (updated.units?.length > 0) {
             for (const u of updated.units) {
-              if (holdingBay.length < barracksCapacity) holdingBay.push(u)
+              if (holdingBay.length < bayCapacity) holdingBay.push(u)
             }
             updated.units = []
           }
+          const cargo = updated.cargo || {}
+          if ((cargo.gold || 0) > 0) {
+            goldToDistribute += cargo.gold
+          }
+          const res = cargo.resources || {}
+          for (const [key, amount] of Object.entries(res)) {
+            if (amount > 0) inventory[key] = (inventory[key] || 0) + amount
+          }
+          updated.cargo = { gold: 0, resources: {} }
         }
         changed = true
         return updated
       })
-      if (isCC) upgrades.holdingBay = holdingBay
+      upgrades.holdingBay = holdingBay
+      upgrades.inventory = inventory
+      if (goldToDistribute > 0 && teamPlayers.length > 0) {
+        const perPlayer = Math.ceil(goldToDistribute / teamPlayers.length)
+        for (const tp of teamPlayers) {
+          await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) + perPlayer }).eq('id', tp.id)
+        }
+      }
 
       const remainingGuildConvoys = []
       for (const c of guildConvoys) {
