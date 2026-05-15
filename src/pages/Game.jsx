@@ -171,6 +171,8 @@ export default function Game() {
           produceBattleshipToBay={gameState.produceBattleshipToBay}
           buyMissileForDockedBs={gameState.buyMissileForDockedBs}
           renameDockedBattleship={gameState.renameDockedBattleship}
+          loadToBattleshipHangar={gameState.loadToBattleshipHangar}
+          deployDockedBattleship={gameState.deployDockedBattleship}
           battleLog={gameState.battleLog}
           isAdmin={gameState.isAdmin}
           productionPerTurn={gameState.productionPerTurn}

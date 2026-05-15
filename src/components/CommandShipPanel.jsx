@@ -1324,7 +1324,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
 
 const HANGAR_UNIT_NAMES = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter', 'Repair Ship'])
 
-function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar, onProduceBattleshipToBay, onBuyMissileForDockedBs, onRenameDockedBs, nearbyUnits, comp, unitTypes, teamGold, allUnits, onSetNumberedOverlays, isAdmin }) {
+function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar, onProduceBattleshipToBay, onBuyMissileForDockedBs, onRenameDockedBs, onLoadToBsHangar, onDeployDockedBs, nearbyUnits, comp, unitTypes, teamGold, allUnits, onSetNumberedOverlays, isAdmin }) {
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [showProduceMenu, setShowProduceMenu] = useState(false)
   const [showTransferMenu, setShowTransferMenu] = useState(false)
@@ -1768,29 +1768,63 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
 
                 {bsSubPanel === 'hangar' && (() => {
                   const bsHangarSlots = Array.from({ length: 4 }, (_, i) => bsHangar[i] || null)
+                  const mainHangar = upgrades.hangar || []
+                  const bsHangarFull = bsHangar.length >= 4
                   return (
                     <div>
                       <div className="grid grid-cols-4 gap-1 mb-1.5">
-                        {bsHangarSlots.map((stored, i) => (
-                          <div
-                            key={i}
-                            className="rounded p-1 text-center aspect-square flex flex-col items-center justify-center"
-                            style={{
-                              backgroundColor: stored ? '#7060c015' : '#18191c',
-                              border: `1px solid ${stored ? '#7060c050' : '#30363d'}`,
-                            }}
-                          >
-                            {stored ? (
-                              <div className="text-[7px] font-semibold" style={{ color: '#c9d1d9' }}>{stored.typeName}</div>
-                            ) : (
-                              <span className="text-[10px]" style={{ color: '#30363d' }}>&ndash;</span>
-                            )}
-                          </div>
-                        ))}
+                        {bsHangarSlots.map((stored, i) => {
+                          const ut = stored ? (unitTypes || []).find(t => t.name === stored.typeName) : null
+                          return (
+                            <div
+                              key={i}
+                              className="rounded p-1 text-center aspect-square flex flex-col items-center justify-center"
+                              style={{
+                                backgroundColor: stored ? '#7060c015' : '#18191c',
+                                border: `1px solid ${stored ? '#7060c050' : '#30363d'}`,
+                              }}
+                            >
+                              {stored ? (
+                                <>
+                                  {ut?.icon && <img src={`/assets/${ut.icon}`} alt={stored.typeName} className="object-contain mb-0.5" style={{ width: 28, height: 28 }} />}
+                                  <div className="text-[7px] font-semibold" style={{ color: '#c9d1d9' }}>{stored.typeName}</div>
+                                </>
+                              ) : (
+                                <span className="text-[10px]" style={{ color: '#30363d' }}>&ndash;</span>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
-                      {bsHangar.length < 4 && (
+                      {!bsHangarFull && mainHangar.length > 0 && (
+                        <div className="mb-1.5">
+                          <div className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
+                            Load from Hangar
+                          </div>
+                          <div className="flex flex-col gap-0.5 max-h-28 overflow-y-auto">
+                            {mainHangar.map((stored, i) => {
+                              const ut = (unitTypes || []).find(t => t.name === stored.typeName)
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={() => onLoadToBsHangar?.(unit.id, i, selectedBsSlot)}
+                                  className="flex items-center justify-between p-1.5 rounded text-left transition-all cursor-pointer"
+                                  style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}
+                                >
+                                  <div className="flex items-center gap-1.5">
+                                    {ut?.icon && <img src={`/assets/${ut.icon}`} alt={stored.typeName} className="w-5 h-5 object-contain" />}
+                                    <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{stored.typeName}</span>
+                                  </div>
+                                  <span className="text-[9px] font-mono" style={{ color: '#6e7681' }}>HP {stored.hp}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {!bsHangarFull && mainHangar.length === 0 && (
                         <div className="text-[8px] mb-1" style={{ color: '#6e7681' }}>
-                          Transfer ships from the main hangar above to load this battleship.
+                          No ships in main hangar to load.
                         </div>
                       )}
                     </div>
@@ -1835,6 +1869,14 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                     </div>
                   </div>
                 )}
+
+                <button
+                  onClick={() => onDeployDockedBs?.(unit.id, selectedBsSlot)}
+                  className="w-full mt-2 py-2 text-[11px] font-bold uppercase tracking-wide rounded transition-colors cursor-pointer"
+                  style={{ backgroundColor: '#1a3a1a', color: '#4ade80', border: '1px solid #2a5a2a' }}
+                >
+                  Deploy Battleship
+                </button>
               </div>
             )
           })()}
@@ -2124,7 +2166,7 @@ export default function CommandShipPanel({
   onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
   onBuyMissile, onFireMissile, onProduceWarhead, missileFiredShips,
   onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar,
-  onRenameUnit, onProduceBattleshipToBay, onBuyMissileForDockedBs, onRenameDockedBs,
+  onRenameUnit, onProduceBattleshipToBay, onBuyMissileForDockedBs, onRenameDockedBs, onLoadToBsHangar, onDeployDockedBs,
   groundUnits, unitTypes, teamGold, playerResources, allUnits, nearbyUnits,
   onSetNumberedOverlays,
   onLevelUp, onExcavate, onClearAutoPath, onBoardTransport, onDockTransport, onDeployFromTransportUnit, economy,
@@ -2516,6 +2558,8 @@ export default function CommandShipPanel({
               onProduceBattleshipToBay={onProduceBattleshipToBay}
               onBuyMissileForDockedBs={onBuyMissileForDockedBs}
               onRenameDockedBs={onRenameDockedBs}
+              onLoadToBsHangar={onLoadToBsHangar}
+              onDeployDockedBs={onDeployDockedBs}
               nearbyUnits={nearbyUnits}
               comp={comp}
               unitTypes={unitTypes}

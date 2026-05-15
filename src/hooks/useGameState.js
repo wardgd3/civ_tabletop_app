@@ -1950,6 +1950,60 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  async function loadToBattleshipHangar(shipId, hangarIndex, bsSlotIndex) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+    const upgrades = { ...(ship.upgrades || {}) }
+    const hangar = [...(upgrades.hangar || [])]
+    if (hangarIndex < 0 || hangarIndex >= hangar.length) throw new Error('Invalid hangar index')
+    const bay = [...(upgrades.battleshipBay || [null, null])]
+    const bs = bay[bsSlotIndex]
+    if (!bs) throw new Error('No battleship in that dock')
+    const bsUpgrades = { ...(bs.upgrades || {}) }
+    const bsHangar = [...(bsUpgrades.hangar || [])]
+    if (bsHangar.length >= 4) throw new Error('Battleship hangar full')
+    const transferred = hangar.splice(hangarIndex, 1)[0]
+    bsHangar.push(transferred)
+    bsUpgrades.hangar = bsHangar
+    bay[bsSlotIndex] = { ...bs, upgrades: bsUpgrades }
+    upgrades.hangar = hangar
+    upgrades.battleshipBay = bay
+    await supabase.from('wg_units').update({ upgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
+  async function deployDockedBattleship(shipId, bsSlotIndex, row, col) {
+    const ship = units.find(u => u.id === shipId)
+    if (!ship) throw new Error('Ship not found')
+    if (row === ship.grid_row && col === ship.grid_col) throw new Error('Cannot deploy on the structure tile')
+    const shipBoard = ship.board || 'ground'
+    const occupied = units.find(u => u.grid_row === row && u.grid_col === col && (u.board || 'ground') === shipBoard)
+    if (occupied) throw new Error('Tile is occupied')
+    const upgrades = { ...(ship.upgrades || {}) }
+    const bay = [...(upgrades.battleshipBay || [null, null])]
+    const bs = bay[bsSlotIndex]
+    if (!bs) throw new Error('No battleship in that dock')
+    bay[bsSlotIndex] = null
+    upgrades.battleshipBay = bay
+    const { error } = await supabase.from('wg_units').insert({
+      game_id: gameId,
+      owner_id: userId,
+      unit_type_id: bs.typeId,
+      grid_row: row,
+      grid_col: col,
+      current_hp: bs.hp,
+      board: shipBoard,
+      has_moved: true,
+      has_attacked: true,
+      moves_used: 99,
+      is_alive: true,
+      upgrades: bs.upgrades || {},
+    }).select('id').single()
+    if (error) throw error
+    await supabase.from('wg_units').update({ upgrades }).eq('id', shipId)
+    await fetchAll()
+  }
+
   async function buyMissileForDockedBs(shipId, missileType, bayIndex) {
     const MISSILE_COSTS = { tactical: 5, cruise: 18, icbm: 28 }
     const cost = MISSILE_COSTS[missileType]
@@ -2849,7 +2903,7 @@ export function useGameState(gameId) {
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
     setAutoPath, clearAutoPath,
-    deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship,
+    deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship, loadToBattleshipHangar, deployDockedBattleship,
     persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
     missileFiredShips,
     refresh: fetchAll,

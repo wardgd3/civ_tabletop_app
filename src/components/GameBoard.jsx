@@ -117,7 +117,7 @@ export default function GameBoard({
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
   setAutoPath, clearAutoPath,
-  deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship,
+  deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship, loadToBattleshipHangar, deployDockedBattleship,
   battleLog,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
@@ -141,6 +141,7 @@ export default function GameBoard({
   const [hangarDeployAllInfo, setHangarDeployAllInfo] = useState(null)
   const [transportDeployInfo, setTransportDeployInfo] = useState(null)
   const [unitDeployFromTransportInfo, setUnitDeployFromTransportInfo] = useState(null)
+  const [bsDeployInfo, setBsDeployInfo] = useState(null)
   const [missileTargetInfo, setMissileTargetInfo] = useState(null)
   const [shipModelPicker, setShipModelPicker] = useState(null)
   const [chatOpen, setChatOpen] = useState(false)
@@ -923,7 +924,7 @@ export default function GameBoard({
     return cells
   })() : new Set()
 
-  const activeHangarDeploy = hangarDeployInfo || hangarDeployAllInfo
+  const activeHangarDeploy = hangarDeployInfo || hangarDeployAllInfo || bsDeployInfo
   const hangarDeployRange = activeHangarDeploy ? (() => {
     const cc = units.find(u => u.id === activeHangarDeploy.shipId)
     if (!cc) return new Set()
@@ -1439,6 +1440,20 @@ export default function GameBoard({
       return
     }
 
+    if (bsDeployInfo) {
+      if (!hangarDeployRange.has(cellKey)) {
+        setBsDeployInfo(null)
+        return
+      }
+      try {
+        await deployDockedBattleship(bsDeployInfo.shipId, bsDeployInfo.bsSlotIndex, row, col)
+      } catch (err) {
+        setError(err.message)
+      }
+      setBsDeployInfo(null)
+      return
+    }
+
     if (hangarDeployInfo) {
       if (!hangarDeployRange.has(cellKey)) {
         setHangarDeployInfo(null)
@@ -1899,6 +1914,14 @@ export default function GameBoard({
             }}
             onRenameDockedBs={async (shipId, bayIndex, newName) => {
               try { await renameDockedBattleship(shipId, bayIndex, newName) } catch (err) { setError(err.message) }
+            }}
+            onLoadToBsHangar={async (shipId, hangarIndex, bsSlotIndex) => {
+              try { await loadToBattleshipHangar(shipId, hangarIndex, bsSlotIndex) } catch (err) { setError(err.message) }
+            }}
+            onDeployDockedBs={(shipId, bsSlotIndex) => {
+              setBsDeployInfo({ shipId, bsSlotIndex })
+              setCommandShipUnitId(null)
+              setPanelOpen(false)
             }}
             onProduceUnit={async (shipId, unitTypeId, unitTypeName) => {
               try { await produceUnitToBay(shipId, unitTypeId, unitTypeName) } catch (err) { setError(err.message) }
