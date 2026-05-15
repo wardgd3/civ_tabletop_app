@@ -270,7 +270,7 @@ export default function GameLobby() {
                       </button>
                       <button
                         onClick={() => startGame(game.id)}
-                        disabled={game.players?.length < (game.is_admin ? 1 : 2)}
+                        disabled={game.players?.length < 1}
                         className="flex-1 sm:flex-none px-4 py-2 sm:py-1.5 text-sm font-medium rounded transition-colors disabled:opacity-40"
                         style={{ backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }}
                       >
