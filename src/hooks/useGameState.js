@@ -1798,8 +1798,9 @@ export function useGameState(gameId) {
     const hangar = [...(upgrades.hangar || [])]
     if (hangar.length >= getHangarCapacity(ship)) throw new Error('Hangar full')
 
+    const prodCost = Math.ceil(ut.cost / 2)
     const availableProduction = productionPerTurn - getUsedProduction()
-    if (!isAdmin && availableProduction < ut.cost) throw new Error('Not enough production')
+    if (!isAdmin && availableProduction < prodCost) throw new Error('Not enough production')
 
     hangar.push({
       typeId: unitTypeId,
@@ -1807,7 +1808,7 @@ export function useGameState(gameId) {
       hp: ut.hp,
     })
 
-    const productionUsed = (upgrades.productionUsed || 0) + (isAdmin ? 0 : ut.cost)
+    const productionUsed = (upgrades.productionUsed || 0) + (isAdmin ? 0 : prodCost)
     const newUpgrades = { ...upgrades, hangar, productionUsed }
     await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
     await fetchAll()

@@ -1680,7 +1680,8 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
           ) : (
             <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
               {producibleTypes.map(ut => {
-                const canAfford = isAdmin || (availableProduction ?? 0) >= ut.cost
+                const prodCost = Math.ceil(ut.cost / 2)
+                const canAfford = isAdmin || (availableProduction ?? 0) >= prodCost
                 return (
                   <button
                     key={ut.id}
@@ -1701,7 +1702,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                         <div className="text-[8px]" style={{ color: '#6e7681' }}>ATK {ut.attack} DEF {ut.defense} HP {ut.hp}</div>
                       </div>
                     </div>
-                    <span className="text-[9px] font-mono" style={{ color: canAfford ? '#60b060' : '#e05050' }}>⚒{ut.cost}</span>
+                    <span className="text-[9px] font-mono" style={{ color: canAfford ? '#60b060' : '#e05050' }}>⚒{prodCost}</span>
                   </button>
                 )
               })}
