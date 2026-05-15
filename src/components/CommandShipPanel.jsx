@@ -1522,7 +1522,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                 <>
                   {(() => {
                     const ut = (unitTypes || []).find(t => t.name === stored.typeName)
-                    return ut?.icon ? <img src={`/assets/${ut.icon}`} alt={stored.typeName} className="w-5 h-5 object-contain mb-0.5" /> : null
+                    return ut?.icon ? <img src={`/assets/${ut.icon}`} alt={stored.typeName} className="object-contain mb-0.5" style={{ width: 32, height: 32 }} /> : null
                   })()}
                   <div className="text-[7px] font-semibold leading-tight" style={{ color: stored.transferredThisTurn ? '#6e7681' : '#c9d1d9' }}>
                     {stored.typeName}
