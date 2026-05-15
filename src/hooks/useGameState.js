@@ -207,7 +207,7 @@ export function useGameState(gameId) {
       }
     }
     const activeFactories = factoryCount
-    const production = (ccCount * 4) + (baseCount * 2) + activeFactories
+    const production = (ccCount * 40) + (baseCount * 20) + (activeFactories * 10)
     let gemTradeIncome = 0
     try {
       for (const u of teamUnits) {
