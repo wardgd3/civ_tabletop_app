@@ -2958,7 +2958,7 @@ export default function GameBoard({
                         setError(err.message)
                       }
                     }}
-                    className="flex flex-col items-center gap-1 p-2 rounded cursor-pointer transition-all"
+                    className="flex flex-col items-center gap-1 px-4 py-3 rounded cursor-pointer transition-all"
                     style={{ backgroundColor: '#111214', border: '1px solid #2a3140' }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.backgroundColor = hoverBg }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a3140'; e.currentTarget.style.backgroundColor = '#111214' }}
