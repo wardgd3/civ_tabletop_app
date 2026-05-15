@@ -251,7 +251,7 @@ export default function GameBoard({
   const myBuildings = units.filter(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Base' || u.wg_unit_types?.name === 'Factory'))
   const myStructures = myCommandCenter ? [myCommandCenter, ...myBuildings] : []
 
-  const DEPLOY_HIDDEN = new Set(['Convoy Ship', 'Mother Ship', 'Recon Drone'])
+  const DEPLOY_HIDDEN = new Set(['Convoy Ship', 'Mother Ship'])
   const sortedUnitTypes = [...unitTypes].filter(ut => !DEPLOY_HIDDEN.has(ut.name)).sort((a, b) => {
     if (a.name === 'Command Center' || a.name === 'Command Ship') return -1
     if (b.name === 'Command Center' || b.name === 'Command Ship') return 1
