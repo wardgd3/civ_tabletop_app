@@ -12,11 +12,11 @@ export const GROUND_ORES = {
   titanium:    { id: 'titanium',    name: 'Titanium',    chance: 0.10, minAmt: 1, maxAmt: 1, color: '#a0b0c0' },
   oil:         { id: 'oil',         name: 'Oil',         chance: 0.15, minAmt: 1, maxAmt: 1, color: '#2a2a2a', icon: 'oil' },
   uranium:     { id: 'uranium',     name: 'Uranium',     chance: 0.04, minAmt: 1, maxAmt: 1, color: '#50c878' },
-  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.01, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true, goldPerTurn: 8, tradeDuration: 30 },
-  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.01, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true, goldPerTurn: 9, tradeDuration: 35 },
-  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.008, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true, goldPerTurn: 10, tradeDuration: 40 },
-  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.006, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true, goldPerTurn: 11, tradeDuration: 45 },
-  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.004, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true, goldPerTurn: 12, tradeDuration: 50 },
+  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.015, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true, goldPerTurn: 16, tradeDuration: 30 },
+  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.015, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true, goldPerTurn: 18, tradeDuration: 35 },
+  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.012, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true, goldPerTurn: 20, tradeDuration: 40 },
+  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.009, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true, goldPerTurn: 22, tradeDuration: 45 },
+  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.006, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true, goldPerTurn: 24, tradeDuration: 50 },
 }
 
 export const SPACE_ORES = {
@@ -24,11 +24,11 @@ export const SPACE_ORES = {
   cobalt:      { id: 'cobalt',      name: 'Cobalt',      chance: 0.25, minAmt: 1, maxAmt: 2, color: '#4070c0' },
   palladium:   { id: 'palladium',   name: 'Palladium',   chance: 0.10, minAmt: 1, maxAmt: 1, color: '#c0b090' },
   iridium:     { id: 'iridium',     name: 'Iridium',     chance: 0.04, minAmt: 1, maxAmt: 1, color: '#e0e8f0' },
-  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.01, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true, goldPerTurn: 8, tradeDuration: 30 },
-  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.01, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true, goldPerTurn: 9, tradeDuration: 35 },
-  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.008, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true, goldPerTurn: 10, tradeDuration: 40 },
-  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.006, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true, goldPerTurn: 11, tradeDuration: 45 },
-  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.004, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true, goldPerTurn: 12, tradeDuration: 50 },
+  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.015, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true, goldPerTurn: 16, tradeDuration: 30 },
+  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.015, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true, goldPerTurn: 18, tradeDuration: 35 },
+  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.012, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true, goldPerTurn: 20, tradeDuration: 40 },
+  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.009, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true, goldPerTurn: 22, tradeDuration: 45 },
+  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.006, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true, goldPerTurn: 24, tradeDuration: 50 },
 }
 
 const HANGAR_ELIGIBLE = new Set(['Bomber', 'Mining Station', 'Fighter', 'Repair Ship', 'Recon Drone'])
@@ -187,27 +187,21 @@ export function useGameState(gameId) {
   const teamPlayerIds = teamPlayers.map(p => p.player_id)
   const teamGold = teamPlayers.reduce((sum, p) => sum + (p.gold || 0), 0)
 
+  const VEHICLE_UPKEEP_NAMES = new Set(['Armor Transport', 'Armored Cavalry', 'Modern Armor', 'Rocket Artillery', 'Heavy Unit', 'Missile Defense', 'Excavator'])
+  const FIGHTER_UPKEEP_NAMES = new Set(['Fighter', 'Bomber', 'Recon Drone', 'Repair Ship'])
+
   const economy = (() => {
-    if (!currentPlayer) return { production: 0, goldUpkeep: 0, excavationIncome: 0, gemTradeIncome: 0, net: 0, teamGold, netGold: 0 }
+    if (!currentPlayer) return { production: 0, goldIncome: 0, goldUpkeep: 0, gemTradeIncome: 0, teamGold, netGold: 0 }
     const effectiveGold = isAdmin ? 1000000 : teamGold
     const teamUnits = units.filter(u => teamPlayerIds.includes(u.owner_id))
     const ccCount = teamUnits.filter(u =>
       u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'
     ).length
     const baseCount = teamUnits.filter(u => u.wg_unit_types?.name === 'Base').length
-    const factoryCount = teamUnits.filter(u => u.wg_unit_types?.name === 'Factory').length
-    let totalExcavations = 0
-    let luxuryIncome = 0
-    for (const tp of teamPlayers) {
-      const res = tp.resources || {}
-      totalExcavations += res.excavations || 0
-      for (const [resId] of Object.entries(res)) {
-        const lux = LUXURY_BY_ID[resId]
-        if (lux) luxuryIncome += lux.yield
-      }
-    }
-    const activeFactories = factoryCount
-    const production = (ccCount * 40) + (baseCount * 20) + (activeFactories * 10)
+
+    const production = ccCount * 5
+    const goldIncome = (ccCount * 5) + (baseCount * 3)
+
     let gemTradeIncome = 0
     try {
       for (const u of teamUnits) {
@@ -215,10 +209,18 @@ export function useGameState(gameId) {
         for (const tr of trades) gemTradeIncome += (tr.goldPerTurn || 0)
       }
     } catch (e) { console.error('gemTradeIncome calc error:', e) }
-    const excavationIncome = totalExcavations + luxuryIncome + gemTradeIncome
-    const goldUpkeep = teamUnits.length
-    const netGold = production + excavationIncome - goldUpkeep
-    return { production, goldUpkeep, excavationIncome, gemTradeIncome, teamGold: effectiveGold, netGold }
+
+    let goldUpkeep = 0
+    for (const u of teamUnits) {
+      const name = u.wg_unit_types?.name
+      if (name === 'Battleship') goldUpkeep += 8
+      else if (VEHICLE_UPKEEP_NAMES.has(name)) goldUpkeep += 4
+      else if (FIGHTER_UPKEEP_NAMES.has(name)) goldUpkeep += 3
+      else if (name && name !== 'Command Center' && name !== 'Command Ship' && name !== 'Base' && name !== 'Factory' && name !== 'Mining Station') goldUpkeep += 2
+    }
+
+    const netGold = goldIncome + gemTradeIncome - goldUpkeep
+    return { production, goldIncome, goldUpkeep, gemTradeIncome, teamGold: effectiveGold, netGold }
   })()
   const productionPerTurn = economy.production
 

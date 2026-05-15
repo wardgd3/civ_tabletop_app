@@ -1787,10 +1787,9 @@ export default function GameBoard({
             </div>
             {turnExpanded && economy && (
               <div className="text-[9px] font-mono mt-1" style={{ color: '#6e7681' }}>
-                <span style={{ color: '#6a9a72' }}>+{economy.production} prod</span>
-                {economy.excavationIncome > 0 && <span style={{ color: '#c080e0' }}> +{economy.excavationIncome} excav</span>}
+                <span style={{ color: '#6a9a72' }}>+{economy.goldIncome} gold</span>
                 {economy.gemTradeIncome > 0 && <span style={{ color: '#cca43b' }}> +{economy.gemTradeIncome} gems</span>}
-                <span style={{ color: '#e07050' }}> -{economy.goldUpkeep} gold upkeep</span>
+                {economy.goldUpkeep > 0 && <span style={{ color: '#e07050' }}> -{economy.goldUpkeep} upkeep</span>}
               </div>
             )}
           </div>
