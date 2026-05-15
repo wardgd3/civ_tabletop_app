@@ -1776,7 +1776,7 @@ export default function GameBoard({
               {isMyTurn ? 'YOUR TURN' : 'Waiting...'}
             </div>
             <div className="text-[10px] font-mono mt-0.5 flex items-center gap-1" style={{ color: '#8b949e' }}>
-              <span style={{ fontSize: 11 }}>⚒</span>
+              <span style={{ fontSize: 14 }}>⚒</span>
               <span>{economy?.net ?? 0}</span>
               <span style={{ color: economy?.production > 0 ? '#6a9a72' : '#4a5568' }}>+{economy?.production ?? 0}/turn</span>
             </div>
@@ -1826,17 +1826,18 @@ export default function GameBoard({
           const teamColors = [...new Set(players.map(p => p.color))]
           return teamColors.map(color => {
             const teamMembers = players.filter(p => p.color === color)
-            const tGold = teamMembers.reduce((s, p) => s + (p.gold || 0), 0)
             return (
               <div key={color}>
-                <div className="flex items-center justify-between py-1.5"
-                  style={{ color: color === game.current_team_color ? '#c9d1d9' : '#4a5568' }}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color, border: '1px solid #2a3140' }} />
-                    <span className="text-sm font-medium">{teamMembers.map(p => p.wg_profiles?.display_name).join(', ')}</span>
+                {teamMembers.map(p => (
+                  <div key={p.id} className="flex items-center justify-between py-1.5"
+                    style={{ color: color === game.current_team_color ? '#c9d1d9' : '#4a5568' }}>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color, border: '1px solid #2a3140' }} />
+                      <span className="text-sm font-medium">{p.wg_profiles?.display_name}</span>
+                    </div>
+                    <span className="text-[10px] font-mono" style={{ color: '#6e7681' }}>{p.is_space_general ? 'Space' : 'Ground'}</span>
                   </div>
-                  <span className="text-sm font-mono flex items-center gap-1" style={{ color: '#cca43b' }}><span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: '#cca43b' }} />{tGold}</span>
-                </div>
+                ))}
               </div>
             )
           })
