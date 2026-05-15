@@ -1777,8 +1777,7 @@ export default function GameBoard({
             </div>
             <div className="text-[10px] font-mono mt-0.5 flex items-center gap-1" style={{ color: '#8b949e' }}>
               <span style={{ fontSize: 14 }}>⚒</span>
-              <span>{economy?.teamGold ?? (currentPlayer?.gold || 0)}</span>
-              <span style={{ color: economy?.production > 0 ? '#6a9a72' : '#4a5568' }}>+{economy?.production ?? 0}/turn</span>
+              <span>{(productionPerTurn || 0) - (getUsedProduction ? getUsedProduction() : 0)}/{productionPerTurn || 0}</span>
             </div>
             <div className="text-[10px] font-mono mt-0.5 flex items-center gap-1" style={{ color: '#cca43b' }}>
               <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: '#cca43b' }} />
@@ -1800,7 +1799,7 @@ export default function GameBoard({
             return (
               <div key={color} className="flex items-center gap-1">
                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color, border: '1px solid #2a3140' }} />
-                <span className="text-xs font-mono" style={{ color: '#8b949e' }}>⚒{tGold}</span>
+                <span className="text-xs font-mono" style={{ color: '#cca43b' }}>{tGold}g</span>
               </div>
             )
           })}
@@ -2113,7 +2112,7 @@ export default function GameBoard({
           ) : (
             <>
               <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>
-                Requisition — <span className="font-mono" style={{ color: '#8b949e' }}>⚒ {economy?.teamGold ?? currentPlayer?.gold}</span>
+                Requisition — <span className="font-mono" style={{ color: '#8b949e' }}>⚒ {(productionPerTurn || 0) - (getUsedProduction ? getUsedProduction() : 0)}/{productionPerTurn || 0}</span>
               </div>
               <div className="grid grid-cols-2 lg:grid-cols-1 gap-1.5">
                 {sortedUnitTypes.filter(ut => ut.name !== 'Command Center' && ut.name !== 'Command Ship').map(ut => {
