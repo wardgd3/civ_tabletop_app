@@ -1781,7 +1781,7 @@ export default function GameBoard({
               <span style={{ color: economy?.production > 0 ? '#6a9a72' : '#4a5568' }}>+{economy?.production ?? 0}/turn</span>
             </div>
             <div className="text-[10px] font-mono mt-0.5 flex items-center gap-1" style={{ color: '#cca43b' }}>
-              <span style={{ fontSize: 11 }}>★</span>
+              <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: '#cca43b' }} />
               <span>{economy?.teamGold ?? (currentPlayer?.gold || 0)}</span>
               <span style={{ color: (economy?.netGold ?? 0) >= 0 ? '#6a9a72' : '#e05050' }}>{(economy?.netGold ?? 0) >= 0 ? '+' : ''}{economy?.netGold ?? 0}/turn</span>
             </div>
