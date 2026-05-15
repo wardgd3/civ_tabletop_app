@@ -1239,7 +1239,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
 
 const STRUCTURE_NAMES = new Set(['Command Center', 'Command Ship', 'Base', 'Factory', 'Mining Station', 'Battleship', 'Repair Ship'])
 
-function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp, unitTypes, teamGold }) {
+function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp, unitTypes, availableProduction, isAdmin }) {
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [showProduceMenu, setShowProduceMenu] = useState(false)
   const holdingBay = upgrades.holdingBay || []
@@ -1337,14 +1337,15 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
       {showProduceMenu && !isFull && (
         <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#111214', border: `1px solid ${comp.color}40` }}>
           <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-            Produce Unit — <span className="font-mono" style={{ color: '#8b949e' }}>⚒{teamGold}</span>
+            Produce Unit — <span className="font-mono" style={{ color: '#8b949e' }}>⚒{availableProduction ?? 0}</span>
           </div>
           {producibleTypes.length === 0 ? (
             <div className="text-[9px]" style={{ color: '#4a5568' }}>No unit types available</div>
           ) : (
             <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
               {producibleTypes.map(ut => {
-                const canAfford = teamGold >= ut.cost
+                const prodCost = Math.ceil(ut.cost / 2)
+                const canAfford = isAdmin || (availableProduction ?? 0) >= prodCost
                 return (
                   <button
                     key={ut.id}
@@ -1371,8 +1372,8 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
                         </div>
                       </div>
                     </div>
-                    <span className="text-[9px] font-mono" style={{ color: canAfford ? '#cca43b' : '#e05050' }}>
-                      {ut.cost}g
+                    <span className="text-[9px] font-mono" style={{ color: canAfford ? '#8b949e' : '#e05050' }}>
+                      ⚒{prodCost}
                     </span>
                   </button>
                 )
@@ -2654,7 +2655,8 @@ export default function CommandShipPanel({
               onProduceUnit={onProduceUnit}
               comp={comp}
               unitTypes={unitTypes}
-              teamGold={teamGold}
+              availableProduction={availableProduction}
+              isAdmin={isAdmin}
             />
           ) : comp.special === 'loading_bay' ? (
             <LoadingBayPanel
