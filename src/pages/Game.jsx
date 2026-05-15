@@ -179,6 +179,7 @@ export default function Game() {
           isAdmin={gameState.isAdmin}
           productionPerTurn={gameState.productionPerTurn}
           economy={gameState.economy}
+          getUsedProduction={gameState.getUsedProduction}
           isFullscreen={isFullscreen}
           onExitFullscreen={toggleFullscreen}
           activeBoard={activeBoard}

@@ -121,7 +121,7 @@ export default function GameBoard({
   battleLog,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
-  productionPerTurn, economy,
+  productionPerTurn, economy, getUsedProduction,
 }) {
   const [selectedUnitId, setSelectedUnitId] = useState(null)
   const [selectedUnitType, setSelectedUnitType] = useState(null)
@@ -1990,6 +1990,7 @@ export default function GameBoard({
               setPanelOpen(false)
             }}
             economy={economy}
+            availableProduction={productionPerTurn - (getUsedProduction?.() || 0)}
           />
         )
       })()}

@@ -1959,6 +1959,12 @@ export function useGameState(gameId) {
     large_spaceship_parts: { id: 'large_spaceship_parts', name: 'Large Spaceship Parts', baseCost: 22, tier: 3 },
   }
 
+  function getUsedProduction() {
+    return units
+      .filter(u => teamPlayerIds.includes(u.owner_id))
+      .reduce((sum, u) => sum + ((u.upgrades || {}).productionUsed || 0), 0)
+  }
+
   async function produceFactoryItem(unitId, itemId) {
     const unit = units.find(u => u.id === unitId)
     if (!unit) throw new Error('Unit not found')
@@ -1971,16 +1977,12 @@ export function useGameState(gameId) {
     if (factoryLevel < item.tier) throw new Error('Factory tier too low')
     const discount = 1 - 0.15 * factoryLevel
     const cost = Math.max(1, Math.round(item.baseCost * discount))
-    if (!isAdmin && teamGold < cost) throw new Error('Not enough gold')
-    if (!isAdmin) {
-      const perPlayer = Math.ceil(cost / teamPlayers.length)
-      for (const tp of teamPlayers) {
-        await supabase.from('wg_game_players').update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) }).eq('id', tp.id)
-      }
-    }
+    const availableProduction = productionPerTurn - getUsedProduction()
+    if (!isAdmin && availableProduction < cost) throw new Error('Not enough production')
     const inventory = { ...(upgrades.inventory || {}) }
     inventory[itemId] = (inventory[itemId] || 0) + 1
-    const newUpgrades = { ...upgrades, inventory }
+    const productionUsed = (upgrades.productionUsed || 0) + cost
+    const newUpgrades = { ...upgrades, inventory, productionUsed }
     await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', unitId)
     await fetchAll()
   }
@@ -2905,6 +2907,13 @@ export function useGameState(gameId) {
     await processRepairTicks()
     await processNPCTicks()
 
+    const teamUnitsWithProd = units.filter(u => teamPlayerIds.includes(u.owner_id) && (u.upgrades?.productionUsed || 0) > 0)
+    for (const u of teamUnitsWithProd) {
+      const upg = { ...u.upgrades }
+      delete upg.productionUsed
+      await supabase.from('wg_units').update({ upgrades: upg }).eq('id', u.id)
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('end-turn', {
         body: { gameId },
@@ -2977,7 +2986,7 @@ export function useGameState(gameId) {
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
     setAutoPath, clearAutoPath,
     deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship, loadToBattleshipHangar, deployDockedBattleship, produceFactoryItem, loadInventoryToConvoy,
-    persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
+    persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs, getUsedProduction,
     missileFiredShips,
     refresh: fetchAll,
   }

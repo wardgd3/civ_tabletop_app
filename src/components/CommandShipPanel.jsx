@@ -2264,7 +2264,7 @@ export default function CommandShipPanel({
   onRenameUnit, onProduceBattleshipToBay, onBuyMissileForDockedBs, onRenameDockedBs, onLoadToBsHangar, onDeployDockedBs, onProduceFactoryItem,
   groundUnits, unitTypes, teamGold, playerResources, allUnits, nearbyUnits,
   onSetNumberedOverlays,
-  onLevelUp, onExcavate, onClearAutoPath, onBoardTransport, onDockTransport, onDeployFromTransportUnit, economy,
+  onLevelUp, onExcavate, onClearAutoPath, onBoardTransport, onDockTransport, onDeployFromTransportUnit, economy, availableProduction,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
@@ -2779,17 +2779,18 @@ export default function CommandShipPanel({
                   { id: 'medium_spaceship_parts', name: 'Medium Spaceship Parts', baseCost: 14, icon: '🔩', tier: 2 },
                   { id: 'large_spaceship_parts', name: 'Large Spaceship Parts', baseCost: 22, icon: '🔩', tier: 3 },
                 ]
+                const ap = availableProduction ?? 0
                 return (
                   <div className="mt-3">
                     <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-                      Produce — <span className="font-mono" style={{ color: '#8b949e' }}>⚒{teamGold}</span>
+                      Produce — <span className="font-mono" style={{ color: '#8b949e' }}>⚙ {ap} production</span>
                     </div>
                     <div className="flex flex-col gap-0.5">
                       {ALL_FACTORY_ITEMS.map(item => {
                         const unlocked = factoryLevel >= item.tier
                         const discount = 1 - 0.15 * factoryLevel
                         const cost = Math.max(1, Math.round(item.baseCost * discount))
-                        const canAfford = teamGold >= cost
+                        const canAfford = ap >= cost
                         return (
                           <button
                             key={item.id}
@@ -2803,7 +2804,7 @@ export default function CommandShipPanel({
                               <span className="text-[10px] font-semibold" style={{ color: unlocked ? '#c9d1d9' : '#4a5568' }}>{item.name}</span>
                             </div>
                             {unlocked ? (
-                              <span className="text-[9px] font-mono" style={{ color: canAfford ? '#cca43b' : '#e05050' }}>{cost}g</span>
+                              <span className="text-[9px] font-mono" style={{ color: canAfford ? '#60b060' : '#e05050' }}>{cost}⚙</span>
                             ) : (
                               <span className="text-[9px] font-mono" style={{ color: '#4a5568' }}>T{item.tier}</span>
                             )}
