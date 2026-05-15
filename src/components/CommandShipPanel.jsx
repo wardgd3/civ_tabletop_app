@@ -2192,15 +2192,14 @@ const PRODUCED_ITEMS = [
   { id: 'large_spaceship_parts', name: 'Large Spaceship Parts', color: '#e0d060', icon: 'parts' },
 ]
 
-const ALL_GEMS = Object.fromEntries(
-  [...Object.values(GROUND_ORES), ...Object.values(SPACE_ORES)]
-    .filter(o => o.deep)
-    .map(o => [o.id, o])
-)
-
 function InventoryPanel({ unit, upgrades, isCommandShip }) {
   const inventory = upgrades.inventory || {}
   const gemTrades = Array.isArray(upgrades.gemTrades) ? upgrades.gemTrades : []
+  const allGems = Object.fromEntries(
+    [...Object.values(GROUND_ORES), ...Object.values(SPACE_ORES)]
+      .filter(o => o.deep)
+      .map(o => [o.id, o])
+  )
   const oreTable = isCommandShip ? SPACE_ORES : GROUND_ORES
   const allOres = Object.values(oreTable).filter(o => !o.deep)
   const hasProduced = PRODUCED_ITEMS.some(p => (inventory[p.id] || 0) > 0)
@@ -2215,7 +2214,7 @@ function InventoryPanel({ unit, upgrades, isCommandShip }) {
           </div>
           <div className="flex flex-col gap-1">
             {gemTrades.map((trade, i) => {
-              const gem = ALL_GEMS[trade.gem]
+              const gem = allGems[trade.gem]
               return (
                 <div key={i} className="flex items-center justify-between p-1.5 rounded"
                   style={{ backgroundColor: '#1a1a14', border: '1px solid #3d3d1a' }}>
