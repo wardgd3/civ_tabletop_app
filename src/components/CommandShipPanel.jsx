@@ -519,7 +519,7 @@ function getSlots(upgrades, compartmentId, slotCount) {
 }
 
 const RESOURCE_VALUES = {
-  coal: 3, iron: 5, uranium: 8, aluminum: 4, tritium: 10,
+  iron: 5, uranium: 8, aluminum: 4, tritium: 10,
   ruby: 15, sapphire: 15, diamond: 20, amethyst: 12, quasicrystals: 25,
 }
 
@@ -660,7 +660,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
             {Object.entries(cargo.resources || {}).filter(([, v]) => v > 0).map(([key, amount]) => {
               const RESOURCE_LABELS = {
                 small_spaceship_parts: 'Small Parts', medium_spaceship_parts: 'Medium Parts', large_spaceship_parts: 'Large Parts',
-                coal: 'Coal', iron: 'Iron', uranium: 'Uranium', aluminum: 'Aluminum', tritium: 'Tritium',
+                iron: 'Iron', uranium: 'Uranium', aluminum: 'Aluminum', tritium: 'Tritium',
                 ruby: 'Ruby', sapphire: 'Sapphire', diamond: 'Diamond', amethyst: 'Amethyst', quasicrystals: 'Quasicrystals', oil: 'Oil',
               }
               const RESOURCE_COLORS = {
@@ -706,7 +706,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
         const loadOptions = []
         if (teamGold > 0) loadOptions.push({ key: '_gold', label: `Gold (${teamGold})`, type: 'gold' })
         for (const [key, amount] of availableResources) {
-          const RLABELS = { coal: 'Coal', iron: 'Iron', uranium: 'Uranium', aluminum: 'Aluminum', tritium: 'Tritium', ruby: 'Ruby', sapphire: 'Sapphire', diamond: 'Diamond', amethyst: 'Amethyst', quasicrystals: 'Quasicrystals', oil: 'Oil' }
+          const RLABELS = { iron: 'Iron', uranium: 'Uranium', aluminum: 'Aluminum', tritium: 'Tritium', ruby: 'Ruby', sapphire: 'Sapphire', diamond: 'Diamond', amethyst: 'Amethyst', quasicrystals: 'Quasicrystals', oil: 'Oil' }
           loadOptions.push({ key, label: `${RLABELS[key] || key} (${amount})`, type: 'resource', amount })
         }
         for (const item of PRODUCED_ITEMS) {

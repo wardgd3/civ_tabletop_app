@@ -149,7 +149,6 @@ export const TERRAIN_THEMES = {
 }
 
 export const RESOURCES = {
-  COAL:       { id: 'coal',       name: 'Coal',       icon: 'coal.png',       chance: 0.04 },
   IRON:       { id: 'iron',       name: 'Iron',       icon: 'iron.png',       chance: 0.02 },
   URANIUM:    { id: 'uranium',    name: 'Uranium',    icon: 'uranium.png',    chance: 0.002 },
   TRITIUM:    { id: 'tritium',    name: 'Tritium',    icon: 'tritium.png',    chance: 0.001 },

@@ -241,8 +241,7 @@ export function useGames() {
       .eq('game_id', gameId)
       .order('player_order')
 
-    const minPlayers = gameData?.is_admin ? 1 : 2
-    if (!players || players.length < minPlayers) throw new Error(`Need at least ${minPlayers} player${minPlayers > 1 ? 's' : ''}`)
+    if (!players || players.length < 1) throw new Error('Need at least 1 player')
 
     if (gameData?.is_admin) {
       for (const p of players) {

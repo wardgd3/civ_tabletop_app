@@ -7,10 +7,10 @@ import { getCompartments } from '../components/CommandShipPanel'
 const LUXURY_BY_ID = Object.fromEntries(Object.values(LUXURY_RESOURCES).map(r => [r.id, r]))
 
 export const GROUND_ORES = {
-  iron:        { id: 'iron',        name: 'Iron',        chance: 0.35, minAmt: 2, maxAmt: 5, color: '#8a8a8a' },
-  copper:      { id: 'copper',      name: 'Copper',      chance: 0.25, minAmt: 1, maxAmt: 4, color: '#b87333' },
-  titanium:    { id: 'titanium',    name: 'Titanium',    chance: 0.10, minAmt: 1, maxAmt: 2, color: '#a0b0c0' },
-  oil:         { id: 'oil',         name: 'Oil',         chance: 0.15, minAmt: 1, maxAmt: 3, color: '#2a2a2a', icon: 'oil' },
+  iron:        { id: 'iron',        name: 'Iron',        chance: 0.35, minAmt: 1, maxAmt: 2, color: '#8a8a8a' },
+  copper:      { id: 'copper',      name: 'Copper',      chance: 0.25, minAmt: 1, maxAmt: 2, color: '#b87333' },
+  titanium:    { id: 'titanium',    name: 'Titanium',    chance: 0.10, minAmt: 1, maxAmt: 1, color: '#a0b0c0' },
+  oil:         { id: 'oil',         name: 'Oil',         chance: 0.15, minAmt: 1, maxAmt: 1, color: '#2a2a2a', icon: 'oil' },
   uranium:     { id: 'uranium',     name: 'Uranium',     chance: 0.04, minAmt: 1, maxAmt: 1, color: '#50c878' },
   diamond:     { id: 'diamond',     name: 'Diamond',     chance: 0.01, minAmt: 1, maxAmt: 1, color: '#b9f2ff', deep: true },
   ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.01, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true },
@@ -21,9 +21,9 @@ export const GROUND_ORES = {
 }
 
 export const SPACE_ORES = {
-  helium3:     { id: 'helium3',     name: 'Helium-3',    chance: 0.35, minAmt: 2, maxAmt: 5, color: '#d0e8ff' },
-  cobalt:      { id: 'cobalt',      name: 'Cobalt',      chance: 0.25, minAmt: 1, maxAmt: 4, color: '#4070c0' },
-  palladium:   { id: 'palladium',   name: 'Palladium',   chance: 0.10, minAmt: 1, maxAmt: 2, color: '#c0b090' },
+  helium3:     { id: 'helium3',     name: 'Helium-3',    chance: 0.35, minAmt: 1, maxAmt: 2, color: '#d0e8ff' },
+  cobalt:      { id: 'cobalt',      name: 'Cobalt',      chance: 0.25, minAmt: 1, maxAmt: 2, color: '#4070c0' },
+  palladium:   { id: 'palladium',   name: 'Palladium',   chance: 0.10, minAmt: 1, maxAmt: 1, color: '#c0b090' },
   iridium:     { id: 'iridium',     name: 'Iridium',     chance: 0.04, minAmt: 1, maxAmt: 1, color: '#e0e8f0' },
   diamond:     { id: 'diamond',     name: 'Diamond',     chance: 0.01, minAmt: 1, maxAmt: 1, color: '#b9f2ff', deep: true },
   ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.01, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true },
@@ -198,19 +198,17 @@ export function useGameState(gameId) {
     ).length
     const baseCount = teamUnits.filter(u => u.wg_unit_types?.name === 'Base').length
     const factoryCount = teamUnits.filter(u => u.wg_unit_types?.name === 'Factory').length
-    let totalCoal = 0
     let totalExcavations = 0
     let luxuryIncome = 0
     for (const tp of teamPlayers) {
       const res = tp.resources || {}
-      totalCoal += res.coal || 0
       totalExcavations += res.excavations || 0
       for (const [resId] of Object.entries(res)) {
         const lux = LUXURY_BY_ID[resId]
         if (lux) luxuryIncome += lux.yield
       }
     }
-    const activeFactories = Math.min(factoryCount, totalCoal)
+    const activeFactories = factoryCount
     const production = (ccCount * 4) + (baseCount * 2) + activeFactories
     const excavationIncome = totalExcavations + luxuryIncome
     const goldUpkeep = teamUnits.length
@@ -1195,7 +1193,7 @@ export function useGameState(gameId) {
     if (guildConvoys.some(gc => gc.inTransit)) throw new Error('A convoy is already en route to the Space Guild')
 
     const RESOURCE_VALUES = {
-      coal: 3, iron: 5, uranium: 8, aluminum: 4, tritium: 10,
+      iron: 5, uranium: 8, aluminum: 4, tritium: 10,
       ruby: 15, sapphire: 15, diamond: 20, amethyst: 12, quasicrystals: 25,
       small_spaceship_parts: 12, medium_spaceship_parts: 20, large_spaceship_parts: 35,
     }
@@ -1297,7 +1295,7 @@ export function useGameState(gameId) {
     }
 
     const RESOURCE_VALUES = {
-      coal: 3, iron: 5, uranium: 8, aluminum: 4, tritium: 10,
+      iron: 5, uranium: 8, aluminum: 4, tritium: 10,
       ruby: 15, sapphire: 15, diamond: 20, amethyst: 12, quasicrystals: 25,
       small_spaceship_parts: 12, medium_spaceship_parts: 20, large_spaceship_parts: 35,
     }
@@ -2387,7 +2385,7 @@ export function useGameState(gameId) {
 
       mining.turnsSinceLastDig = (mining.turnsSinceLastDig || 0) + 1
 
-      if (mining.turnsSinceLastDig >= 3) {
+      if (mining.turnsSinceLastDig >= 1) {
         mining.turnsSinceLastDig = 0
         mining.layer = (mining.layer || 0) + 1
 
