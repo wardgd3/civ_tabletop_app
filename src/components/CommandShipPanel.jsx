@@ -2350,7 +2350,7 @@ export default function CommandShipPanel({
                 )}
               </div>
             )}
-            <div className="text-xs font-mono mt-0.5" style={{ color: '#6e7681' }}>HP {unit.current_hp}/{(() => { const base = unit.wg_unit_types?.hp || 0; const slots = unit.upgrades?.hull || unit.upgrades?.walls || []; const maxT = Array.isArray(slots) ? Math.max(0, ...slots.filter(t => t > 0)) : 0; return base + maxT * 30 })()}</div>
+            <div className="text-xs font-mono mt-0.5" style={{ color: '#6e7681' }}>HP {unit.current_hp}/{(() => { const name = unit.wg_unit_types?.name; const base = (name === 'Command Center' || name === 'Command Ship') ? 100 : (unit.wg_unit_types?.hp || 0); const slots = unit.upgrades?.hull || unit.upgrades?.walls || []; const maxT = Array.isArray(slots) ? Math.max(0, ...slots.filter(t => t > 0)) : 0; return base + maxT * 30 })()}</div>
             <div className="text-[11px] font-mono mt-0.5" style={{ color: '#6e7681' }}>
               ATK {unit.wg_unit_types?.attack} | DEF {unit.wg_unit_types?.defense} | MOV {Math.max(0, (unit.wg_unit_types?.movement || 0) - (unit.moves_used || 0))}/{unit.wg_unit_types?.movement}
             </div>

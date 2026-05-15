@@ -68,8 +68,13 @@ const RESOURCE_BY_ID = Object.fromEntries([
   ...Object.values(SPACE_RESOURCES).map(r => [r.id, r]),
   ...Object.values(LUXURY_RESOURCES).map(r => [r.id, r]),
 ])
+function getBaseHp(unit) {
+  const name = unit?.wg_unit_types?.name
+  if (name === 'Command Center' || name === 'Command Ship') return 100
+  return unit?.wg_unit_types?.hp || 0
+}
 function getMaxHp(unit) {
-  const base = unit?.wg_unit_types?.hp || 0
+  const base = getBaseHp(unit)
   const hullSlots = unit?.upgrades?.hull || unit?.upgrades?.walls || []
   const maxTier = Array.isArray(hullSlots) ? Math.max(0, ...hullSlots.filter(t => t > 0)) : 0
   return base + maxTier * 30
@@ -1680,7 +1685,7 @@ export default function GameBoard({
           </span>
         </div>
         <div className="flex gap-2 mt-0.5 text-[10px] font-mono" style={{ color: '#8b949e' }}>
-          <span>HP {inspectedUnit.current_hp}/{inspectedUnit.wg_unit_types?.hp}</span>
+          <span>HP {inspectedUnit.current_hp}/{getBaseHp(inspectedUnit)}</span>
           {(() => { const s = getUnitShield(inspectedUnit); return s && <span style={{ color: '#40a0e0' }}>SH {s.current}/{s.max}</span> })()}
           <span>ATK {inspectedUnit.wg_unit_types?.attack}</span>
           <span>DEF {inspectedUnit.wg_unit_types?.defense}</span>
@@ -2807,7 +2812,7 @@ export default function GameBoard({
               </span>
             </div>
             <div className="flex gap-3 mt-1 text-xs font-mono" style={{ color: '#8b949e' }}>
-              <span>HP {inspectedUnit.current_hp}/{inspectedUnit.wg_unit_types?.hp}</span>
+              <span>HP {inspectedUnit.current_hp}/{getBaseHp(inspectedUnit)}</span>
               {(() => { const s = getUnitShield(inspectedUnit); return s && <span style={{ color: '#40a0e0' }}>Shield {s.current}/{s.max}</span> })()}
               <span>ATK {inspectedUnit.wg_unit_types?.attack}</span>
               <span>DEF {inspectedUnit.wg_unit_types?.defense}</span>

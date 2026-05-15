@@ -424,7 +424,7 @@ export function useGameState(gameId) {
       unit_type_id: unitTypeId,
       grid_row: row,
       grid_col: col,
-      current_hp: unitType.hp,
+      current_hp: (unitType.name === 'Command Center' || unitType.name === 'Command Ship') ? 100 : unitType.hp,
       board: unitBoard,
     }
     if (Object.keys(defaultUpgrades).length > 0) {
@@ -2563,7 +2563,9 @@ export function useGameState(gameId) {
     if (playerUnits.length === 0) return
 
     const spaceImpassable = new Set(['asteroid', 'large_asteroid', 'star'])
+    const groundImpassable = new Set(['ocean', 'lake', 'river', 'mountain'])
     const spaceTileMap = new Map(tiles.filter(t => (t.board || 'ground') === 'space').map(t => [`${t.grid_row}-${t.grid_col}`, t]))
+    const groundTileMap = new Map(tiles.filter(t => (t.board || 'ground') === 'ground').map(t => [`${t.grid_row}-${t.grid_col}`, t]))
     const rows = freshGame.grid_rows
     const cols = freshGame.grid_cols
 
@@ -2759,6 +2761,103 @@ export function useGameState(gameId) {
       }
     }
 
+    // Ground NPC AI (test1 etc.) — melee only, must be adjacent to attack
+    for (let ni = 0; ni < npcUnits.length; ni++) {
+      const npc = npcUnits[ni]
+      const npcDef = NPC_UNIT_TYPES[npc.npcType]
+      if (!npcDef || npcDef.board !== 'ground') continue
+
+      const visibility = npcDef.visibility || 2
+      const attackRange = npcDef.attack_range || 1
+      const movement = npcDef.movement || 1
+
+      const groundPlayerUnits = playerUnits.filter(u => (u.board || 'ground') === 'ground' && u.current_hp > 0)
+      const targets = groundPlayerUnits
+        .map(u => ({ unit: u, dist: hexDistance(npc.grid_row, npc.grid_col, u.grid_row, u.grid_col) }))
+        .filter(t => t.dist <= visibility)
+        .sort((a, b) => a.dist - b.dist)
+
+      if (targets.length === 0) continue
+
+      const closest = targets[0]
+
+      // Attack if adjacent (before moving)
+      let hasAttacked = false
+      if (closest.dist <= attackRange && closest.unit.current_hp > 0) {
+        const damage = Math.max(1, npcDef.attack - (closest.unit.wg_unit_types?.defense || 0))
+        const result = applyDamageToPlayer(closest.unit, damage, npcDef.name)
+        if (result.killed) {
+          await supabase.from('wg_units').update({ current_hp: 0, is_alive: false, ...result.shieldUpdate }).eq('id', closest.unit.id)
+        } else {
+          await supabase.from('wg_units').update({ current_hp: result.newHp, ...result.shieldUpdate }).eq('id', closest.unit.id)
+        }
+        changed = true
+        hasAttacked = true
+      }
+
+      // Move toward target if not already adjacent
+      if (!hasAttacked || closest.dist > attackRange) {
+        const targetR = closest.unit.grid_row
+        const targetC = closest.unit.grid_col
+        let curR = npcUnits[ni].grid_row
+        let curC = npcUnits[ni].grid_col
+        let stepsLeft = movement
+
+        const npcPositions = new Set(npcUnits.map(n => `${n.grid_row}-${n.grid_col}`))
+        const unitPositions = new Set(groundPlayerUnits.filter(u => u.current_hp > 0).map(u => `${u.grid_row}-${u.grid_col}`))
+
+        while (stepsLeft > 0) {
+          const odd = curR & 1
+          const dirs = odd
+            ? [[-1,0],[-1,1],[0,1],[1,1],[1,0],[0,-1]]
+            : [[-1,-1],[-1,0],[0,1],[1,0],[1,-1],[0,-1]]
+
+          const curDist = hexDistance(curR, curC, targetR, targetC)
+          const candidates = []
+          for (const [dr, dc] of dirs) {
+            const nr = curR + dr, nc = curC + dc
+            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue
+            const nk = `${nr}-${nc}`
+            const tile = groundTileMap.get(nk)
+            if (tile && groundImpassable.has(tile.terrain)) continue
+            if (unitPositions.has(nk)) continue
+            if (npcPositions.has(nk) && !(nr === npcUnits[ni].grid_row && nc === npcUnits[ni].grid_col)) continue
+            candidates.push({ r: nr, c: nc, dist: hexDistance(nr, nc, targetR, targetC) })
+          }
+          if (candidates.length === 0) break
+          candidates.sort((a, b) => a.dist - b.dist)
+          const best = candidates[0]
+          if (best.dist > curDist + 1) break
+          npcPositions.delete(`${curR}-${curC}`)
+          curR = best.r
+          curC = best.c
+          npcPositions.add(`${curR}-${curC}`)
+          stepsLeft--
+          if (hexDistance(curR, curC, targetR, targetC) <= attackRange) break
+        }
+
+        if (curR !== npcUnits[ni].grid_row || curC !== npcUnits[ni].grid_col) {
+          npcUnits[ni] = { ...npcUnits[ni], grid_row: curR, grid_col: curC }
+          changed = true
+        }
+
+        // Attack after moving if now adjacent and haven't attacked yet
+        if (!hasAttacked && closest.unit.current_hp > 0) {
+          const newDist = hexDistance(curR, curC, closest.unit.grid_row, closest.unit.grid_col)
+          if (newDist <= attackRange) {
+            const damage = Math.max(1, npcDef.attack - (closest.unit.wg_unit_types?.defense || 0))
+            const result = applyDamageToPlayer(closest.unit, damage, npcDef.name)
+            if (result.killed) {
+              await supabase.from('wg_units').update({ current_hp: 0, is_alive: false, ...result.shieldUpdate }).eq('id', closest.unit.id)
+            } else {
+              await supabase.from('wg_units').update({ current_hp: result.newHp, ...result.shieldUpdate }).eq('id', closest.unit.id)
+            }
+            changed = true
+          }
+        }
+      }
+    }
+
     if (changed) {
       await supabase.from('wg_games').update({ settings: { ...settings, npcUnits, battleLog: battleLogArr } }).eq('id', gameId)
     }
@@ -2826,7 +2925,8 @@ export function useGameState(gameId) {
 
       for (const target of teamUnits) {
         if (target.id === eng.id) continue
-        if (target.current_hp >= (target.wg_unit_types?.hp || 0)) continue
+        const targetBaseHp = (target.wg_unit_types?.name === 'Command Center' || target.wg_unit_types?.name === 'Command Ship') ? 100 : (target.wg_unit_types?.hp || 0)
+        if (target.current_hp >= targetBaseHp) continue
         const d = hexDistance(eng.grid_row, eng.grid_col, target.grid_row, target.grid_col)
         if (d > radius) continue
         const prev = bestHeal.get(target.id) || 0
@@ -2839,7 +2939,8 @@ export function useGameState(gameId) {
       if (!target) continue
       const hullSlots = target.upgrades?.hull || target.upgrades?.walls || []
       const hullTier = Array.isArray(hullSlots) ? Math.max(0, ...hullSlots.filter(t => t > 0)) : 0
-      const maxHp = (target.wg_unit_types?.hp || target.current_hp) + hullTier * 30
+      const baseHp = (target.wg_unit_types?.name === 'Command Center' || target.wg_unit_types?.name === 'Command Ship') ? 100 : (target.wg_unit_types?.hp || target.current_hp)
+      const maxHp = baseHp + hullTier * 30
       const newHp = Math.min(target.current_hp + hp, maxHp)
       await supabase.from('wg_units').update({ current_hp: newHp }).eq('id', targetId)
     }
