@@ -2963,7 +2963,7 @@ export default function GameBoard({
                     onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor; e.currentTarget.style.backgroundColor = hoverBg }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a3140'; e.currentTarget.style.backgroundColor = '#111214' }}
                   >
-                    <img src={`/assets/${encodeURIComponent(m.file)}.png`} alt={m.label} className="w-18 h-18 object-contain" style={{ width: 345, height: 345 }} />
+                    <img src={`/assets/${encodeURIComponent(m.file)}.png`} alt={m.label} className="object-cover rounded" style={{ width: 345, height: 180 }} />
                     <span className="text-[11px] sm:text-sm font-mono" style={{ color: '#8b949e' }}>{m.label}</span>
                   </button>
               ))}
