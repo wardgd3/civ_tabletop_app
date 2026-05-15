@@ -68,6 +68,12 @@ const RESOURCE_BY_ID = Object.fromEntries([
   ...Object.values(SPACE_RESOURCES).map(r => [r.id, r]),
   ...Object.values(LUXURY_RESOURCES).map(r => [r.id, r]),
 ])
+function getMaxHp(unit) {
+  const base = unit?.wg_unit_types?.hp || 0
+  const hullSlots = unit?.upgrades?.hull || unit?.upgrades?.walls || []
+  const maxTier = Array.isArray(hullSlots) ? Math.max(0, ...hullSlots.filter(t => t > 0)) : 0
+  return base + maxTier * 30
+}
 function getUnitIcon(unitType, unit) {
   if (!unitType?.icon) return '/assets/infantry.png'
   if (unitType.name === 'Command Ship') {
@@ -2266,7 +2272,7 @@ export default function GameBoard({
                   {/* ore icons disabled */}
                   {showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' && unit.wg_unit_types?.name !== 'Battleship' && unit.wg_unit_types?.icon !== 'hostilebattleship.png' && !slidingUnits.has(unit.id) && (() => {
                     const pColor = getPlayerColor(unit.owner_id, unit)
-                    const hpRatio = unit.current_hp / unit.wg_unit_types?.hp
+                    const hpRatio = unit.current_hp / getMaxHp(unit)
                     const sizeMultiplier = 1.032
                     const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * sizeMultiplier
                     const fadeIn = unitAnimations.get(unit.id)?.type === 'fadeIn'
@@ -2293,20 +2299,6 @@ export default function GameBoard({
                             boxShadow: '0 0 2px #000',
                           }}
                         />
-                        {(unit.upgrades?.level || 0) > 0 && (
-                          <div
-                            className="absolute -top-0.5 -left-0.5 flex items-center justify-center rounded-full z-20"
-                            style={{
-                              width: 18, height: 18,
-                              backgroundColor: '#1a1a0d',
-                              border: '2px solid #cca43b',
-                              fontSize: 12, fontWeight: 'bold',
-                              color: '#cca43b', lineHeight: 1,
-                            }}
-                          >
-                            {unit.upgrades.level}
-                          </div>
-                        )}
                       </div>
                     )
                   })()}
@@ -2345,7 +2337,7 @@ export default function GameBoard({
               const ccX = cc.grid_col * HEX_W + (cc.grid_row & 1 ? HEX_W / 2 : 0) + RENDER_W / 2
               const ccY = cc.grid_row * ROW_H + RENDER_H / 2
               const ccSize = HEX_W * 2.746
-              const hpRatio = cc.current_hp / cc.wg_unit_types?.hp
+              const hpRatio = cc.current_hp / getMaxHp(cc)
               const pColor = getPlayerColor(cc.owner_id)
               const ccFadeIn = unitAnimations.get(cc.id)?.type === 'fadeIn'
               return (
@@ -2386,7 +2378,7 @@ export default function GameBoard({
               const bsY = bs.grid_row * ROW_H + RENDER_H / 2
               const isBattleship = bs.wg_unit_types?.name === 'Battleship'
               const bsSize = HEX_W * 1.62
-              const hpRatio = bs.current_hp / bs.wg_unit_types?.hp
+              const hpRatio = bs.current_hp / getMaxHp(bs)
               const pColor = getPlayerColor(bs.owner_id, bs)
               const bsFadeIn = unitAnimations.get(bs.id)?.type === 'fadeIn'
               return (
@@ -2419,20 +2411,6 @@ export default function GameBoard({
                       boxShadow: '0 0 2px #000',
                     }}
                   />
-                  {(bs.upgrades?.level || 0) > 0 && (
-                    <div
-                      className="absolute -top-0.5 -left-0.5 flex items-center justify-center rounded-full z-20"
-                      style={{
-                        width: 18, height: 18,
-                        backgroundColor: '#1a1a0d',
-                        border: '2px solid #cca43b',
-                        fontSize: 12, fontWeight: 'bold',
-                        color: '#cca43b', lineHeight: 1,
-                      }}
-                    >
-                      {bs.upgrades.level}
-                    </div>
-                  )}
                 </div>
               )
             })}
@@ -2478,7 +2456,7 @@ export default function GameBoard({
               const isBattleship = u.wg_unit_types?.name === 'Battleship'
               const isWarship = u.wg_unit_types?.icon === 'hostilebattleship.png'
               const tokenSize = isCC ? HEX_W * 2.746 : isBattleship ? HEX_W * 1.62 : isWarship ? HEX_W * 1.62 : (Math.min(RENDER_W, RENDER_H) - 4) * 1.032
-              const hpRatio = u.current_hp / u.wg_unit_types?.hp
+              const hpRatio = u.current_hp / getMaxHp(u)
               return (
                 <div
                   key={`slide-${id}`}
@@ -2505,20 +2483,6 @@ export default function GameBoard({
                       boxShadow: '0 0 2px #000',
                     }}
                   />
-                  {(u.upgrades?.level || 0) > 0 && !isCC && (
-                    <div
-                      className="absolute -top-0.5 -left-0.5 flex items-center justify-center rounded-full z-20"
-                      style={{
-                        width: 18, height: 18,
-                        backgroundColor: '#1a1a0d',
-                        border: '2px solid #cca43b',
-                        fontSize: 12, fontWeight: 'bold',
-                        color: '#cca43b', lineHeight: 1,
-                      }}
-                    >
-                      {u.upgrades.level}
-                    </div>
-                  )}
                 </div>
               )
             })}
@@ -2586,11 +2550,8 @@ export default function GameBoard({
                         />
                         <div className="text-xs font-semibold text-center" style={{ color: '#c9d1d9' }}>
                           {hu.wg_unit_types.name}
-                          {(hu.upgrades?.level || 0) > 0 && (
-                            <span className="ml-1 font-mono" style={{ color: '#cca43b' }}>Lv{hu.upgrades.level}</span>
-                          )}
                         </div>
-                        <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>HP {hu.current_hp}/{hu.wg_unit_types.hp}</div>
+                        <div className="text-[10px] font-mono" style={{ color: '#8b949e' }}>HP {hu.current_hp}/{getMaxHp(hu)}</div>
                         {(() => { const s = getUnitShield(hu); return s && (
                           <div className="text-[10px] font-mono" style={{ color: '#40a0e0' }}>Shield {s.current}/{s.max}</div>
                         ) })()}
@@ -2760,10 +2721,9 @@ export default function GameBoard({
                   <div className="min-w-0">
                     <div className="text-[10px] font-semibold truncate" style={{ color: '#c9d1d9' }}>
                       {tu.wg_unit_types.name}
-                      {(tu.upgrades?.level || 0) > 0 && <span className="ml-1 font-mono" style={{ color: '#cca43b' }}>Lv{tu.upgrades.level}</span>}
                     </div>
                     <div className="flex gap-1.5 text-[9px] font-mono" style={{ color: '#8b949e' }}>
-                      <span>HP {tu.current_hp}/{tu.wg_unit_types.hp}</span>
+                      <span>HP {tu.current_hp}/{getMaxHp(tu)}</span>
                       {(() => { const s = getUnitShield(tu); return s && <span style={{ color: '#40a0e0' }}>SH {s.current}/{s.max}</span> })()}
                     </div>
                   </div>

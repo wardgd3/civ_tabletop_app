@@ -107,6 +107,19 @@ const COMMAND_SHIP_COMPARTMENTS = [
     ],
   },
   {
+    id: 'hull',
+    name: 'Hull',
+    description: 'Reinforced hull plating. Each tier adds 30 HP.',
+    icon: 'hull',
+    color: '#8090a0',
+    slots: 1,
+    tiers: [
+      { name: 'Reinforced Plating', desc: '+30 HP' },
+      { name: 'Composite Armor', desc: '+60 HP' },
+      { name: 'Quantum Lattice', desc: '+90 HP' },
+    ],
+  },
+  {
     id: 'shields',
     name: 'Shields',
     description: 'Protects the ship from damage.',
@@ -114,9 +127,9 @@ const COMMAND_SHIP_COMPARTMENTS = [
     color: '#40a0e0',
     slots: 1,
     tiers: [
-      { name: 'Deflector Array', desc: '5 shield HP' },
-      { name: 'Adaptive Matrix', desc: '10 shield HP' },
-      { name: 'Phase Shields', desc: '20 shield HP' },
+      { name: 'Deflector Array', desc: '50 shield HP' },
+      { name: 'Adaptive Matrix', desc: '100 shield HP' },
+      { name: 'Phase Shields', desc: '200 shield HP' },
     ],
   },
   {
@@ -198,6 +211,19 @@ const COMMAND_SHIP_COMPARTMENTS = [
 
 const COMMAND_CENTER_COMPARTMENTS = [
   {
+    id: 'walls',
+    name: 'Walls',
+    description: 'Reinforced walls. Each tier adds 30 HP.',
+    icon: 'walls',
+    color: '#8090a0',
+    slots: 1,
+    tiers: [
+      { name: 'Reinforced Walls', desc: '+30 HP' },
+      { name: 'Composite Barriers', desc: '+60 HP' },
+      { name: 'Quantum Fortification', desc: '+90 HP' },
+    ],
+  },
+  {
     id: 'shields',
     name: 'Shields',
     description: 'Defensive barrier around the base.',
@@ -205,9 +231,9 @@ const COMMAND_CENTER_COMPARTMENTS = [
     color: '#40a0e0',
     slots: 1,
     tiers: [
-      { name: 'Perimeter Barrier', desc: '5 shield HP' },
-      { name: 'Defense Grid', desc: '10 shield HP' },
-      { name: 'Quantum Barrier', desc: '20 shield HP' },
+      { name: 'Perimeter Barrier', desc: '50 shield HP' },
+      { name: 'Defense Grid', desc: '100 shield HP' },
+      { name: 'Quantum Barrier', desc: '200 shield HP' },
     ],
   },
   {
@@ -330,9 +356,9 @@ const BATTLESHIP_COMPARTMENTS = [
     color: '#40a0e0',
     slots: 1,
     tiers: [
-      { name: 'Deflector Array', desc: '5 shield HP' },
-      { name: 'Adaptive Matrix', desc: '10 shield HP' },
-      { name: 'Phase Shields', desc: '20 shield HP' },
+      { name: 'Deflector Array', desc: '50 shield HP' },
+      { name: 'Adaptive Matrix', desc: '100 shield HP' },
+      { name: 'Phase Shields', desc: '200 shield HP' },
     ],
   },
   {
@@ -2165,7 +2191,7 @@ export default function CommandShipPanel({
                 )}
               </div>
             )}
-            <div className="text-xs font-mono mt-0.5" style={{ color: '#6e7681' }}>HP {unit.current_hp}/{unit.wg_unit_types?.hp}</div>
+            <div className="text-xs font-mono mt-0.5" style={{ color: '#6e7681' }}>HP {unit.current_hp}/{(() => { const base = unit.wg_unit_types?.hp || 0; const slots = unit.upgrades?.hull || unit.upgrades?.walls || []; const maxT = Array.isArray(slots) ? Math.max(0, ...slots.filter(t => t > 0)) : 0; return base + maxT * 30 })()}</div>
             <div className="text-[11px] font-mono mt-0.5" style={{ color: '#6e7681' }}>
               ATK {unit.wg_unit_types?.attack} | DEF {unit.wg_unit_types?.defense} | MOV {Math.max(0, (unit.wg_unit_types?.movement || 0) - (unit.moves_used || 0))}/{unit.wg_unit_types?.movement}
             </div>
@@ -2284,47 +2310,6 @@ export default function CommandShipPanel({
           </button>
         </div>
       )}
-
-      {(() => {
-        const unitLevel = unit.upgrades?.level || 0
-        const maxLevel = 5
-        const upgradeCost = (unitLevel + 1) * 5
-        const canAfford = isAdmin || (economy?.teamGold ?? 0) >= upgradeCost
-        return (
-          <div className="mb-3 p-2 rounded" style={{ backgroundColor: '#111214', border: '1px solid #2a3140' }}>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: '#4a5568' }}>Unit Level</span>
-              <span className="text-[10px] font-mono" style={{ color: '#8b949e' }}>Lv {unitLevel}/{maxLevel}</span>
-            </div>
-            <div className="flex gap-0.5 mb-2">
-              {Array.from({ length: maxLevel }, (_, i) => (
-                <div
-                  key={i}
-                  className="flex-1 h-1.5 rounded-full"
-                  style={{
-                    backgroundColor: i < unitLevel ? '#cca43b' : '#21262d',
-                    border: `1px solid ${i < unitLevel ? '#cca43b' : '#30363d'}`,
-                  }}
-                />
-              ))}
-            </div>
-            {unitLevel < maxLevel ? (
-              <button
-                onClick={() => onLevelUp?.(unit.id)}
-                disabled={!canAfford}
-                className="w-full py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer disabled:opacity-30"
-                style={{ backgroundColor: '#2a2a1a', color: '#cca43b', border: '1px solid #4a4a2a' }}
-              >
-                Level Up (⚒{upgradeCost})
-              </button>
-            ) : (
-              <div className="text-[10px] font-semibold text-center py-1" style={{ color: '#cca43b' }}>
-                MAX LEVEL
-              </div>
-            )}
-          </div>
-        )
-      })()}
 
       {compartments.length > 0 && <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>
         Compartments

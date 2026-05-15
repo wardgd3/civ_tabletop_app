@@ -62,8 +62,8 @@ const BATTLESHIP_MATERIAL_COST = { uranium: 1, iron: 50, aluminum: 30 }
 const CANNON_RANGE = [0, 3, 4, 5]
 
 export const WARHEAD_TYPES = {
-  nuclear: { name: 'Nuclear', cost: 30, damage: 20, radius: 8 },
-  thermonuclear: { name: 'Thermonuclear', cost: 50, damage: 20, radius: 8 },
+  nuclear: { name: 'Nuclear', cost: 30, damage: 200, radius: 8 },
+  thermonuclear: { name: 'Thermonuclear', cost: 50, damage: 200, radius: 8 },
 }
 
 export function getEffectiveAttackRange(unit) {
@@ -83,7 +83,7 @@ function seededRandFromHash(seed) {
   }
 }
 
-export const SHIELD_HP = [0, 5, 10, 20]
+export const SHIELD_HP = [0, 50, 100, 200]
 
 function getShieldHp(upgrades) {
   if (!upgrades) return { current: 0, max: 0 }
@@ -101,9 +101,9 @@ const NPC_UNIT_TYPES = {
     name: 'test1',
     description: 'A hostile alien creature',
     cost: 0,
-    attack: 3,
-    defense: 1,
-    hp: 5,
+    attack: 30,
+    defense: 10,
+    hp: 50,
     movement: 2,
     attack_range: 1,
     visibility: 2,
@@ -116,9 +116,9 @@ const NPC_UNIT_TYPES = {
     name: 'Ravager',
     description: 'A hostile space creature',
     cost: 0,
-    attack: 4,
-    defense: 2,
-    hp: 8,
+    attack: 40,
+    defense: 20,
+    hp: 80,
     movement: 3,
     attack_range: 5,
     visibility: 10,
@@ -131,9 +131,9 @@ const NPC_UNIT_TYPES = {
     name: 'Warship',
     description: 'A hostile alien warship',
     cost: 0,
-    attack: 5,
-    defense: 3,
-    hp: 30,
+    attack: 50,
+    defense: 30,
+    hp: 300,
     movement: 3,
     attack_range: 3,
     visibility: 10,
@@ -145,7 +145,7 @@ const NPC_UNIT_TYPES = {
       { npcType: 'ravager' },
     ],
     missiles: { tactical: 2 },
-    missileDamage: 7,
+    missileDamage: 70,
   },
 }
 
@@ -854,9 +854,17 @@ export function useGameState(gameId) {
       newUpgrades.shieldHp = SHIELD_HP[maxTier] || 0
       newUpgrades.shieldMaxHp = SHIELD_HP[maxTier] || 0
     }
+    const HULL_HP_PER_TIER = 30
+    let hpUpdate = {}
+    if (compartmentId === 'hull' || compartmentId === 'walls') {
+      const oldTier = currentTier
+      const hpGain = (tierLevel - oldTier) * HULL_HP_PER_TIER
+      const newHp = (unit.current_hp || 0) + hpGain
+      hpUpdate = { current_hp: newHp }
+    }
     const { error } = await supabase
       .from('wg_units')
-      .update({ upgrades: newUpgrades })
+      .update({ upgrades: newUpgrades, ...hpUpdate })
       .eq('id', unitId)
     if (error) throw error
 
@@ -898,7 +906,7 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
-  const MISSILE_DAMAGE = { tactical: 8, cruise: 15, ipbm: 20 }
+  const MISSILE_DAMAGE = { tactical: 80, cruise: 150, ipbm: 200 }
   const MISSILE_RANGE = { tactical: 6, cruise: 11, ipbm: 999 }
   async function produceWarhead(unitId, warheadType) {
     const unit = units.find(u => u.id === unitId)
@@ -2665,7 +2673,7 @@ export function useGameState(gameId) {
     }
   }
 
-  const REPAIR_HP = [0, 1, 2, 3]
+  const REPAIR_HP = [0, 10, 20, 30]
   const REPAIR_RADIUS = [0, 3, 4, 5]
 
   async function processRepairTicks() {
@@ -2700,7 +2708,10 @@ export function useGameState(gameId) {
     for (const [targetId, hp] of bestHeal) {
       const target = teamUnits.find(u => u.id === targetId)
       if (!target) continue
-      const newHp = Math.min(target.current_hp + hp, target.wg_unit_types?.hp || target.current_hp)
+      const hullSlots = target.upgrades?.hull || target.upgrades?.walls || []
+      const hullTier = Array.isArray(hullSlots) ? Math.max(0, ...hullSlots.filter(t => t > 0)) : 0
+      const maxHp = (target.wg_unit_types?.hp || target.current_hp) + hullTier * 30
+      const newHp = Math.min(target.current_hp + hp, maxHp)
       await supabase.from('wg_units').update({ current_hp: newHp }).eq('id', targetId)
     }
   }
