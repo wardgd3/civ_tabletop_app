@@ -1855,6 +1855,8 @@ export default function GameBoard({
             onClose={() => { setCommandShipUnitId(null); setNumberedOverlays([]) }}
             onMove={() => {
               setSelectedUnitId(csUnit.id)
+              setCommandShipUnitId(null)
+              setPanelOpen(false)
               setMode('select')
             }}
             onAttack={() => {
