@@ -2080,7 +2080,7 @@ export default function GameBoard({
 
       {mode === 'deploy' && isMyTurn && (
         <div className="p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
-          {!hasCommandCenter ? (
+          {!hasCommandStructureOnThisBoard ? (
             <>
               <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>
                 Select a location on the map
