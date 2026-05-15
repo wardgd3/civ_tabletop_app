@@ -114,7 +114,7 @@ export default function GameBoard({
   currentPlayer, isMyTurn, isAdmin,
   deployUnit, moveUnit, attackUnit, buildRoad, destroyRoad, endTurn,
   excavate, upgradeShipCompartment, levelUpUnit, buyMissile, fireMissile, produceWarhead, missileFiredShips, sendConvoyToGuild,
-  buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
+  buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy, loadInventoryToConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
   setAutoPath, clearAutoPath,
   deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship, loadToBattleshipHangar, deployDockedBattleship, produceFactoryItem,
@@ -1934,6 +1934,9 @@ export default function GameBoard({
             }}
             onUnloadCargo={async (structId, convoyIdx) => {
               try { await unloadCargoFromConvoy(structId, convoyIdx) } catch (err) { setError(err.message) }
+            }}
+            onLoadInventoryToConvoy={async (structId, convoyIdx, itemId, amount) => {
+              try { await loadInventoryToConvoy(structId, convoyIdx, itemId, amount) } catch (err) { setError(err.message) }
             }}
             onLoadSoldier={async (structId, transportIdx, soldierUnitId) => {
               try { await loadSoldierToTransport(structId, transportIdx, soldierUnitId) } catch (err) { setError(err.message) }

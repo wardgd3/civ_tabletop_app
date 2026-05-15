@@ -153,14 +153,14 @@ const COMMAND_SHIP_COMPARTMENTS = [
   {
     id: 'factory',
     name: 'Factory',
-    description: 'Manufactures units. Each slot is a production line.',
+    description: 'Produces spaceship parts. Each tier unlocks larger parts and reduces cost by 15%.',
     icon: 'factory',
     color: '#60b060',
-    slots: 3,
+    slots: 1,
     tiers: [
-      { name: 'Assembly Line', desc: 'Basic production' },
-      { name: 'Nano-Forge', desc: 'Faster production' },
-      { name: 'Quantum Replicator', desc: 'Instant production' },
+      { name: 'Assembly Line', desc: 'Unlocks Small Parts' },
+      { name: 'Nano-Forge', desc: 'Unlocks Medium Parts' },
+      { name: 'Quantum Replicator', desc: 'Unlocks Large Parts' },
     ],
   },
   {
@@ -270,14 +270,14 @@ const COMMAND_CENTER_COMPARTMENTS = [
   {
     id: 'factory',
     name: 'Factory',
-    description: 'Manufactures parts and components.',
+    description: 'Produces spaceship parts. Each tier unlocks larger parts and reduces cost by 15%.',
     icon: 'factory',
     color: '#60b060',
-    slots: 3,
+    slots: 1,
     tiers: [
-      { name: 'Assembly Line', desc: 'Basic production' },
-      { name: 'Nano-Forge', desc: 'Faster production' },
-      { name: 'Quantum Replicator', desc: 'Instant production' },
+      { name: 'Assembly Line', desc: 'Unlocks Small Parts' },
+      { name: 'Nano-Forge', desc: 'Unlocks Medium Parts' },
+      { name: 'Quantum Replicator', desc: 'Unlocks Large Parts' },
     ],
   },
   {
@@ -523,7 +523,7 @@ const RESOURCE_VALUES = {
   ruby: 15, sapphire: 15, diamond: 20, amethyst: 12, quasicrystals: 25,
 }
 
-function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, groundUnits, comp, isCC, teamGold, playerResources, destinations, availableUnitTypes, missileLevel, isAdmin }) {
+function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, onLoadInventoryToConvoy, groundUnits, comp, isCC, teamGold, playerResources, destinations, availableUnitTypes, missileLevel, isAdmin }) {
   const [goldAmount, setGoldAmount] = useState('')
   const [selectedDest, setSelectedDest] = useState(destinations?.length === 1 ? destinations[0].id : null)
   const [orderUnits, setOrderUnits] = useState([])
@@ -715,6 +715,26 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
           ))}
         </div>
       )}
+
+      {(() => {
+        const inv = upgrades.inventory || {}
+        const invItems = PRODUCED_ITEMS.filter(p => (inv[p.id] || 0) > 0)
+        if (invItems.length === 0) return null
+        return (
+          <div className="flex flex-wrap gap-0.5 mb-2">
+            {invItems.map(item => (
+              <button
+                key={item.id}
+                onClick={() => onLoadInventoryToConvoy?.(unit.id, convoyIndex, item.id, inv[item.id])}
+                className="px-1.5 py-0.5 text-[8px] rounded cursor-pointer"
+                style={{ backgroundColor: '#18191c', border: '1px solid #2a3140', color: item.color }}
+              >
+                {item.name} ({inv[item.id]})
+              </button>
+            ))}
+          </div>
+        )
+      })()}
 
       {destinations && destinations.length > 0 && (
         <div className="mt-2 mb-1">
@@ -1022,7 +1042,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
             unit={unit} convoy={convoys[selectedConvoy]} convoyIndex={selectedConvoy}
             upgrades={upgrades} onLoadUnit={onLoadUnit} onLoadFromBay={onLoadFromBay}
             onUnloadToHoldingBay={onUnloadToHoldingBay} onSendConvoy={onSendConvoy}
-            onLoadCargo={onLoadCargo} onUnloadCargo={onUnloadCargo}
+            onLoadCargo={onLoadCargo} onUnloadCargo={onUnloadCargo} onLoadInventoryToConvoy={onLoadInventoryToConvoy}
             groundUnits={groundUnits} comp={comp} isCC={true}
             teamGold={teamGold} playerResources={playerResources}
             destinations={destinations}
@@ -1176,7 +1196,7 @@ function TransportPanel({ unit, upgrades, onBuildConvoy, onLoadUnit, onLoadFromB
           unit={unit} convoy={convoys[selectedConvoy]} convoyIndex={selectedConvoy}
           upgrades={upgrades} onLoadUnit={onLoadUnit} onLoadFromBay={onLoadFromBay}
           onUnloadToHoldingBay={onUnloadToHoldingBay} onSendConvoy={onSendConvoy}
-          onLoadCargo={onLoadCargo} onUnloadCargo={onUnloadCargo}
+          onLoadCargo={onLoadCargo} onUnloadCargo={onUnloadCargo} onLoadInventoryToConvoy={onLoadInventoryToConvoy}
           groundUnits={groundUnits} comp={comp} isCC={false}
           teamGold={teamGold} playerResources={playerResources}
           destinations={destinations}
@@ -2136,7 +2156,9 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
 }
 
 const PRODUCED_ITEMS = [
-  { id: 'spaceship_parts', name: 'Spaceship Parts', color: '#a0a0a0', icon: 'parts' },
+  { id: 'small_spaceship_parts', name: 'Small Spaceship Parts', color: '#a0a0a0', icon: 'parts' },
+  { id: 'medium_spaceship_parts', name: 'Medium Spaceship Parts', color: '#c0c0c0', icon: 'parts' },
+  { id: 'large_spaceship_parts', name: 'Large Spaceship Parts', color: '#e0d060', icon: 'parts' },
 ]
 
 function InventoryPanel({ unit, upgrades, isCommandShip }) {
@@ -2205,7 +2227,7 @@ function InventoryPanel({ unit, upgrades, isCommandShip }) {
 export default function CommandShipPanel({
   unit, onClose, onUpgrade, onMove, onAttack, onBuild, onDestroy, isAdmin,
   onBuildConvoy, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onDeployFromBay, onProduceUnit,
-  onLoadCargo, onUnloadCargo,
+  onLoadCargo, onUnloadCargo, onLoadInventoryToConvoy,
   onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
   onBuyMissile, onFireMissile, onProduceWarhead, missileFiredShips,
   onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar,
@@ -2721,8 +2743,10 @@ export default function CommandShipPanel({
               {comp.id === 'factory' && (() => {
                 const factoryLevel = Math.max(0, ...slots.filter(s => s > 0))
                 if (factoryLevel === 0) return null
-                const FACTORY_ITEMS = [
-                  { id: 'spaceship_parts', name: 'Spaceship Parts', cost: 8, icon: '🔩' },
+                const ALL_FACTORY_ITEMS = [
+                  { id: 'small_spaceship_parts', name: 'Small Spaceship Parts', baseCost: 8, icon: '🔩', tier: 1 },
+                  { id: 'medium_spaceship_parts', name: 'Medium Spaceship Parts', baseCost: 14, icon: '🔩', tier: 2 },
+                  { id: 'large_spaceship_parts', name: 'Large Spaceship Parts', baseCost: 22, icon: '🔩', tier: 3 },
                 ]
                 return (
                   <div className="mt-3">
@@ -2730,27 +2754,34 @@ export default function CommandShipPanel({
                       Produce — <span className="font-mono" style={{ color: '#8b949e' }}>⚒{teamGold}</span>
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      {FACTORY_ITEMS.map(item => {
-                        const canAfford = teamGold >= item.cost
+                      {ALL_FACTORY_ITEMS.map(item => {
+                        const unlocked = factoryLevel >= item.tier
+                        const discount = 1 - 0.15 * factoryLevel
+                        const cost = Math.max(1, Math.round(item.baseCost * discount))
+                        const canAfford = teamGold >= cost
                         return (
                           <button
                             key={item.id}
-                            onClick={() => { if (canAfford) onProduceFactoryItem?.(unit.id, item.id) }}
-                            disabled={!canAfford}
+                            onClick={() => { if (unlocked && canAfford) onProduceFactoryItem?.(unit.id, item.id) }}
+                            disabled={!unlocked || !canAfford}
                             className="flex items-center justify-between p-1.5 rounded text-left transition-all cursor-pointer disabled:opacity-30"
                             style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}
                           >
                             <div className="flex items-center gap-1.5">
                               <span className="text-sm">{item.icon}</span>
-                              <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{item.name}</span>
+                              <span className="text-[10px] font-semibold" style={{ color: unlocked ? '#c9d1d9' : '#4a5568' }}>{item.name}</span>
                             </div>
-                            <span className="text-[9px] font-mono" style={{ color: canAfford ? '#cca43b' : '#e05050' }}>{item.cost}g</span>
+                            {unlocked ? (
+                              <span className="text-[9px] font-mono" style={{ color: canAfford ? '#cca43b' : '#e05050' }}>{cost}g</span>
+                            ) : (
+                              <span className="text-[9px] font-mono" style={{ color: '#4a5568' }}>T{item.tier}</span>
+                            )}
                           </button>
                         )
                       })}
                     </div>
                     <div className="text-[8px] mt-1" style={{ color: '#6e7681' }}>
-                      Produced items are stored in Inventory.
+                      Produced items are stored in Inventory. Cost reduced 15% per tier.
                     </div>
                   </div>
                 )

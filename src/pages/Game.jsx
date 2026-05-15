@@ -152,6 +152,7 @@ export default function Game() {
           produceUnitToBay={gameState.produceUnitToBay}
           loadCargoToConvoy={gameState.loadCargoToConvoy}
           unloadCargoFromConvoy={gameState.unloadCargoFromConvoy}
+          loadInventoryToConvoy={gameState.loadInventoryToConvoy}
           dockTransport={gameState.dockTransport}
           loadSoldierToTransport={gameState.loadSoldierToTransport}
           loadBaySoldierToTransport={gameState.loadBaySoldierToTransport}

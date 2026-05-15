@@ -1191,6 +1191,7 @@ export function useGameState(gameId) {
     const RESOURCE_VALUES = {
       coal: 3, iron: 5, uranium: 8, aluminum: 4, tritium: 10,
       ruby: 15, sapphire: 15, diamond: 20, amethyst: 12, quasicrystals: 25,
+      small_spaceship_parts: 12, medium_spaceship_parts: 20, large_spaceship_parts: 35,
     }
 
     let goldEarned = 0
@@ -1292,6 +1293,7 @@ export function useGameState(gameId) {
     const RESOURCE_VALUES = {
       coal: 3, iron: 5, uranium: 8, aluminum: 4, tritium: 10,
       ruby: 15, sapphire: 15, diamond: 20, amethyst: 12, quasicrystals: 25,
+      small_spaceship_parts: 12, medium_spaceship_parts: 20, large_spaceship_parts: 35,
     }
 
     if (sellResources) {
@@ -1952,7 +1954,9 @@ export function useGameState(gameId) {
   }
 
   const FACTORY_ITEMS = {
-    spaceship_parts: { id: 'spaceship_parts', name: 'Spaceship Parts', cost: 8 },
+    small_spaceship_parts: { id: 'small_spaceship_parts', name: 'Small Spaceship Parts', baseCost: 8, tier: 1 },
+    medium_spaceship_parts: { id: 'medium_spaceship_parts', name: 'Medium Spaceship Parts', baseCost: 14, tier: 2 },
+    large_spaceship_parts: { id: 'large_spaceship_parts', name: 'Large Spaceship Parts', baseCost: 22, tier: 3 },
   }
 
   async function produceFactoryItem(unitId, itemId) {
@@ -1964,9 +1968,12 @@ export function useGameState(gameId) {
     const factorySlots = upgrades.factory || []
     const factoryLevel = Math.max(0, ...factorySlots.filter(s => s > 0))
     if (factoryLevel === 0) throw new Error('Factory not built')
-    if (!isAdmin && teamGold < item.cost) throw new Error('Not enough gold')
+    if (factoryLevel < item.tier) throw new Error('Factory tier too low')
+    const discount = 1 - 0.15 * factoryLevel
+    const cost = Math.max(1, Math.round(item.baseCost * discount))
+    if (!isAdmin && teamGold < cost) throw new Error('Not enough gold')
     if (!isAdmin) {
-      const perPlayer = Math.ceil(item.cost / teamPlayers.length)
+      const perPlayer = Math.ceil(cost / teamPlayers.length)
       for (const tp of teamPlayers) {
         await supabase.from('wg_game_players').update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) }).eq('id', tp.id)
       }
@@ -1975,6 +1982,25 @@ export function useGameState(gameId) {
     inventory[itemId] = (inventory[itemId] || 0) + 1
     const newUpgrades = { ...upgrades, inventory }
     await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', unitId)
+    await fetchAll()
+  }
+
+  async function loadInventoryToConvoy(structId, convoyIndex, itemId, amount) {
+    const struct = units.find(u => u.id === structId)
+    if (!struct) throw new Error('Structure not found')
+    const upgrades = { ...(struct.upgrades || {}) }
+    const inventory = { ...(upgrades.inventory || {}) }
+    if ((inventory[itemId] || 0) < amount) throw new Error('Not enough items')
+    const convoys = [...(upgrades.convoys || [])]
+    const convoy = convoys[convoyIndex]
+    if (!convoy || convoy.inTransit) throw new Error('Cannot load cargo')
+    const cargo = { ...(convoy.cargo || {}), resources: { ...(convoy.cargo?.resources || {}) } }
+    cargo.resources[itemId] = (cargo.resources[itemId] || 0) + amount
+    inventory[itemId] = (inventory[itemId] || 0) - amount
+    if (inventory[itemId] <= 0) delete inventory[itemId]
+    convoy.cargo = cargo
+    convoys[convoyIndex] = convoy
+    await supabase.from('wg_units').update({ upgrades: { ...upgrades, inventory, convoys } }).eq('id', structId)
     await fetchAll()
   }
 
@@ -2931,7 +2957,7 @@ export function useGameState(gameId) {
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
     setAutoPath, clearAutoPath,
-    deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship, loadToBattleshipHangar, deployDockedBattleship, produceFactoryItem,
+    deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship, loadToBattleshipHangar, deployDockedBattleship, produceFactoryItem, loadInventoryToConvoy,
     persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
     missileFiredShips,
     refresh: fetchAll,
