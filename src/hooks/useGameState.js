@@ -1616,7 +1616,7 @@ export function useGameState(gameId) {
     const struct = units.find(u => u.id === structId)
     if (!struct) throw new Error('Structure not found')
 
-    const upgrades = struct.upgrades || {}
+    const upgrades = { ...(struct.upgrades || {}) }
     const convoys = [...(upgrades.convoys || [])]
     const convoy = convoys[convoyIndex]
     if (!convoy || convoy.inTransit) throw new Error('Cannot unload')
@@ -1631,11 +1631,11 @@ export function useGameState(gameId) {
     }
 
     if (cargo.resources && Object.keys(cargo.resources).length > 0) {
-      const playerRes = { ...(currentPlayer.resources || {}) }
+      const inventory = { ...(upgrades.inventory || {}) }
       for (const [key, amount] of Object.entries(cargo.resources)) {
-        playerRes[key] = (playerRes[key] || 0) + amount
+        if (amount > 0) inventory[key] = (inventory[key] || 0) + amount
       }
-      await supabase.from('wg_game_players').update({ resources: playerRes }).eq('id', currentPlayer.id)
+      upgrades.inventory = inventory
     }
 
     convoy.cargo = { gold: 0, resources: {} }

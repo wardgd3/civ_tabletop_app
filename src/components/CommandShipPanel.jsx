@@ -656,12 +656,35 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
                 <span className="text-[9px]" style={{ color: '#cca43b' }}>Gold: {cargo.gold}</span>
               </div>
             )}
-            {Object.entries(cargo.resources || {}).filter(([, v]) => v > 0).map(([key, amount]) => (
-              <div key={key} className="flex items-center justify-between p-1 rounded"
-                style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
-                <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{key}: {amount}</span>
-              </div>
-            ))}
+            {Object.entries(cargo.resources || {}).filter(([, v]) => v > 0).map(([key, amount]) => {
+              const RESOURCE_LABELS = {
+                small_spaceship_parts: 'Small Parts', medium_spaceship_parts: 'Medium Parts', large_spaceship_parts: 'Large Parts',
+                coal: 'Coal', iron: 'Iron', uranium: 'Uranium', aluminum: 'Aluminum', tritium: 'Tritium',
+                ruby: 'Ruby', sapphire: 'Sapphire', diamond: 'Diamond', amethyst: 'Amethyst', quasicrystals: 'Quasicrystals', oil: 'Oil',
+              }
+              const RESOURCE_COLORS = {
+                small_spaceship_parts: '#a0a0a0', medium_spaceship_parts: '#c0c0c0', large_spaceship_parts: '#e0d060',
+              }
+              const label = RESOURCE_LABELS[key] || key
+              const color = RESOURCE_COLORS[key] || '#c9d1d9'
+              return (
+                <div key={key} className="flex items-center justify-between p-1.5 rounded"
+                  style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
+                  <div className="flex items-center gap-1.5">
+                    {key.includes('spaceship_parts') ? (
+                      <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="#8b949e" strokeWidth="1.5" strokeLinecap="round">
+                        <circle cx="8" cy="6" r="3" />
+                        <path d="M5 9 L3 14 L8 12 L13 14 L11 9" />
+                      </svg>
+                    ) : (
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                    )}
+                    <span className="text-[10px] font-semibold" style={{ color }}>{label}</span>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold" style={{ color }}>{amount}</span>
+                </div>
+              )
+            })}
           </div>
           <button
             onClick={() => onUnloadCargo(unit.id, convoyIndex)}
@@ -721,15 +744,25 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
         const invItems = PRODUCED_ITEMS.filter(p => (inv[p.id] || 0) > 0)
         if (invItems.length === 0) return null
         return (
-          <div className="flex flex-wrap gap-0.5 mb-2">
+          <div className="flex flex-col gap-0.5 mb-2">
+            <div className="text-[9px] uppercase tracking-widest font-semibold mb-0.5" style={{ color: '#4a5568' }}>
+              Load from Inventory
+            </div>
             {invItems.map(item => (
               <button
                 key={item.id}
                 onClick={() => onLoadInventoryToConvoy?.(unit.id, convoyIndex, item.id, inv[item.id])}
-                className="px-1.5 py-0.5 text-[8px] rounded cursor-pointer"
-                style={{ backgroundColor: '#18191c', border: '1px solid #2a3140', color: item.color }}
+                className="flex items-center justify-between p-1.5 rounded cursor-pointer transition-all"
+                style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}
               >
-                {item.name} ({inv[item.id]})
+                <div className="flex items-center gap-1.5">
+                  <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="#8b949e" strokeWidth="1.5" strokeLinecap="round">
+                    <circle cx="8" cy="6" r="3" />
+                    <path d="M5 9 L3 14 L8 12 L13 14 L11 9" />
+                  </svg>
+                  <span className="text-[10px] font-semibold" style={{ color: item.color }}>{item.name}</span>
+                </div>
+                <span className="text-[10px] font-mono font-bold" style={{ color: item.color }}>{inv[item.id]}</span>
               </button>
             ))}
           </div>
