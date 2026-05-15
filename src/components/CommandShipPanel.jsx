@@ -2149,7 +2149,7 @@ function InventoryPanel({ unit, upgrades, isCommandShip }) {
   return (
     <div>
       <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
-        {isCommandShip ? 'Space Ores' : 'Ground Ores'}
+        Items
       </div>
       {hasAny ? (
         <div className="flex flex-col gap-1">
@@ -2195,7 +2195,7 @@ function InventoryPanel({ unit, upgrades, isCommandShip }) {
         </div>
       ) : (
         <div className="p-2 rounded text-center" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
-          <span className="text-[9px]" style={{ color: '#4a5568' }}>No ores collected</span>
+          <span className="text-[9px]" style={{ color: '#4a5568' }}>No items collected</span>
         </div>
       )}
     </div>
@@ -2448,7 +2448,7 @@ export default function CommandShipPanel({
           } else if (c.special === 'inventory') {
             const inv = upgrades.inventory || {}
             const totalItems = Object.values(inv).reduce((s, v) => s + v, 0)
-            statusText = `${totalItems} ores`
+            statusText = `${totalItems} items`
             statusSlots = [totalItems > 0 ? 1 : 0]
           } else {
             const cSlots = getSlots(upgrades, c.id, c.slots)
