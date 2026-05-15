@@ -25,7 +25,6 @@ export const SPACE_ORES = {
   cobalt:      { id: 'cobalt',      name: 'Cobalt',      chance: 0.25, minAmt: 1, maxAmt: 4, color: '#4070c0' },
   palladium:   { id: 'palladium',   name: 'Palladium',   chance: 0.10, minAmt: 1, maxAmt: 2, color: '#c0b090' },
   iridium:     { id: 'iridium',     name: 'Iridium',     chance: 0.04, minAmt: 1, maxAmt: 1, color: '#e0e8f0' },
-  oil:         { id: 'oil',         name: 'Oil',         chance: 0.15, minAmt: 1, maxAmt: 3, color: '#2a2a2a', icon: 'oil' },
   diamond:     { id: 'diamond',     name: 'Diamond',     chance: 0.01, minAmt: 1, maxAmt: 1, color: '#b9f2ff', deep: true },
   ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.01, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true },
   verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.01, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true },
