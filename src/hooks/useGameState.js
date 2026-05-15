@@ -12,12 +12,12 @@ export const GROUND_ORES = {
   titanium:    { id: 'titanium',    name: 'Titanium',    chance: 0.10, minAmt: 1, maxAmt: 1, color: '#a0b0c0' },
   oil:         { id: 'oil',         name: 'Oil',         chance: 0.15, minAmt: 1, maxAmt: 1, color: '#2a2a2a', icon: 'oil' },
   uranium:     { id: 'uranium',     name: 'Uranium',     chance: 0.04, minAmt: 1, maxAmt: 1, color: '#50c878' },
-  diamond:     { id: 'diamond',     name: 'Diamond',     chance: 0.15, minAmt: 1, maxAmt: 1, color: '#b9f2ff', deep: true },
-  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.10, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true },
-  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.10, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true },
-  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.07, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true },
-  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.05, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true },
-  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.03, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true },
+  diamond:     { id: 'diamond',     name: 'Diamond',     chance: 0.90, minAmt: 1, maxAmt: 1, color: '#b9f2ff', deep: true },
+  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.90, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true },
+  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.90, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true },
+  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.90, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true },
+  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.90, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true },
+  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.90, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true },
 }
 
 export const SPACE_ORES = {
@@ -25,12 +25,12 @@ export const SPACE_ORES = {
   cobalt:      { id: 'cobalt',      name: 'Cobalt',      chance: 0.25, minAmt: 1, maxAmt: 2, color: '#4070c0' },
   palladium:   { id: 'palladium',   name: 'Palladium',   chance: 0.10, minAmt: 1, maxAmt: 1, color: '#c0b090' },
   iridium:     { id: 'iridium',     name: 'Iridium',     chance: 0.04, minAmt: 1, maxAmt: 1, color: '#e0e8f0' },
-  diamond:     { id: 'diamond',     name: 'Diamond',     chance: 0.15, minAmt: 1, maxAmt: 1, color: '#b9f2ff', deep: true },
-  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.10, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true },
-  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.10, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true },
-  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.07, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true },
-  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.05, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true },
-  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.03, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true },
+  diamond:     { id: 'diamond',     name: 'Diamond',     chance: 0.90, minAmt: 1, maxAmt: 1, color: '#b9f2ff', deep: true },
+  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.90, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true },
+  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.90, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true },
+  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.90, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true },
+  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.90, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true },
+  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.90, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true },
 }
 
 const HANGAR_ELIGIBLE = new Set(['Bomber', 'Mining Station', 'Fighter', 'Repair Ship', 'Recon Drone'])
