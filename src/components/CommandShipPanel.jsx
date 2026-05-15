@@ -268,6 +268,19 @@ const COMMAND_CENTER_COMPARTMENTS = [
     ],
   },
   {
+    id: 'factory',
+    name: 'Factory',
+    description: 'Manufactures parts and components.',
+    icon: 'factory',
+    color: '#60b060',
+    slots: 3,
+    tiers: [
+      { name: 'Assembly Line', desc: 'Basic production' },
+      { name: 'Nano-Forge', desc: 'Faster production' },
+      { name: 'Quantum Replicator', desc: 'Instant production' },
+    ],
+  },
+  {
     id: 'iron_dome',
     name: 'Defense Systems',
     description: 'Anti-projectile defense system.',
@@ -2122,11 +2135,16 @@ function LoadingBayPanel({ unit, upgrades, onLoadSoldier, onLoadBaySoldier, onUn
   )
 }
 
+const PRODUCED_ITEMS = [
+  { id: 'spaceship_parts', name: 'Spaceship Parts', color: '#a0a0a0', icon: 'parts' },
+]
+
 function InventoryPanel({ unit, upgrades, isCommandShip }) {
   const inventory = upgrades.inventory || {}
   const oreTable = isCommandShip ? SPACE_ORES : GROUND_ORES
   const allOres = Object.values(oreTable)
-  const hasAny = allOres.some(o => (inventory[o.id] || 0) > 0)
+  const hasProduced = PRODUCED_ITEMS.some(p => (inventory[p.id] || 0) > 0)
+  const hasAny = allOres.some(o => (inventory[o.id] || 0) > 0) || hasProduced
 
   return (
     <div>
@@ -2157,6 +2175,23 @@ function InventoryPanel({ unit, upgrades, isCommandShip }) {
               </div>
             )
           })}
+          {PRODUCED_ITEMS.map(item => {
+            const amount = inventory[item.id] || 0
+            if (amount === 0) return null
+            return (
+              <div key={item.id} className="flex items-center justify-between p-1.5 rounded"
+                style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
+                <div className="flex items-center gap-1.5">
+                  <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="#8b949e" strokeWidth="1.5" strokeLinecap="round">
+                    <circle cx="8" cy="6" r="3" />
+                    <path d="M5 9 L3 14 L8 12 L13 14 L11 9" />
+                  </svg>
+                  <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{item.name}</span>
+                </div>
+                <span className="text-[10px] font-mono font-bold" style={{ color: item.color }}>{amount}</span>
+              </div>
+            )
+          })}
         </div>
       ) : (
         <div className="p-2 rounded text-center" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
@@ -2174,7 +2209,7 @@ export default function CommandShipPanel({
   onLoadSoldier, onLoadBaySoldier, onUnloadSoldier, onUndock, onBuyAndLoadSoldier,
   onBuyMissile, onFireMissile, onProduceWarhead, missileFiredShips,
   onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar,
-  onRenameUnit, onProduceBattleshipToBay, onBuyMissileForDockedBs, onRenameDockedBs, onLoadToBsHangar, onDeployDockedBs,
+  onRenameUnit, onProduceBattleshipToBay, onBuyMissileForDockedBs, onRenameDockedBs, onLoadToBsHangar, onDeployDockedBs, onProduceFactoryItem,
   groundUnits, unitTypes, teamGold, playerResources, allUnits, nearbyUnits,
   onSetNumberedOverlays,
   onLevelUp, onExcavate, onClearAutoPath, onBoardTransport, onDockTransport, onDeployFromTransportUnit, economy,
@@ -2682,6 +2717,44 @@ export default function CommandShipPanel({
                   </div>
                 </div>
               )}
+
+              {comp.id === 'factory' && (() => {
+                const factoryLevel = Math.max(0, ...slots.filter(s => s > 0))
+                if (factoryLevel === 0) return null
+                const FACTORY_ITEMS = [
+                  { id: 'spaceship_parts', name: 'Spaceship Parts', cost: 8, icon: '🔩' },
+                ]
+                return (
+                  <div className="mt-3">
+                    <div className="text-[9px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5568' }}>
+                      Produce — <span className="font-mono" style={{ color: '#8b949e' }}>⚒{teamGold}</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      {FACTORY_ITEMS.map(item => {
+                        const canAfford = teamGold >= item.cost
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => { if (canAfford) onProduceFactoryItem?.(unit.id, item.id) }}
+                            disabled={!canAfford}
+                            className="flex items-center justify-between p-1.5 rounded text-left transition-all cursor-pointer disabled:opacity-30"
+                            style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm">{item.icon}</span>
+                              <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{item.name}</span>
+                            </div>
+                            <span className="text-[9px] font-mono" style={{ color: canAfford ? '#cca43b' : '#e05050' }}>{item.cost}g</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <div className="text-[8px] mt-1" style={{ color: '#6e7681' }}>
+                      Produced items are stored in Inventory.
+                    </div>
+                  </div>
+                )
+              })()}
 
               {comp.id === 'missiles' && (() => {
                 const munitions = upgrades.munitions || { tactical: 0, cruise: 0, ipbm: 0 }

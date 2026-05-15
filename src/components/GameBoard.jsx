@@ -117,7 +117,7 @@ export default function GameBoard({
   buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
   dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
   setAutoPath, clearAutoPath,
-  deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship, loadToBattleshipHangar, deployDockedBattleship,
+  deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship, loadToBattleshipHangar, deployDockedBattleship, produceFactoryItem,
   battleLog,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
@@ -251,7 +251,7 @@ export default function GameBoard({
   const myBuildings = units.filter(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Base' || u.wg_unit_types?.name === 'Factory'))
   const myStructures = myCommandCenter ? [myCommandCenter, ...myBuildings] : []
 
-  const DEPLOY_HIDDEN = new Set(['Convoy Ship', 'Mother Ship'])
+  const DEPLOY_HIDDEN = new Set(['Convoy Ship', 'Mother Ship', 'Factory'])
   const sortedUnitTypes = [...unitTypes].filter(ut => !DEPLOY_HIDDEN.has(ut.name)).sort((a, b) => {
     if (a.name === 'Command Center' || a.name === 'Command Ship') return -1
     if (b.name === 'Command Center' || b.name === 'Command Ship') return 1
@@ -1922,6 +1922,9 @@ export default function GameBoard({
               setBsDeployInfo({ shipId, bsSlotIndex })
               setCommandShipUnitId(null)
               setPanelOpen(false)
+            }}
+            onProduceFactoryItem={async (unitId, itemId) => {
+              try { await produceFactoryItem(unitId, itemId) } catch (err) { setError(err.message) }
             }}
             onProduceUnit={async (shipId, unitTypeId, unitTypeName) => {
               try { await produceUnitToBay(shipId, unitTypeId, unitTypeName) } catch (err) { setError(err.message) }

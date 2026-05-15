@@ -1951,6 +1951,33 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
+  const FACTORY_ITEMS = {
+    spaceship_parts: { id: 'spaceship_parts', name: 'Spaceship Parts', cost: 8 },
+  }
+
+  async function produceFactoryItem(unitId, itemId) {
+    const unit = units.find(u => u.id === unitId)
+    if (!unit) throw new Error('Unit not found')
+    const item = FACTORY_ITEMS[itemId]
+    if (!item) throw new Error('Invalid item')
+    const upgrades = unit.upgrades || {}
+    const factorySlots = upgrades.factory || []
+    const factoryLevel = Math.max(0, ...factorySlots.filter(s => s > 0))
+    if (factoryLevel === 0) throw new Error('Factory not built')
+    if (!isAdmin && teamGold < item.cost) throw new Error('Not enough gold')
+    if (!isAdmin) {
+      const perPlayer = Math.ceil(item.cost / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase.from('wg_game_players').update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) }).eq('id', tp.id)
+      }
+    }
+    const inventory = { ...(upgrades.inventory || {}) }
+    inventory[itemId] = (inventory[itemId] || 0) + 1
+    const newUpgrades = { ...upgrades, inventory }
+    await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', unitId)
+    await fetchAll()
+  }
+
   async function loadToBattleshipHangar(shipId, hangarIndex, bsSlotIndex) {
     const ship = units.find(u => u.id === shipId)
     if (!ship) throw new Error('Ship not found')
@@ -2904,7 +2931,7 @@ export function useGameState(gameId) {
     buildConvoy, loadUnitToConvoy, loadFromBayToConvoy, unloadToHoldingBay, sendConvoy, deployFromBay, produceUnitToBay, loadCargoToConvoy, unloadCargoFromConvoy,
     dockTransport, loadSoldierToTransport, loadBaySoldierToTransport, unloadSoldierFromTransport, undockTransport, deployFromTransport, buyAndLoadToTransport, boardSoldierToTransport,
     setAutoPath, clearAutoPath,
-    deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship, loadToBattleshipHangar, deployDockedBattleship,
+    deployFromHangar, produceUnitToHangar, transferHangarUnit, transferAllHangar, addToHangar, renameUnit, produceBattleshipToBay, buyMissileForDockedBs, renameDockedBattleship, loadToBattleshipHangar, deployDockedBattleship, produceFactoryItem,
     persistDiscoveredTiles, productionPerTurn, economy, spawnNPCs,
     missileFiredShips,
     refresh: fetchAll,
