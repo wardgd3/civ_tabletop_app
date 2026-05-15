@@ -1520,6 +1520,10 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                 <span className="text-[10px]" style={{ color: '#30363d' }}>&ndash;</span>
               ) : (
                 <>
+                  {(() => {
+                    const ut = (unitTypes || []).find(t => t.name === stored.typeName)
+                    return ut?.icon ? <img src={`/assets/${ut.icon}`} alt={stored.typeName} className="w-5 h-5 object-contain mb-0.5" /> : null
+                  })()}
                   <div className="text-[7px] font-semibold leading-tight" style={{ color: stored.transferredThisTurn ? '#6e7681' : '#c9d1d9' }}>
                     {stored.typeName}
                   </div>
@@ -1667,7 +1671,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
                 >
                   {bs ? (
                     <>
-                      <img src="/assets/hostilebattleship.png" alt="Battleship" className="w-8 h-8 object-contain mb-0.5" />
+                      <img src="/assets/battleship.png" alt="Battleship" className="object-contain mb-0.5" style={{ width: 45, height: 45 }} />
                       <div className="text-[8px] font-semibold" style={{ color: '#c9d1d9' }}>{bs.upgrades?.customName || bs.typeName}</div>
                       <div className="text-[7px] font-mono" style={{ color: '#6e7681' }}>HP {bs.hp}</div>
                     </>
@@ -2576,6 +2580,8 @@ export default function CommandShipPanel({
                       const tierLevel = tierIdx + 1
                       const currentTier = slots[selectedSlot]
                       const isCurrentTier = currentTier === tierLevel
+                      const isNextTier = tierLevel === currentTier + 1
+                      const isLocked = tierLevel > currentTier + 1
                       const tierInfo = TIERS[tierIdx]
                       const isFree = tierLevel === 1 && currentTier === 0
 
@@ -2583,17 +2589,17 @@ export default function CommandShipPanel({
                         <button
                           key={tierIdx}
                           onClick={() => {
-                            if (!isCurrentTier && tierLevel > currentTier) {
+                            if (!isCurrentTier && isNextTier) {
                               onUpgrade(unit.id, comp.id, selectedSlot, tierLevel)
                             }
                           }}
-                          disabled={isCurrentTier}
+                          disabled={isCurrentTier || isLocked}
                           className="flex items-center gap-2 p-1.5 rounded text-left transition-all"
                           style={{
                             backgroundColor: isCurrentTier ? tierInfo.color + '20' : '#18191c',
                             border: `1px solid ${isCurrentTier ? tierInfo.color + '60' : '#2a3140'}`,
-                            opacity: isCurrentTier ? 0.6 : 1,
-                            cursor: isCurrentTier ? 'default' : 'pointer',
+                            opacity: isCurrentTier ? 0.6 : isLocked ? 0.3 : 1,
+                            cursor: isCurrentTier || isLocked ? 'default' : 'pointer',
                           }}
                         >
                           <div className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
@@ -2607,6 +2613,8 @@ export default function CommandShipPanel({
                           <div className="flex items-center gap-1 flex-shrink-0">
                             {isCurrentTier ? (
                               <span className="text-[9px] font-mono" style={{ color: tierInfo.color }}>ACTIVE</span>
+                            ) : isLocked ? (
+                              <span className="text-[9px] font-mono" style={{ color: '#4a5568' }}>LOCKED</span>
                             ) : isFree ? (
                               <span className="text-[9px] font-mono" style={{ color: '#3fb950' }}>FREE</span>
                             ) : (
