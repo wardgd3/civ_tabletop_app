@@ -1608,6 +1608,7 @@ export default function GameBoard({
         setCommandShipUnitId(toggling ? null : unit.id)
         setSelectedUnitId(toggling ? null : unit.id)
         setMode('select')
+        setSelectedUnitType(null)
         setSpaceGuildOpen(false)
         setInspectedUnitId(null)
         setPanelOpen(!toggling)
@@ -1621,8 +1622,10 @@ export default function GameBoard({
     if (spaceGuildTile && row === spaceGuildTile.grid_row && col === spaceGuildTile.grid_col) {
       setSpaceGuildOpen(prev => !prev)
       setSelectedUnitId(null)
+      setSelectedUnitType(null)
       setCommandShipUnitId(null)
       setInspectedUnitId(null)
+      setMode('select')
       setPanelOpen(true)
       return
     }
@@ -1863,7 +1866,7 @@ export default function GameBoard({
 
           <div className="flex gap-2 lg:flex-col">
             <button
-              onClick={() => { setMode('deploy'); setSelectedUnitId(null) }}
+              onClick={() => { setMode('deploy'); setSelectedUnitId(null); setCommandShipUnitId(null); setSpaceGuildOpen(false); setNumberedOverlays([]) }}
               className="flex-1 lg:w-full px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors cursor-pointer"
               style={mode === 'deploy'
                 ? { backgroundColor: '#1a3a2a', color: '#7ee787', border: '1px solid #2a5a3a' }
