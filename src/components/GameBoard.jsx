@@ -329,9 +329,13 @@ export default function GameBoard({
     return { mountainShadowTiles: shadow, mountainInterior: interior }
   }, [tiles, tileMap, rows, cols])
 
-  const unitPosMap = useMemo(() => {
+  const actualUnitPosMap = useMemo(() => {
     const map = new Map()
     for (const u of units) map.set(`${u.grid_row}-${u.grid_col}`, u)
+    return map
+  }, [units])
+  const unitPosMap = useMemo(() => {
+    const map = new Map(actualUnitPosMap)
     for (const u of units) {
       if (u.wg_unit_types?.name === 'Command Ship' || u.wg_unit_types?.name === 'Command Center') {
         for (const [nr, nc] of hexNeighborsBoard(u.grid_row, u.grid_col, rows, cols)) {
@@ -341,7 +345,7 @@ export default function GameBoard({
       }
     }
     return map
-  }, [units, rows, cols])
+  }, [actualUnitPosMap, units, rows, cols])
 
   const visibleTiles = useMemo(() => {
     const set = new Set()
@@ -1542,7 +1546,7 @@ export default function GameBoard({
       return
     }
 
-    const unit = getUnitAt(row, col)
+    const unit = actualUnitPosMap.get(cellKey) || null
     const isVisible = visibleTiles.has(cellKey)
     const showUnit = unit && (unit.owner_id === currentPlayer?.player_id || isVisible)
 
