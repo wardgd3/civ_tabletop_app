@@ -1775,16 +1775,15 @@ export default function GameBoard({
             <div className="font-semibold text-sm mt-0.5" style={{ color: '#c9d1d9' }}>
               {isMyTurn ? 'YOUR TURN' : 'Waiting...'}
             </div>
-            <div className="text-[10px] font-mono mt-0.5" style={{ color: '#cca43b' }}>
-              ⚒ {economy?.teamGold ?? (currentPlayer?.gold || 0)}
-              {economy && (
-                <span style={{ color: economy.netGold >= 0 ? '#6a9a72' : '#e05050' }}>
-                  {' '}({economy.netGold >= 0 ? '+' : ''}{economy.netGold}/turn)
-                </span>
-              )}
+            <div className="text-[10px] font-mono mt-0.5 flex items-center gap-1" style={{ color: '#8b949e' }}>
+              <span style={{ fontSize: 11 }}>⚒</span>
+              <span>{economy?.net ?? 0}</span>
+              <span style={{ color: economy?.production > 0 ? '#6a9a72' : '#4a5568' }}>+{economy?.production ?? 0}/turn</span>
             </div>
-            <div className="text-[10px] font-mono mt-0.5" style={{ color: '#8b949e' }}>
-              +{economy?.net ?? 0} prod/turn
+            <div className="text-[10px] font-mono mt-0.5 flex items-center gap-1" style={{ color: '#cca43b' }}>
+              <span style={{ fontSize: 11 }}>★</span>
+              <span>{economy?.teamGold ?? (currentPlayer?.gold || 0)}</span>
+              <span style={{ color: (economy?.netGold ?? 0) >= 0 ? '#6a9a72' : '#e05050' }}>{(economy?.netGold ?? 0) >= 0 ? '+' : ''}{economy?.netGold ?? 0}/turn</span>
             </div>
             {turnExpanded && economy && (
               <div className="text-[9px] font-mono mt-1" style={{ color: '#6e7681' }}>
