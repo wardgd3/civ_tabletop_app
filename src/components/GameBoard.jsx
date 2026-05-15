@@ -2930,7 +2930,11 @@ export default function GameBoard({
       {shipModelPicker && (() => {
         const isCC = shipModelPicker.type === 'cc'
         const models = isCC
-          ? [{ file: 'command center', label: 'Mk.1' }, ...Array.from({ length: 5 }, (_, i) => ({ file: `commandcenter${i + 1}`, label: `Mk.${i + 2}` }))]
+          ? [
+              { file: 'command center', label: 'Mk.1' }, { file: 'commandcenter1', label: 'Mk.2' },
+              { file: 'commandcenter2', label: 'Mk.3' }, { file: 'commandcenter3', label: 'Mk.4' },
+              { file: 'commandcenter4', label: 'Mk.5' }, { file: 'commandcenter5', label: 'Mk.6' },
+            ]
           : [2, 3, 4, 5, 6, 7].map(n => ({ file: `commandship${n}`, label: `Mk.${n - 1}` }))
         const accentColor = isCC ? '#6cb4e6' : '#c060e0'
         const hoverBg = isCC ? '#1a2a3e' : '#1a1a2e'
@@ -2938,7 +2942,7 @@ export default function GameBoard({
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
           <div className="rounded-lg p-6 sm:p-10 w-full mx-4" style={{ maxWidth: 1036, backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
             <div className="text-base sm:text-xl font-semibold mb-4 sm:mb-6 text-center" style={{ color: '#c9d1d9' }}>{isCC ? 'Select Your Command Center' : 'Select Your Command Ship'}</div>
-            <div className="grid grid-cols-6 gap-3 sm:gap-5 mb-4 sm:mb-6">
+            <div className={`grid gap-3 sm:gap-5 mb-4 sm:mb-6 ${isCC ? 'grid-cols-3' : 'grid-cols-6'}`}>
               {models.map((m, i) => (
                   <button
                     key={i}
