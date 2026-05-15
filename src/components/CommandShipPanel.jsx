@@ -1247,7 +1247,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
 
   const producibleTypes = (unitTypes || []).filter(ut =>
     (ut.board || 'ground') === 'ground' && !STRUCTURE_NAMES.has(ut.name)
-  )
+  ).sort((a, b) => a.cost - b.cost)
 
   const allSlots = Array.from({ length: HOLDING_BAY_CAPACITY }, (_, i) => holdingBay[i] || null)
   const row1 = allSlots.slice(0, 6)
@@ -1385,7 +1385,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
   )
 }
 
-const HANGAR_UNIT_NAMES = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter', 'Repair Ship', 'Recon Drone'])
+const HANGAR_UNIT_NAMES = new Set(['Bomber', 'Mining Station', 'Fighter', 'Repair Ship', 'Recon Drone'])
 
 function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, onTransferHangar, onTransferAllHangar, onDeployAllFromHangar, isDeployAllActive, onCancelDeployAll, onAddToHangar, onProduceBattleshipToBay, onBuyMissileForDockedBs, onRenameDockedBs, onLoadToBsHangar, onDeployDockedBs, nearbyUnits, comp, unitTypes, teamGold, allUnits, onSetNumberedOverlays, isAdmin, availableProduction }) {
   const [selectedSlot, setSelectedSlot] = useState(null)
@@ -1403,7 +1403,7 @@ function HangarPanel({ unit, upgrades, onDeployFromHangar, onProduceToHangar, on
   const battleshipBay = upgrades.battleshipBay || [null, null]
   const isCommandShip = unit.wg_unit_types?.name === 'Command Ship'
 
-  const producibleTypes = (unitTypes || []).filter(ut => HANGAR_UNIT_NAMES.has(ut.name))
+  const producibleTypes = (unitTypes || []).filter(ut => HANGAR_UNIT_NAMES.has(ut.name)).sort((a, b) => a.cost - b.cost)
   const allSlots = Array.from({ length: capacity }, (_, i) => hangar[i] || null)
   const cols = Math.min(capacity, 4)
 

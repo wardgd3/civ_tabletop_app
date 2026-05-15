@@ -33,7 +33,7 @@ export const SPACE_ORES = {
   umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.004, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true },
 }
 
-const HANGAR_ELIGIBLE = new Set(['Bomber', 'Mother Ship', 'Orbital Strike', 'Mining Station', 'Fighter', 'Repair Ship', 'Recon Drone'])
+const HANGAR_ELIGIBLE = new Set(['Bomber', 'Mining Station', 'Fighter', 'Repair Ship', 'Recon Drone'])
 
 function hexNeighborsOf(r, c) {
   const isOdd = r & 1

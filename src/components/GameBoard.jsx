@@ -262,11 +262,14 @@ export default function GameBoard({
 
   const DEPLOY_HIDDEN = new Set(['Convoy Ship', 'Mother Ship', 'Factory'])
   const sortedUnitTypes = [...unitTypes].filter(ut => !DEPLOY_HIDDEN.has(ut.name)).sort((a, b) => {
-    if (a.name === 'Command Center' || a.name === 'Command Ship') return -1
-    if (b.name === 'Command Center' || b.name === 'Command Ship') return 1
-    if (a.name === 'Base') return -1
-    if (b.name === 'Base') return 1
-    return 0
+    const priority = name => {
+      if (name === 'Command Center' || name === 'Command Ship') return 0
+      if (name === 'Base') return 1
+      return 2
+    }
+    const pa = priority(a.name), pb = priority(b.name)
+    if (pa !== pb) return pa - pb
+    return a.cost - b.cost
   })
 
   const selectedUnitTypeData = selectedUnitType ? unitTypes.find(t => t.id === selectedUnitType) : null
