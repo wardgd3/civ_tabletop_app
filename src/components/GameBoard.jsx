@@ -1835,7 +1835,7 @@ export default function GameBoard({
                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color, border: '1px solid #2a3140' }} />
                     <span className="text-sm font-medium">{teamMembers.map(p => p.wg_profiles?.display_name).join(', ')}</span>
                   </div>
-                  <span className="text-sm font-mono" style={{ color: '#8b949e' }}>⚒{tGold}</span>
+                  <span className="text-sm font-mono flex items-center gap-1" style={{ color: '#cca43b' }}><span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: '#cca43b' }} />{tGold}</span>
                 </div>
               </div>
             )
