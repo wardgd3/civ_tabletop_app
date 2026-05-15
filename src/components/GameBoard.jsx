@@ -841,7 +841,7 @@ export default function GameBoard({
     return cells
   }
 
-  const hasRemainingMoves = selectedUnit && !selectedUnit.has_moved && (selectedUnit.moves_used || 0) < (selectedUnit.wg_unit_types?.movement || 0)
+  const hasRemainingMoves = selectedUnit && !selectedUnit.has_moved && (selectedUnit.moves_used || 0) < ((selectedUnit.wg_unit_types?.movement || 0) + ((selectedUnit.board || 'ground') === 'space' ? 3 : 0))
   const moveRange = selectedUnit && (isAdmin || hasRemainingMoves) ? getMoveRange(selectedUnit) : new Set()
   const attackRange = mode === 'attack' && selectedUnit ? getAttackRange(selectedUnit) : new Set()
   const buildRange = mode === 'build' && selectedUnit ? getBuildRange(selectedUnit) : new Set()
