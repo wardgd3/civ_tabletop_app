@@ -2296,7 +2296,8 @@ export default function GameBoard({
                   {showUnit && unit.wg_unit_types?.name !== 'Command Center' && unit.wg_unit_types?.name !== 'Command Ship' && unit.wg_unit_types?.name !== 'Battleship' && unit.wg_unit_types?.icon !== 'hostilebattleship.png' && !slidingUnits.has(unit.id) && (() => {
                     const pColor = getPlayerColor(unit.owner_id, unit)
                     const hpRatio = unit.current_hp / getMaxHp(unit)
-                    const sizeMultiplier = 1.032
+                    const isReconDrone = unit.wg_unit_types?.name === 'Recon Drone'
+                    const sizeMultiplier = isReconDrone ? 0.877 : 1.032
                     const tokenSize = (Math.min(RENDER_W, RENDER_H) - 4) * sizeMultiplier
                     const fadeIn = unitAnimations.get(unit.id)?.type === 'fadeIn'
                     return (
