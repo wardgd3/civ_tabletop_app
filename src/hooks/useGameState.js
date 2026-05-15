@@ -442,7 +442,6 @@ export function useGameState(gameId) {
     const { error: unitError } = await supabase.from('wg_units').insert(insertData)
     if (unitError) throw unitError
 
-    const isFreeCC = unitType.name === 'Command Center' || unitType.name === 'Command Ship'
     if (!isAdmin && !isFreeCC) {
       let remaining = unitType.cost
       for (const tp of teamPlayers) {
