@@ -2175,11 +2175,11 @@ export default function CommandShipPanel({
             ×
           </button>
         </div>
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-0.5">
           <img
             src={isCommandShip ? `/assets/${unit.upgrades?.shipModel || 'commandship2'}.png` : unit.wg_unit_types?.icon ? `/assets/${unit.wg_unit_types.icon}` : '/assets/infantry.png'}
             alt={unitName}
-            className="object-contain" style={{ width: 163, height: 163 }}
+            className="object-contain" style={{ width: 293, height: 293, margin: '-16px 0' }}
           />
           <div className="text-center">
             {isRenaming ? (
