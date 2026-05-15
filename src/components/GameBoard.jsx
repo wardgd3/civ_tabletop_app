@@ -2118,7 +2118,10 @@ export default function GameBoard({
               <div className="grid grid-cols-2 lg:grid-cols-1 gap-1.5">
                 {sortedUnitTypes.filter(ut => ut.name !== 'Command Center' && ut.name !== 'Command Ship').map(ut => {
                   const isBuilding = ut.name === 'Base' || ut.name === 'Factory'
-                  const cantAfford = !isAdmin && (economy?.teamGold ?? currentPlayer?.gold ?? 0) < ut.cost
+                  const availProd = (productionPerTurn || 0) - (getUsedProduction ? getUsedProduction() : 0)
+                  const cantAfford = !isAdmin && (isBuilding
+                    ? (economy?.teamGold ?? currentPlayer?.gold ?? 0) < ut.cost
+                    : availProd < ut.cost)
                   const isBattleship = ut.name === 'Battleship'
                   let missingMats = false
                   if (isBattleship && !isAdmin) {
@@ -2143,7 +2146,10 @@ export default function GameBoard({
                         <span className="text-[8px] lg:text-[10px] font-mono" style={{ color: '#6e7681' }}>1 uranium · 50 iron · 30 aluminum</span>
                       )}
                     </div>
-                    <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>⚒{ut.cost}</span>
+                    {isBuilding
+                      ? <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#cca43b' }}>{ut.cost}g</span>
+                      : <span className="shrink-0 text-xs lg:text-lg font-mono font-semibold" style={{ color: '#8b949e' }}>⚒{ut.cost}</span>
+                    }
                   </button>
                   )
                 })}

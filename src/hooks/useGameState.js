@@ -347,7 +347,15 @@ export function useGameState(gameId) {
     const unitType = unitTypes.find(t => t.id === unitTypeId)
     if (!unitType || !currentPlayer) throw new Error('Invalid deployment')
     const isFreeCC = unitType.name === 'Command Center' || unitType.name === 'Command Ship'
-    if (!isAdmin && !isFreeCC && teamGold < unitType.cost) throw new Error('Not enough production')
+    const isBuilding = unitType.name === 'Base' || unitType.name === 'Factory'
+    if (!isAdmin && !isFreeCC) {
+      if (isBuilding) {
+        if (teamGold < unitType.cost) throw new Error('Not enough gold')
+      } else {
+        const availableProduction = productionPerTurn - getUsedProduction()
+        if (availableProduction < unitType.cost) throw new Error('Not enough production')
+      }
+    }
 
     const unitBoard = unitType.board || 'ground'
 
@@ -452,13 +460,23 @@ export function useGameState(gameId) {
     if (unitError) throw unitError
 
     if (!isAdmin && !isFreeCC) {
-      let remaining = unitType.cost
-      for (const tp of teamPlayers) {
-        if (remaining <= 0) break
-        const deduct = Math.min(tp.gold || 0, remaining)
-        if (deduct > 0) {
-          await supabase.from('wg_game_players').update({ gold: tp.gold - deduct }).eq('id', tp.id)
-          remaining -= deduct
+      if (isBuilding) {
+        let remaining = unitType.cost
+        for (const tp of teamPlayers) {
+          if (remaining <= 0) break
+          const deduct = Math.min(tp.gold || 0, remaining)
+          if (deduct > 0) {
+            await supabase.from('wg_game_players').update({ gold: tp.gold - deduct }).eq('id', tp.id)
+            remaining -= deduct
+          }
+        }
+      } else {
+        const myCC = units.find(u => u.owner_id === userId && (u.board || 'ground') === unitBoard &&
+          (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
+        if (myCC) {
+          const ccUpg = myCC.upgrades || {}
+          const newProdUsed = (ccUpg.productionUsed || 0) + unitType.cost
+          await supabase.from('wg_units').update({ upgrades: { ...ccUpg, productionUsed: newProdUsed } }).eq('id', myCC.id)
         }
       }
     }
@@ -1739,17 +1757,8 @@ export function useGameState(gameId) {
       const holdingBay = [...(upgrades.holdingBay || [])]
       if (holdingBay.length >= getBarracksCapacity(ship)) throw new Error('Barracks full')
 
-      if (!isAdmin && teamGold < ut.cost) throw new Error('Not enough gold')
-
-      if (!isAdmin) {
-        const perPlayer = Math.ceil(ut.cost / teamPlayers.length)
-        for (const tp of teamPlayers) {
-          await supabase
-            .from('wg_game_players')
-            .update({ gold: Math.max(0, (tp.gold || 0) - perPlayer) })
-            .eq('id', tp.id)
-        }
-      }
+      const availableProduction = productionPerTurn - getUsedProduction()
+      if (!isAdmin && availableProduction < ut.cost) throw new Error('Not enough production')
 
       holdingBay.push({
         typeId: unitTypeId,
@@ -1757,7 +1766,8 @@ export function useGameState(gameId) {
         hp: ut.hp,
       })
 
-      const newUpgrades = { ...upgrades, holdingBay }
+      const productionUsed = (upgrades.productionUsed || 0) + (isAdmin ? 0 : ut.cost)
+      const newUpgrades = { ...upgrades, holdingBay, productionUsed }
       await supabase.from('wg_units').update({ upgrades: newUpgrades }).eq('id', shipId)
     }
 
