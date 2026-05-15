@@ -1763,7 +1763,7 @@ export default function GameBoard({
             <img
               src={`/assets/${currentPlayer.commander}.png`}
               alt=""
-              className="w-11 h-11 rounded-full object-cover shrink-0"
+              className="w-[88px] h-[88px] rounded-full object-cover shrink-0"
               style={{ border: '2px solid #2a3140' }}
             />
           )}
