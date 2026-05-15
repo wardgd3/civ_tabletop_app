@@ -22,7 +22,7 @@ export const TERRAIN = {
   NEBULA_HOTSPOT:  { id: 'nebula_hotspot',  name: 'Nebula Hotspot',  color: '#8a3858', darkColor: '#5a2034' },
   ASTEROID:        { id: 'asteroid',        name: 'Asteroid',        color: '#3a3228', darkColor: '#252018' },
   LARGE_ASTEROID:  { id: 'large_asteroid',  name: 'Large Asteroid',  color: '#4a4238', darkColor: '#302a20' },
-  BG_ASTEROID:     { id: 'bg_asteroid',     name: 'Background Asteroid', color: '#1a1610', darkColor: '#12100a' },
+  BG_ASTEROID:     { id: 'bg_asteroid',     name: 'Asteroid', color: '#1a1610', darkColor: '#12100a' },
   STAR:            { id: 'star',            name: 'Star',            color: '#e8e0c8', darkColor: '#a09880' },
   DUST:            { id: 'dust',            name: 'Dust Cloud',      color: '#0e121a', darkColor: '#0a0e12' },
   SPACE:           { id: 'space',           name: 'Space',           color: '#0a0e12', darkColor: '#0a0e12' },
