@@ -12,12 +12,11 @@ export const GROUND_ORES = {
   titanium:    { id: 'titanium',    name: 'Titanium',    chance: 0.10, minAmt: 1, maxAmt: 1, color: '#a0b0c0' },
   oil:         { id: 'oil',         name: 'Oil',         chance: 0.15, minAmt: 1, maxAmt: 1, color: '#2a2a2a', icon: 'oil' },
   uranium:     { id: 'uranium',     name: 'Uranium',     chance: 0.04, minAmt: 1, maxAmt: 1, color: '#50c878' },
-  diamond:     { id: 'diamond',     name: 'Diamond',     chance: 0.90, minAmt: 1, maxAmt: 1, color: '#b9f2ff', deep: true },
-  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.90, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true },
-  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.90, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true },
-  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.90, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true },
-  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.90, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true },
-  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.90, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true },
+  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.01, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true, goldPerTurn: 8, tradeDuration: 30 },
+  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.01, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true, goldPerTurn: 9, tradeDuration: 35 },
+  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.008, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true, goldPerTurn: 10, tradeDuration: 40 },
+  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.006, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true, goldPerTurn: 11, tradeDuration: 45 },
+  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.004, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true, goldPerTurn: 12, tradeDuration: 50 },
 }
 
 export const SPACE_ORES = {
@@ -25,12 +24,11 @@ export const SPACE_ORES = {
   cobalt:      { id: 'cobalt',      name: 'Cobalt',      chance: 0.25, minAmt: 1, maxAmt: 2, color: '#4070c0' },
   palladium:   { id: 'palladium',   name: 'Palladium',   chance: 0.10, minAmt: 1, maxAmt: 1, color: '#c0b090' },
   iridium:     { id: 'iridium',     name: 'Iridium',     chance: 0.04, minAmt: 1, maxAmt: 1, color: '#e0e8f0' },
-  diamond:     { id: 'diamond',     name: 'Diamond',     chance: 0.90, minAmt: 1, maxAmt: 1, color: '#b9f2ff', deep: true },
-  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.90, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true },
-  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.90, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true },
-  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.90, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true },
-  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.90, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true },
-  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.90, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true },
+  ionivite:    { id: 'ionivite',    name: 'Ionivite',    chance: 0.01, minAmt: 1, maxAmt: 1, color: '#7b68ee', deep: true, goldPerTurn: 8, tradeDuration: 30 },
+  verdite:     { id: 'verdite',     name: 'Verdite',     chance: 0.01, minAmt: 1, maxAmt: 1, color: '#3cb371', deep: true, goldPerTurn: 9, tradeDuration: 35 },
+  sulpharnite: { id: 'sulpharnite', name: 'Sulpharnite', chance: 0.008, minAmt: 1, maxAmt: 1, color: '#e8c840', deep: true, goldPerTurn: 10, tradeDuration: 40 },
+  titanite:    { id: 'titanite',    name: 'Titanite',    chance: 0.006, minAmt: 1, maxAmt: 1, color: '#c8a080', deep: true, goldPerTurn: 11, tradeDuration: 45 },
+  umbrite:     { id: 'umbrite',     name: 'Umbrite',     chance: 0.004, minAmt: 1, maxAmt: 1, color: '#4a3060', deep: true, goldPerTurn: 12, tradeDuration: 50 },
 }
 
 const HANGAR_ELIGIBLE = new Set(['Bomber', 'Mining Station', 'Fighter', 'Repair Ship', 'Recon Drone'])
@@ -2422,7 +2420,7 @@ export function useGameState(gameId) {
                 const depthBonus = ore.deep ? depthFrac * 0.06 : depthFrac * 0.02
                 if (roll < ore.chance + depthBonus) {
                   if (ore.deep) {
-                    gemTrades.push({ gem: ore.id, turnsRemaining: 30, goldPerTurn: 8 })
+                    gemTrades.push({ gem: ore.id, turnsRemaining: ore.tradeDuration || 30, goldPerTurn: ore.goldPerTurn || 8 })
                   } else {
                     const amt = ore.minAmt + Math.floor(rand() * (ore.maxAmt - ore.minAmt + 1))
                     inventory[ore.id] = (inventory[ore.id] || 0) + amt
