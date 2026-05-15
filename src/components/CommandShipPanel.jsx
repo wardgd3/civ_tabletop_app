@@ -2142,7 +2142,15 @@ function InventoryPanel({ unit, upgrades, isCommandShip }) {
               <div key={ore.id} className="flex items-center justify-between p-1.5 rounded"
                 style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ore.color }} />
+                  {ore.icon === 'oil' ? (
+                    <svg viewBox="0 0 16 16" width="12" height="12" fill="#1a1a1a" stroke="#6e7681" strokeWidth="1.2">
+                      <ellipse cx="8" cy="4" rx="5" ry="2" />
+                      <path d="M3 4 L3 12 C3 13.5 8 15 8 15 C8 15 13 13.5 13 12 L13 4" fill="#1a1a1a" />
+                      <ellipse cx="8" cy="4" rx="5" ry="2" fill="#2a2a2a" />
+                    </svg>
+                  ) : (
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ore.color }} />
+                  )}
                   <span className="text-[10px] font-semibold" style={{ color: '#c9d1d9' }}>{ore.name}</span>
                 </div>
                 <span className="text-[10px] font-mono font-bold" style={{ color: ore.color }}>{amount}</span>
