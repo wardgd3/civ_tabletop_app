@@ -1344,8 +1344,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
           ) : (
             <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
               {producibleTypes.map(ut => {
-                const prodCost = Math.ceil(ut.cost / 2)
-                const canAfford = isAdmin || (availableProduction ?? 0) >= prodCost
+                const canAfford = isAdmin || (availableProduction ?? 0) >= ut.cost
                 return (
                   <button
                     key={ut.id}
@@ -1373,7 +1372,7 @@ function HoldingBayPanel({ unit, upgrades, onDeployFromBay, onProduceUnit, comp,
                       </div>
                     </div>
                     <span className="text-[9px] font-mono" style={{ color: canAfford ? '#8b949e' : '#e05050' }}>
-                      ⚒{prodCost}
+                      ⚒{ut.cost}
                     </span>
                   </button>
                 )
