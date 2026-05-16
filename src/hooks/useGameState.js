@@ -1212,7 +1212,7 @@ export function useGameState(gameId) {
     if (!ship) throw new Error('Ship not found')
     if ((ship.board || 'ground') !== 'space') throw new Error('Only space units can trade with the Space Guild')
 
-    const upgrades = ship.upgrades || {}
+    const upgrades = { ...(ship.upgrades || {}) }
     const convoys = [...(upgrades.convoys || [])]
     const convoy = convoys[convoyIndex]
     if (!convoy || convoy.inTransit) throw new Error('Convoy not available')
@@ -1222,36 +1222,37 @@ export function useGameState(gameId) {
     if (guildConvoys.some(gc => gc.inTransit)) throw new Error('A convoy is already en route to the Space Guild')
 
     const RESOURCE_VALUES = {
-      iron: 5, uranium: 8, aluminum: 4, tritium: 10,
+      iron: 5, copper: 3, titanium: 12, oil: 6, uranium: 8, aluminum: 4, tritium: 10,
+      helium3: 5, cobalt: 4, palladium: 12, iridium: 15,
       ruby: 15, sapphire: 15, diamond: 20, amethyst: 12, quasicrystals: 25,
       small_spaceship_parts: 12, medium_spaceship_parts: 20, large_spaceship_parts: 35,
     }
 
-    let goldEarned = 0
+    let cargoSellValue = 0
     const cargo = { ...(convoy.cargo || {}), resources: { ...(convoy.cargo?.resources || {}) } }
-
     for (const [key, amount] of Object.entries(cargo.resources)) {
-      if (amount > 0) {
-        goldEarned += amount * (RESOURCE_VALUES[key] || 5)
-      }
+      if (amount > 0) cargoSellValue += amount * (RESOURCE_VALUES[key] || 5)
     }
     cargo.resources = {}
-
-    const unitsToSell = convoy.units || []
-    for (const u of unitsToSell) {
-      goldEarned += u.cost || 10
+    for (const u of (convoy.units || [])) {
+      cargoSellValue += u.cost || 10
     }
 
-    if (goldEarned > 0 && !isAdmin) {
-      const perPlayer = Math.ceil(goldEarned / teamPlayers.length)
-      for (const tp of teamPlayers) {
-        await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) + perPlayer }).eq('id', tp.id)
+    const { buyUnits = [], buyMunitions = {}, sellItems = {} } = order
+    let inventorySellValue = 0
+    const inventory = { ...(upgrades.inventory || {}) }
+    for (const [key, amount] of Object.entries(sellItems)) {
+      const available = inventory[key] || 0
+      const sellAmt = Math.min(amount, available)
+      if (sellAmt > 0) {
+        inventorySellValue += sellAmt * (RESOURCE_VALUES[key] || 5)
+        inventory[key] = available - sellAmt
+        if (inventory[key] <= 0) delete inventory[key]
       }
     }
+    upgrades.inventory = inventory
 
-    const { buyUnits = [], buyMunitions = {} } = order
     let totalCost = 0
-
     const orderedUnits = []
     for (const unitTypeId of buyUnits) {
       const ut = unitTypes.find(t => t.id === unitTypeId)
@@ -1271,18 +1272,25 @@ export function useGameState(gameId) {
     }
 
     if (totalCost > 0 && !isAdmin) {
-      const totalGold = teamPlayers.reduce((s, p) => s + (p.gold || 0), 0) + goldEarned
-      if (totalGold < totalCost) throw new Error('Not enough gold')
+      const availableGold = teamPlayers.reduce((s, p) => s + (p.gold || 0), 0) + cargoSellValue
+      if (availableGold < totalCost) throw new Error('Not enough gold')
 
-      let remaining = totalCost
-      const { data: freshPlayers } = await supabase.from('wg_game_players').select('*').eq('game_id', ship.game_id).eq('team', teamPlayers[0]?.team)
-      for (const tp of (freshPlayers || teamPlayers)) {
-        if (remaining <= 0) break
-        const deduct = Math.min(tp.gold || 0, remaining)
-        if (deduct > 0) {
-          await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) - deduct }).eq('id', tp.id)
-          remaining -= deduct
+      let remaining = totalCost - cargoSellValue
+      if (remaining > 0) {
+        const { data: freshPlayers } = await supabase.from('wg_game_players').select('*').eq('game_id', ship.game_id).eq('team', teamPlayers[0]?.team)
+        for (const tp of (freshPlayers || teamPlayers)) {
+          if (remaining <= 0) break
+          const deduct = Math.min(tp.gold || 0, remaining)
+          if (deduct > 0) {
+            await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) - deduct }).eq('id', tp.id)
+            remaining -= deduct
+          }
         }
+      }
+    } else if (cargoSellValue > 0 && !isAdmin) {
+      const perPlayer = Math.ceil(cargoSellValue / teamPlayers.length)
+      for (const tp of teamPlayers) {
+        await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) + perPlayer }).eq('id', tp.id)
       }
     }
 
@@ -1290,7 +1298,7 @@ export function useGameState(gameId) {
 
     guildConvoys.push({
       units: orderedUnits,
-      cargo: { gold: cargo.gold || 0 },
+      cargo: { gold: (cargo.gold || 0) + inventorySellValue },
       munitions: orderedMunitions,
       inTransit: true,
       turnsLeft: 3,

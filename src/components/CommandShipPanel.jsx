@@ -519,8 +519,10 @@ function getSlots(upgrades, compartmentId, slotCount) {
 }
 
 const RESOURCE_VALUES = {
-  iron: 5, uranium: 8, aluminum: 4, tritium: 10,
+  iron: 5, copper: 3, titanium: 12, oil: 6, uranium: 8, aluminum: 4, tritium: 10,
+  helium3: 5, cobalt: 4, palladium: 12, iridium: 15,
   ruby: 15, sapphire: 15, diamond: 20, amethyst: 12, quasicrystals: 25,
+  small_spaceship_parts: 12, medium_spaceship_parts: 20, large_spaceship_parts: 35,
 }
 
 function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, onLoadInventoryToConvoy, groundUnits, comp, isCC, teamGold, playerResources, destinations, availableUnitTypes, missileLevel, isAdmin }) {
@@ -531,6 +533,10 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
   const [orderUnits, setOrderUnits] = useState([])
   const [orderMunitions, setOrderMunitions] = useState({ tactical: 0, cruise: 0, ipbm: 0 })
   const [showBuyUnits, setShowBuyUnits] = useState(false)
+  const [guildTab, setGuildTab] = useState('buy')
+  const [sellItems, setSellItems] = useState({})
+  const [selectedSellItem, setSelectedSellItem] = useState(null)
+  const [sellQty, setSellQty] = useState('')
   const cargo = convoy.cargo || { gold: 0, resources: {} }
   const hasAnyCargo = (cargo.gold || 0) > 0 || Object.values(cargo.resources || {}).some(v => v > 0)
   const hasAnyLoad = (convoy.units || []).length > 0 || hasAnyCargo
@@ -784,12 +790,12 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
 
       {selectedDest === 'space_guild' && (() => {
         const cargo = convoy.cargo || { gold: 0, resources: {} }
-        let sellValue = 0
+        let cargoSellValue = 0
         for (const [key, amount] of Object.entries(cargo.resources || {})) {
-          if (amount > 0) sellValue += amount * (RESOURCE_VALUES[key] || 5)
+          if (amount > 0) cargoSellValue += amount * (RESOURCE_VALUES[key] || 5)
         }
         for (const u of (convoy.units || [])) {
-          sellValue += u.cost || 10
+          cargoSellValue += u.cost || 10
         }
 
         const MISSILE_COSTS = { tactical: 5, cruise: 10, ipbm: 20 }
@@ -807,168 +813,309 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
         }, 0)
         const orderMunCost = Object.entries(orderMunitions).reduce((s, [k, v]) => s + (MISSILE_COSTS[k] || 0) * v, 0)
         const totalOrderCost = orderUnitCost + orderMunCost
-        const effectiveGold = teamGold + sellValue
+        const effectiveGold = teamGold + cargoSellValue
+
+        const inv = upgrades.inventory || {}
+        const allOreMap = { ...GROUND_ORES, ...SPACE_ORES }
+        const sellableItems = Object.entries(inv).filter(([, amt]) => amt > 0).map(([key, amt]) => {
+          const oreDef = allOreMap[key]
+          const prodDef = PRODUCED_ITEMS.find(p => p.id === key)
+          const label = oreDef ? oreDef.name : prodDef ? prodDef.name : key
+          const value = RESOURCE_VALUES[key] || 5
+          return { key, label, amount: amt, value }
+        })
+        const inventorySellValue = Object.entries(sellItems).reduce((s, [key, amt]) => s + amt * (RESOURCE_VALUES[key] || 5), 0)
 
         return (
           <div className="mt-2 p-2 rounded" style={{ backgroundColor: '#0a1929', border: '1px solid #6cb4e640' }}>
             <div className="flex items-center gap-1.5 mb-2">
               <img src="/assets/spaceguild.png" alt="Space Guild" className="w-4 h-4 object-contain" />
               <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#6cb4e6' }}>
-                Space Guild Order
+                Space Guild
               </span>
             </div>
 
-            {sellValue > 0 && (
-              <div className="p-1.5 rounded mb-2" style={{ backgroundColor: '#cca43b10', border: '1px solid #cca43b30' }}>
-                <div className="text-[9px]" style={{ color: '#cca43b' }}>
-                  Auto-sell cargo: +{sellValue}g
+            <div className="flex rounded overflow-hidden mb-2" style={{ border: '1px solid #30363d' }}>
+              <button
+                onClick={() => setGuildTab('buy')}
+                className="flex-1 px-2 py-1.5 text-[9px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                style={guildTab === 'buy'
+                  ? { backgroundColor: '#1c3043', color: '#6cb4e6' }
+                  : { backgroundColor: '#18191c', color: '#4a5568' }}
+              >
+                Buy
+              </button>
+              <button
+                onClick={() => setGuildTab('sell')}
+                className="flex-1 px-2 py-1.5 text-[9px] font-semibold uppercase tracking-wide transition-colors cursor-pointer"
+                style={guildTab === 'sell'
+                  ? { backgroundColor: '#2a1f0a', color: '#cca43b' }
+                  : { backgroundColor: '#18191c', color: '#4a5568' }}
+              >
+                Sell
+              </button>
+            </div>
+
+            {guildTab === 'buy' && (
+              <>
+                {cargoSellValue > 0 && (
+                  <div className="p-1.5 rounded mb-2" style={{ backgroundColor: '#cca43b10', border: '1px solid #cca43b30' }}>
+                    <div className="text-[9px]" style={{ color: '#cca43b' }}>
+                      Auto-sell cargo: +{cargoSellValue}g
+                    </div>
+                    <div className="text-[8px]" style={{ color: '#6e7681' }}>
+                      All units and resources in the convoy will be sold
+                    </div>
+                  </div>
+                )}
+
+                {availableUnitTypes && availableUnitTypes.length > 0 && (
+                  <>
+                    <button
+                      onClick={() => setShowBuyUnits(v => !v)}
+                      className="w-full flex items-center justify-between mb-1 px-2 py-1.5 rounded text-[10px] uppercase tracking-widest font-bold transition-colors"
+                      style={{
+                        backgroundColor: showBuyUnits ? '#1a2a3a' : '#18191c',
+                        border: `1px solid ${showBuyUnits ? '#6cb4e650' : '#30363d'}`,
+                        color: showBuyUnits ? '#6cb4e6' : '#8b949e',
+                      }}
+                    >
+                      Buy Units
+                      <span className="text-[9px]">{showBuyUnits ? '▴' : '▾'}</span>
+                    </button>
+                    {showBuyUnits && (
+                      <div className="flex flex-col gap-0.5 mb-2">
+                        {availableUnitTypes.map(ut => {
+                          const canAfford = effectiveGold >= totalOrderCost + ut.cost
+                          return (
+                            <button
+                              key={ut.id}
+                              onClick={() => canAfford && setOrderUnits(prev => [...prev, ut.id])}
+                              disabled={!canAfford}
+                              className="flex items-center justify-between p-1 rounded transition-colors"
+                              style={{
+                                backgroundColor: canAfford ? '#1a2a3a10' : '#111214',
+                                border: `1px solid ${canAfford ? '#6cb4e640' : '#2a3140'}`,
+                                cursor: canAfford ? 'pointer' : 'default',
+                                opacity: canAfford ? 1 : 0.4,
+                              }}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <img src={`/assets/${ut.name.toLowerCase().replace(/\s+/g, '')}.png`} alt={ut.name} className="w-5 h-5 object-contain" />
+                                <div className="text-left">
+                                  <div className="text-[9px] font-semibold" style={{ color: '#c9d1d9' }}>{ut.name}</div>
+                                  <div className="text-[7px]" style={{ color: '#6e7681' }}>ATK {ut.attack} DEF {ut.defense} HP {ut.hp}</div>
+                                </div>
+                              </div>
+                              <span className="text-[9px] font-mono font-semibold" style={{ color: '#cca43b' }}>{ut.cost}g</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {effectiveLevel > 0 && (
+                  <>
+                    <div
+                      className="w-full flex items-center px-2 py-1.5 rounded text-[10px] uppercase tracking-widest font-bold mb-1"
+                      style={{ backgroundColor: '#1a2a3a', border: '1px solid #6cb4e650', color: '#6cb4e6' }}
+                    >
+                      Buy Munitions
+                    </div>
+                    <div className="flex gap-1 mb-2">
+                      {MISSILE_TYPES.map(m => {
+                        const locked = effectiveLevel < m.reqLevel
+                        const canAfford = effectiveGold >= totalOrderCost + m.cost
+                        const disabled = locked || !canAfford
+                        return (
+                          <button
+                            key={m.key}
+                            onClick={() => !disabled && setOrderMunitions(prev => ({ ...prev, [m.key]: (prev[m.key] || 0) + 1 }))}
+                            disabled={disabled}
+                            className="flex-1 rounded p-1 text-center transition-all"
+                            style={{
+                              backgroundColor: disabled ? '#18191c' : m.color + '15',
+                              border: `1px solid ${disabled ? '#2a3140' : m.color + '60'}`,
+                              cursor: disabled ? 'default' : 'pointer',
+                              opacity: disabled ? 0.4 : 1,
+                            }}
+                          >
+                            <div className="text-[8px] font-semibold" style={{ color: locked ? '#4a5568' : m.color }}>
+                              {locked ? 'Locked' : m.name}
+                            </div>
+                            {!locked && (
+                              <div className="text-[8px] font-mono" style={{ color: '#cca43b' }}>{m.cost}g</div>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {(orderUnits.length > 0 || Object.values(orderMunitions).some(v => v > 0)) && (
+                  <div className="p-1.5 rounded mb-2" style={{ backgroundColor: '#18191c', border: '1px solid #30363d' }}>
+                    <div className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
+                      Order Summary
+                    </div>
+                    {orderUnits.length > 0 && (() => {
+                      const counts = {}
+                      for (const id of orderUnits) {
+                        const ut = (availableUnitTypes || []).find(t => t.id === id)
+                        if (ut) counts[ut.name] = (counts[ut.name] || { count: 0, cost: ut.cost, id: ut.id })
+                        if (ut) counts[ut.name].count++
+                      }
+                      return Object.entries(counts).map(([name, { count, cost }]) => (
+                        <div key={name} className="flex items-center justify-between mb-0.5">
+                          <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{name} x{count}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[8px] font-mono" style={{ color: '#cca43b' }}>{cost * count}g</span>
+                            <button
+                              onClick={() => setOrderUnits(prev => {
+                                const idx = prev.lastIndexOf((availableUnitTypes || []).find(t => t.name === name)?.id)
+                                if (idx >= 0) { const n = [...prev]; n.splice(idx, 1); return n }
+                                return prev
+                              })}
+                              className="text-[8px] px-1 rounded cursor-pointer"
+                              style={{ color: '#f47067', backgroundColor: '#4c1a1a', border: '1px solid #6e2b2b' }}
+                            >−</button>
+                          </div>
+                        </div>
+                      ))
+                    })()}
+                    {Object.entries(orderMunitions).filter(([, v]) => v > 0).map(([key, count]) => (
+                      <div key={key} className="flex items-center justify-between mb-0.5">
+                        <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{key} x{count}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[8px] font-mono" style={{ color: '#cca43b' }}>{(MISSILE_COSTS[key] || 0) * count}g</span>
+                          <button
+                            onClick={() => setOrderMunitions(prev => ({ ...prev, [key]: Math.max(0, (prev[key] || 0) - 1) }))}
+                            className="text-[8px] px-1 rounded cursor-pointer"
+                            style={{ color: '#f47067', backgroundColor: '#4c1a1a', border: '1px solid #6e2b2b' }}
+                          >−</button>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between mt-1 pt-1" style={{ borderTop: '1px solid #30363d' }}>
+                      <span className="text-[9px] font-semibold" style={{ color: '#c9d1d9' }}>Total</span>
+                      <span className="text-[9px] font-mono font-semibold" style={{ color: '#cca43b' }}>{totalOrderCost}g</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-[8px] mb-1" style={{ color: '#6e7681' }}>
+                  Available: <span style={{ color: '#cca43b' }}>{effectiveGold - totalOrderCost}g</span>
+                  {cargoSellValue > 0 && <span> (incl. {cargoSellValue}g from cargo)</span>}
                 </div>
-                <div className="text-[8px]" style={{ color: '#6e7681' }}>
-                  All units and resources in the convoy will be sold
-                </div>
-              </div>
+              </>
             )}
 
-            {availableUnitTypes && availableUnitTypes.length > 0 && (
+            {guildTab === 'sell' && (
               <>
-                <button
-                  onClick={() => setShowBuyUnits(v => !v)}
-                  className="w-full flex items-center justify-between mb-1 px-2 py-1.5 rounded text-[10px] uppercase tracking-widest font-bold transition-colors"
-                  style={{
-                    backgroundColor: showBuyUnits ? '#1a2a3a' : '#18191c',
-                    border: `1px solid ${showBuyUnits ? '#6cb4e650' : '#30363d'}`,
-                    color: showBuyUnits ? '#6cb4e6' : '#8b949e',
-                  }}
-                >
-                  Buy Units
-                  <span className="text-[9px]">{showBuyUnits ? '▴' : '▾'}</span>
-                </button>
-                {showBuyUnits && (
-                  <div className="flex flex-col gap-0.5 mb-2">
-                    {availableUnitTypes.map(ut => {
-                      const canAfford = effectiveGold >= totalOrderCost + ut.cost
+                {sellableItems.length > 0 ? (
+                  <div className="mb-2">
+                    <div className="flex gap-1 mb-1">
+                      <select
+                        value={selectedSellItem || ''}
+                        onChange={e => { setSelectedSellItem(e.target.value || null); setSellQty('') }}
+                        className="flex-1 px-1.5 py-1.5 text-[10px] rounded"
+                        style={{ backgroundColor: '#18191c', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
+                      >
+                        <option value="">Select item to sell...</option>
+                        {sellableItems.map(item => {
+                          const alreadySelling = sellItems[item.key] || 0
+                          const remaining = item.amount - alreadySelling
+                          if (remaining <= 0) return null
+                          return (
+                            <option key={item.key} value={item.key}>
+                              {item.label} ({remaining}) — {item.value}g each
+                            </option>
+                          )
+                        })}
+                      </select>
+                      <button
+                        onClick={() => {
+                          if (!selectedSellItem) return
+                          const item = sellableItems.find(i => i.key === selectedSellItem)
+                          if (!item) return
+                          const alreadySelling = sellItems[selectedSellItem] || 0
+                          const remaining = item.amount - alreadySelling
+                          const qty = Math.min(Math.max(1, parseInt(sellQty) || remaining), remaining)
+                          if (qty > 0) {
+                            setSellItems(prev => ({ ...prev, [selectedSellItem]: (prev[selectedSellItem] || 0) + qty }))
+                          }
+                          setSelectedSellItem(null)
+                          setSellQty('')
+                        }}
+                        disabled={!selectedSellItem}
+                        className="px-3 py-1.5 text-[9px] font-semibold uppercase rounded cursor-pointer disabled:opacity-30"
+                        style={{ backgroundColor: '#2a1f0a', color: '#cca43b', border: '1px solid #cca43b40' }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                    {selectedSellItem && (() => {
+                      const item = sellableItems.find(i => i.key === selectedSellItem)
+                      const remaining = item ? item.amount - (sellItems[item.key] || 0) : 0
                       return (
-                        <button
-                          key={ut.id}
-                          onClick={() => canAfford && setOrderUnits(prev => [...prev, ut.id])}
-                          disabled={!canAfford}
-                          className="flex items-center justify-between p-1 rounded transition-colors"
-                          style={{
-                            backgroundColor: canAfford ? '#1a2a3a10' : '#111214',
-                            border: `1px solid ${canAfford ? '#6cb4e640' : '#2a3140'}`,
-                            cursor: canAfford ? 'pointer' : 'default',
-                            opacity: canAfford ? 1 : 0.4,
-                          }}
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <img src={`/assets/${ut.name.toLowerCase().replace(/\s+/g, '')}.png`} alt={ut.name} className="w-5 h-5 object-contain" />
-                            <div className="text-left">
-                              <div className="text-[9px] font-semibold" style={{ color: '#c9d1d9' }}>{ut.name}</div>
-                              <div className="text-[7px]" style={{ color: '#6e7681' }}>ATK {ut.attack} DEF {ut.defense} HP {ut.hp}</div>
-                            </div>
+                        <input
+                          type="number"
+                          min="1"
+                          max={remaining}
+                          value={sellQty}
+                          onChange={e => setSellQty(e.target.value)}
+                          placeholder={`Qty (max ${remaining}, blank = all)`}
+                          className="w-full mb-1 px-1.5 py-1.5 text-[10px] rounded"
+                          style={{ backgroundColor: '#18191c', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
+                        />
+                      )
+                    })()}
+                  </div>
+                ) : (
+                  <div className="p-1.5 rounded mb-2" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
+                    <span className="text-[9px]" style={{ color: '#4a5568' }}>No items in inventory to sell</span>
+                  </div>
+                )}
+
+                {Object.keys(sellItems).length > 0 && (
+                  <div className="p-1.5 rounded mb-2" style={{ backgroundColor: '#18191c', border: '1px solid #30363d' }}>
+                    <div className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
+                      Sell Order
+                    </div>
+                    {Object.entries(sellItems).filter(([, v]) => v > 0).map(([key, amount]) => {
+                      const item = sellableItems.find(i => i.key === key)
+                      const value = amount * (RESOURCE_VALUES[key] || 5)
+                      return (
+                        <div key={key} className="flex items-center justify-between mb-0.5">
+                          <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{item?.label || key} x{amount}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[8px] font-mono" style={{ color: '#cca43b' }}>+{value}g</span>
+                            <button
+                              onClick={() => setSellItems(prev => {
+                                const next = { ...prev }
+                                delete next[key]
+                                return next
+                              })}
+                              className="text-[8px] px-1 rounded cursor-pointer"
+                              style={{ color: '#f47067', backgroundColor: '#4c1a1a', border: '1px solid #6e2b2b' }}
+                            >−</button>
                           </div>
-                          <span className="text-[9px] font-mono font-semibold" style={{ color: '#cca43b' }}>{ut.cost}g</span>
-                        </button>
+                        </div>
                       )
                     })}
+                    <div className="flex items-center justify-between mt-1 pt-1" style={{ borderTop: '1px solid #30363d' }}>
+                      <span className="text-[9px] font-semibold" style={{ color: '#c9d1d9' }}>Trade Value</span>
+                      <span className="text-[9px] font-mono font-semibold" style={{ color: '#cca43b' }}>+{inventorySellValue}g</span>
+                    </div>
+                    <div className="text-[8px] mt-0.5" style={{ color: '#6e7681' }}>
+                      Gold received after 3 turns
+                    </div>
                   </div>
                 )}
               </>
             )}
-
-            {effectiveLevel > 0 && (
-              <>
-                <div
-                  className="w-full flex items-center px-2 py-1.5 rounded text-[10px] uppercase tracking-widest font-bold mb-1"
-                  style={{ backgroundColor: '#1a2a3a', border: '1px solid #6cb4e650', color: '#6cb4e6' }}
-                >
-                  Buy Munitions
-                </div>
-                <div className="flex gap-1 mb-2">
-                  {MISSILE_TYPES.map(m => {
-                    const locked = effectiveLevel < m.reqLevel
-                    const canAfford = effectiveGold >= totalOrderCost + m.cost
-                    const disabled = locked || !canAfford
-                    return (
-                      <button
-                        key={m.key}
-                        onClick={() => !disabled && setOrderMunitions(prev => ({ ...prev, [m.key]: (prev[m.key] || 0) + 1 }))}
-                        disabled={disabled}
-                        className="flex-1 rounded p-1 text-center transition-all"
-                        style={{
-                          backgroundColor: disabled ? '#18191c' : m.color + '15',
-                          border: `1px solid ${disabled ? '#2a3140' : m.color + '60'}`,
-                          cursor: disabled ? 'default' : 'pointer',
-                          opacity: disabled ? 0.4 : 1,
-                        }}
-                      >
-                        <div className="text-[8px] font-semibold" style={{ color: locked ? '#4a5568' : m.color }}>
-                          {locked ? 'Locked' : m.name}
-                        </div>
-                        {!locked && (
-                          <div className="text-[8px] font-mono" style={{ color: '#cca43b' }}>{m.cost}g</div>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
-            )}
-
-            {(orderUnits.length > 0 || Object.values(orderMunitions).some(v => v > 0)) && (
-              <div className="p-1.5 rounded mb-2" style={{ backgroundColor: '#18191c', border: '1px solid #30363d' }}>
-                <div className="text-[9px] uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5568' }}>
-                  Order Summary
-                </div>
-                {orderUnits.length > 0 && (() => {
-                  const counts = {}
-                  for (const id of orderUnits) {
-                    const ut = (availableUnitTypes || []).find(t => t.id === id)
-                    if (ut) counts[ut.name] = (counts[ut.name] || { count: 0, cost: ut.cost, id: ut.id })
-                    if (ut) counts[ut.name].count++
-                  }
-                  return Object.entries(counts).map(([name, { count, cost }]) => (
-                    <div key={name} className="flex items-center justify-between mb-0.5">
-                      <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{name} x{count}</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[8px] font-mono" style={{ color: '#cca43b' }}>{cost * count}g</span>
-                        <button
-                          onClick={() => setOrderUnits(prev => {
-                            const idx = prev.lastIndexOf((availableUnitTypes || []).find(t => t.name === name)?.id)
-                            if (idx >= 0) { const n = [...prev]; n.splice(idx, 1); return n }
-                            return prev
-                          })}
-                          className="text-[8px] px-1 rounded cursor-pointer"
-                          style={{ color: '#f47067', backgroundColor: '#4c1a1a', border: '1px solid #6e2b2b' }}
-                        >−</button>
-                      </div>
-                    </div>
-                  ))
-                })()}
-                {Object.entries(orderMunitions).filter(([, v]) => v > 0).map(([key, count]) => (
-                  <div key={key} className="flex items-center justify-between mb-0.5">
-                    <span className="text-[9px]" style={{ color: '#c9d1d9' }}>{key} x{count}</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[8px] font-mono" style={{ color: '#cca43b' }}>{(MISSILE_COSTS[key] || 0) * count}g</span>
-                      <button
-                        onClick={() => setOrderMunitions(prev => ({ ...prev, [key]: Math.max(0, (prev[key] || 0) - 1) }))}
-                        className="text-[8px] px-1 rounded cursor-pointer"
-                        style={{ color: '#f47067', backgroundColor: '#4c1a1a', border: '1px solid #6e2b2b' }}
-                      >−</button>
-                    </div>
-                  </div>
-                ))}
-                <div className="flex items-center justify-between mt-1 pt-1" style={{ borderTop: '1px solid #30363d' }}>
-                  <span className="text-[9px] font-semibold" style={{ color: '#c9d1d9' }}>Total</span>
-                  <span className="text-[9px] font-mono font-semibold" style={{ color: '#cca43b' }}>{totalOrderCost}g</span>
-                </div>
-              </div>
-            )}
-
-            <div className="text-[8px] mb-1" style={{ color: '#6e7681' }}>
-              Available: <span style={{ color: '#cca43b' }}>{effectiveGold - totalOrderCost}g</span>
-              {sellValue > 0 && <span> (incl. {sellValue}g from sales)</span>}
-            </div>
           </div>
         )
       })()}
@@ -976,7 +1123,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
       <button
         onClick={() => {
           if (selectedDest === 'space_guild') {
-            onSendConvoy(unit.id, convoyIndex, selectedDest, { buyUnits: orderUnits, buyMunitions: orderMunitions })
+            onSendConvoy(unit.id, convoyIndex, selectedDest, { buyUnits: orderUnits, buyMunitions: orderMunitions, sellItems })
           } else {
             onSendConvoy(unit.id, convoyIndex, selectedDest)
           }
@@ -989,7 +1136,7 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
           border: `1px solid ${selectedDest ? (selectedDest === 'space_guild' ? '#6cb4e640' : '#d29922' + '40') : '#30363d'}`,
         }}
       >
-        {selectedDest === 'space_guild' ? 'Place Order' : selectedDest ? `Send (${CONVOY_TRANSIT_TURNS} turns)` : 'Select Destination'}
+        {selectedDest === 'space_guild' ? 'Place Order (3 turns)' : selectedDest ? `Send (${CONVOY_TRANSIT_TURNS} turns)` : 'Select Destination'}
       </button>
     </div>
   )
