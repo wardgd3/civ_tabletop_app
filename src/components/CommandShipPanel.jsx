@@ -526,6 +526,7 @@ const RESOURCE_VALUES = {
 function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadFromBay, onUnloadToHoldingBay, onSendConvoy, onLoadCargo, onUnloadCargo, onLoadInventoryToConvoy, groundUnits, comp, isCC, teamGold, playerResources, destinations, availableUnitTypes, missileLevel, isAdmin }) {
   const [goldAmount, setGoldAmount] = useState('')
   const [selectedLoadItem, setSelectedLoadItem] = useState(null)
+  const [loadQty, setLoadQty] = useState('')
   const [selectedDest, setSelectedDest] = useState(destinations?.length === 1 ? destinations[0].id : null)
   const [orderUnits, setOrderUnits] = useState([])
   const [orderMunitions, setOrderMunitions] = useState({ tactical: 0, cruise: 0, ipbm: 0 })
@@ -703,23 +704,28 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
 
       {(() => {
         const inv = upgrades.inventory || {}
+        const allOreMap = { ...GROUND_ORES, ...SPACE_ORES }
         const loadOptions = []
-        if (teamGold > 0) loadOptions.push({ key: '_gold', label: `Gold (${teamGold})`, type: 'gold' })
+        if (teamGold > 0) loadOptions.push({ key: '_gold', label: `Gold (${teamGold})`, type: 'gold', max: teamGold })
         for (const [key, amount] of availableResources) {
           const RLABELS = { iron: 'Iron', uranium: 'Uranium', aluminum: 'Aluminum', tritium: 'Tritium', ruby: 'Ruby', sapphire: 'Sapphire', diamond: 'Diamond', amethyst: 'Amethyst', quasicrystals: 'Quasicrystals', oil: 'Oil' }
-          loadOptions.push({ key, label: `${RLABELS[key] || key} (${amount})`, type: 'resource', amount })
+          loadOptions.push({ key, label: `${RLABELS[key] || key} (${amount})`, type: 'resource', max: amount })
         }
-        for (const item of PRODUCED_ITEMS) {
-          const amt = inv[item.id] || 0
-          if (amt > 0) loadOptions.push({ key: item.id, label: `${item.name} (${amt})`, type: 'inventory', amount: amt })
+        for (const [itemKey, amt] of Object.entries(inv)) {
+          if (amt <= 0) continue
+          const oreDef = allOreMap[itemKey]
+          const prodDef = PRODUCED_ITEMS.find(p => p.id === itemKey)
+          const label = oreDef ? oreDef.name : prodDef ? prodDef.name : itemKey
+          loadOptions.push({ key: itemKey, label: `${label} (${amt})`, type: 'inventory', max: amt })
         }
         if (loadOptions.length === 0) return null
+        const selectedOpt = loadOptions.find(o => o.key === selectedLoadItem)
         return (
           <div className="mb-2">
             <div className="flex gap-1">
               <select
                 value={selectedLoadItem || ''}
-                onChange={e => setSelectedLoadItem(e.target.value || null)}
+                onChange={e => { setSelectedLoadItem(e.target.value || null); setLoadQty('') }}
                 className="flex-1 px-1.5 py-1.5 text-[10px] rounded"
                 style={{ backgroundColor: '#18191c', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
               >
@@ -730,18 +736,18 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
               </select>
               <button
                 onClick={() => {
-                  if (!selectedLoadItem) return
-                  const opt = loadOptions.find(o => o.key === selectedLoadItem)
-                  if (!opt) return
-                  if (opt.type === 'gold') {
-                    const amt = parseInt(goldAmount) || teamGold
-                    if (amt > 0) { onLoadCargo(unit.id, convoyIndex, { gold: amt }); setGoldAmount('') }
-                  } else if (opt.type === 'resource') {
-                    onLoadCargo(unit.id, convoyIndex, { resources: { [opt.key]: opt.amount } })
-                  } else if (opt.type === 'inventory') {
-                    onLoadInventoryToConvoy?.(unit.id, convoyIndex, opt.key, opt.amount)
+                  if (!selectedLoadItem || !selectedOpt) return
+                  const qty = parseInt(loadQty) || selectedOpt.max
+                  const clampedQty = Math.min(Math.max(1, qty), selectedOpt.max)
+                  if (selectedOpt.type === 'gold') {
+                    if (clampedQty > 0) onLoadCargo(unit.id, convoyIndex, { gold: clampedQty })
+                  } else if (selectedOpt.type === 'resource') {
+                    onLoadCargo(unit.id, convoyIndex, { resources: { [selectedOpt.key]: clampedQty } })
+                  } else if (selectedOpt.type === 'inventory') {
+                    onLoadInventoryToConvoy?.(unit.id, convoyIndex, selectedOpt.key, clampedQty)
                   }
                   setSelectedLoadItem(null)
+                  setLoadQty('')
                 }}
                 disabled={!selectedLoadItem}
                 className="px-3 py-1.5 text-[9px] font-semibold uppercase rounded cursor-pointer disabled:opacity-30"
@@ -750,14 +756,14 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
                 Load
               </button>
             </div>
-            {selectedLoadItem === '_gold' && (
+            {selectedOpt && (
               <input
                 type="number"
                 min="1"
-                max={teamGold}
-                value={goldAmount}
-                onChange={e => setGoldAmount(e.target.value)}
-                placeholder="Amount (leave blank for all)"
+                max={selectedOpt.max}
+                value={loadQty}
+                onChange={e => setLoadQty(e.target.value)}
+                placeholder={`Qty (max ${selectedOpt.max}, blank = all)`}
                 className="w-full mt-1 px-1.5 py-1.5 text-[10px] rounded"
                 style={{ backgroundColor: '#18191c', border: '1px solid #30363d', color: '#c9d1d9', outline: 'none' }}
               />
