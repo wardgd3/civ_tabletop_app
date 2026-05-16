@@ -22,7 +22,13 @@
       "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__list_projects",
       "Bash(git push *)",
       "Bash(del \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\.claude\\\\worktrees\\\\tender-maxwell-38c7c4\\\\src\\\\theme.css\")",
-      "PowerShell(Remove-Item \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\.claude\\\\worktrees\\\\tender-maxwell-38c7c4\\\\src\\\\theme.css\" -Confirm:$false)"
+      "PowerShell(Remove-Item \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\.claude\\\\worktrees\\\\tender-maxwell-38c7c4\\\\src\\\\theme.css\" -Confirm:$false)",
+      "Bash(findstr /i \"comm\")",
+      "Bash(cd \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\" && npx vite build 2>&1 | tail -10)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Grant\\\\OneDrive\\\\Desktop\\\\Projects\\\\civ_tabletop_app\\\\.claude\\\\worktrees\\\\funny-lewin-a6a7dd\\\\src\" -Recurse -Name)",
+      "Bash(Select-Object -First 50)",
+      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__get_edge_function",
+      "mcp__ba8af099-3825-48c0-8b1c-1752d68b11ee__deploy_edge_function"
     ]
   }
 }

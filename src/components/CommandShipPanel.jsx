@@ -2296,7 +2296,7 @@ export default function CommandShipPanel({
   onRenameUnit, onProduceBattleshipToBay, onBuyMissileForDockedBs, onRenameDockedBs, onLoadToBsHangar, onDeployDockedBs, onProduceFactoryItem,
   groundUnits, unitTypes, teamGold, playerResources, allUnits, nearbyUnits,
   onSetNumberedOverlays,
-  onLevelUp, onExcavate, onClearAutoPath, onBoardTransport, onDockTransport, onDeployFromTransportUnit, economy, availableProduction,
+  onLevelUp, onExcavate, onClearAutoPath, onBoardTransport, onDockTransport, onDeployFromTransportUnit, economy, availableProduction, teamPlayerIds,
 }) {
   const [selectedComp, setSelectedComp] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
@@ -2313,8 +2313,9 @@ export default function CommandShipPanel({
   const isCommandShip = unitName === 'Command Ship'
 
   const CONVOY_TARGETS = new Set(['Command Center', 'Command Ship', 'Battleship'])
+  const tpIds = teamPlayerIds || [unit.owner_id]
   const destinations = (allUnits || [])
-    .filter(u => u.owner_id === unit.owner_id && u.id !== unit.id && CONVOY_TARGETS.has(u.wg_unit_types?.name))
+    .filter(u => tpIds.includes(u.owner_id) && u.id !== unit.id && CONVOY_TARGETS.has(u.wg_unit_types?.name))
     .filter(u => {
       const comps = getCompartments(u.wg_unit_types?.name)
       return comps.some(c => c.special === 'transport')

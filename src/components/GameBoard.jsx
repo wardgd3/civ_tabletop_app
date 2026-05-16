@@ -273,6 +273,7 @@ export default function GameBoard({
   const inspectedUnit = inspectedUnitId ? units.find(u => u.id === inspectedUnitId) || null : null
 
   const myColor = currentPlayer?.color
+  const teamPlayerIds = (allPlayers || players).filter(p => p.color === myColor).map(p => p.player_id)
   const allMyUnits = allUnits || units
   const hasCommandCenter = !!allMyUnits.find(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
   const hasCommandStructureOnThisBoard = !!units.find(u => u.owner_id === currentPlayer?.player_id && (u.wg_unit_types?.name === 'Command Center' || u.wg_unit_types?.name === 'Command Ship'))
@@ -2067,6 +2068,7 @@ export default function GameBoard({
             }}
             economy={economy}
             availableProduction={myProduction || 0}
+            teamPlayerIds={teamPlayerIds}
           />
         )
       })()}
