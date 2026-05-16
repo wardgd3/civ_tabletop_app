@@ -865,23 +865,24 @@ export function useGameState(gameId) {
 
     const tierCosts = [0, 10, 25]
     const ironCost = tierCosts[tierLevel - 1] || 0
+    const prodCosts = [0, 50, 100]
+    const prodCost = prodCosts[tierLevel - 1] || 0
 
-    const resources = { ...(currentPlayer.resources || {}) }
-    if (!isAdmin && ironCost > 0 && (resources.iron || 0) < ironCost) throw new Error('Not enough iron')
+    const inventory = { ...(upgrades.inventory || {}) }
+    if (!isAdmin && ironCost > 0 && (inventory.iron || 0) < ironCost) throw new Error('Not enough iron')
+    if (!isAdmin && prodCost > 0 && myProduction < prodCost) throw new Error('Not enough production')
 
     if (!isAdmin && ironCost > 0) {
-      resources.iron = (resources.iron || 0) - ironCost
-      const { error: resError } = await supabase
-        .from('wg_game_players')
-        .update({ resources })
-        .eq('id', currentPlayer.id)
-      if (resError) throw resError
+      inventory.iron = (inventory.iron || 0) - ironCost
+    }
+    if (!isAdmin && prodCost > 0) {
+      await supabase.from('wg_game_players').update({ production: Math.max(0, (currentPlayer.production || 0) - prodCost) }).eq('id', currentPlayer.id)
     }
 
     while (slots.length <= slotIndex) slots.push(0)
     slots[slotIndex] = tierLevel
 
-    const newUpgrades = { ...upgrades, [compartmentId]: slots }
+    const newUpgrades = { ...upgrades, [compartmentId]: slots, inventory }
     if (compartmentId === 'shields') {
       const maxTier = Math.max(...slots.filter(s => s > 0), 0)
       newUpgrades.shieldHp = SHIELD_HP[maxTier] || 0

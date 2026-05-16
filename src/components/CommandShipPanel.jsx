@@ -105,9 +105,9 @@ const ICONS = {
 }
 
 const TIERS = [
-  { level: 1, name: 'Standard', color: '#8b949e', cost: 0 },
-  { level: 2, name: 'Advanced', color: '#3fb950', cost: 10 },
-  { level: 3, name: 'Elite', color: '#d29922', cost: 25 },
+  { level: 1, name: 'Standard', color: '#8b949e', cost: 0, prodCost: 0 },
+  { level: 2, name: 'Advanced', color: '#3fb950', cost: 10, prodCost: 50 },
+  { level: 3, name: 'Elite', color: '#d29922', cost: 25, prodCost: 100 },
 ]
 
 const COMMAND_SHIP_COMPARTMENTS = [
@@ -2793,9 +2793,16 @@ export default function CommandShipPanel({
                             ) : isFree ? (
                               <span className="text-[9px] font-mono" style={{ color: '#3fb950' }}>FREE</span>
                             ) : (
-                              <div className="flex items-center gap-0.5">
-                                <img src="/assets/iron.png" alt="Iron" className="w-3 h-3 object-contain" />
-                                <span className="text-[9px] font-mono" style={{ color: '#cca43b' }}>{tierInfo.cost}</span>
+                              <div className="flex items-center gap-1">
+                                {tierInfo.cost > 0 && (
+                                  <div className="flex items-center gap-0.5">
+                                    <img src="/assets/iron.png" alt="Iron" className="w-3 h-3 object-contain" />
+                                    <span className="text-[9px] font-mono" style={{ color: '#cca43b' }}>{tierInfo.cost}</span>
+                                  </div>
+                                )}
+                                {tierInfo.prodCost > 0 && (
+                                  <span className="text-[9px] font-mono" style={{ color: '#8b949e' }}>⚒{tierInfo.prodCost}</span>
+                                )}
                               </div>
                             )}
                           </div>
