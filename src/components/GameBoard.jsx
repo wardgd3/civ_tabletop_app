@@ -142,7 +142,7 @@ export default function GameBoard({
   battleLog,
   isFullscreen, onExitFullscreen,
   activeBoard, setActiveBoard, canActOnBoard, allPlayers, realIsMyTurn,
-  productionPerTurn, economy, getUsedProduction,
+  productionPerTurn, myProduction, economy,
   selectCommander,
 }) {
   const [selectedUnitId, setSelectedUnitId] = useState(null)
@@ -1777,7 +1777,8 @@ export default function GameBoard({
             </div>
             <div className="text-[10px] font-mono mt-0.5 flex items-center gap-1" style={{ color: '#8b949e' }}>
               <span style={{ fontSize: 14 }}>⚒</span>
-              <span>{(productionPerTurn || 0) - (getUsedProduction ? getUsedProduction() : 0)}/{productionPerTurn || 0}</span>
+              <span>{myProduction || 0}</span>
+              <span style={{ color: (productionPerTurn || 0) > 0 ? '#6a9a72' : '#4a5568' }}>+{productionPerTurn || 0}/turn</span>
             </div>
             <div className="text-[10px] font-mono mt-0.5 flex items-center gap-1" style={{ color: '#cca43b' }}>
               <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: '#cca43b' }} />
@@ -2065,7 +2066,7 @@ export default function GameBoard({
               setPanelOpen(false)
             }}
             economy={economy}
-            availableProduction={productionPerTurn - (getUsedProduction?.() || 0)}
+            availableProduction={myProduction || 0}
           />
         )
       })()}
@@ -2112,15 +2113,14 @@ export default function GameBoard({
           ) : (
             <>
               <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>
-                Requisition — <span className="font-mono" style={{ color: '#8b949e' }}>⚒ {(productionPerTurn || 0) - (getUsedProduction ? getUsedProduction() : 0)}/{productionPerTurn || 0}</span>
+                Requisition — <span className="font-mono" style={{ color: '#8b949e' }}>⚒ {myProduction || 0}</span>
               </div>
               <div className="grid grid-cols-2 lg:grid-cols-1 gap-1.5">
                 {sortedUnitTypes.filter(ut => ut.name !== 'Command Center' && ut.name !== 'Command Ship').map(ut => {
                   const isBuilding = ut.name === 'Base' || ut.name === 'Factory'
-                  const availProd = (productionPerTurn || 0) - (getUsedProduction ? getUsedProduction() : 0)
                   const cantAfford = !isAdmin && (isBuilding
                     ? (economy?.teamGold ?? currentPlayer?.gold ?? 0) < ut.cost
-                    : availProd < ut.cost)
+                    : (myProduction || 0) < ut.cost)
                   const isBattleship = ut.name === 'Battleship'
                   let missingMats = false
                   if (isBattleship && !isAdmin) {
