@@ -243,10 +243,10 @@ export function useGames() {
 
     if (!players || players.length < 1) throw new Error('Need at least 1 player')
 
-    if (gameData?.is_admin) {
-      for (const p of players) {
-        await supabase.from('wg_game_players').update({ gold: 99999 }).eq('id', p.id)
-      }
+    for (const p of players) {
+      const updates = { production: 30 }
+      if (gameData?.is_admin) updates.gold = 99999
+      await supabase.from('wg_game_players').update(updates).eq('id', p.id)
     }
 
     const firstTeamColor = players[0].color
