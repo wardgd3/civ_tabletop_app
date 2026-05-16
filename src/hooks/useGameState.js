@@ -1573,11 +1573,11 @@ export function useGameState(gameId) {
 
     let dest
     if (destinationId) {
-      dest = units.find(u => u.id === destinationId && u.owner_id === ship.owner_id)
+      dest = units.find(u => u.id === destinationId && teamPlayerIds.includes(u.owner_id))
     } else {
       const isCommandShip = ship.wg_unit_types?.name === 'Command Ship'
       const destType = isCommandShip ? 'Command Center' : 'Command Ship'
-      dest = units.find(u => u.owner_id === ship.owner_id && u.wg_unit_types?.name === destType)
+      dest = units.find(u => teamPlayerIds.includes(u.owner_id) && u.wg_unit_types?.name === destType)
     }
     if (!dest) throw new Error('No destination found to receive convoy')
 
