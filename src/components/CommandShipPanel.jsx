@@ -2197,8 +2197,8 @@ function InventoryPanel({ unit, upgrades, isCommandShip }) {
       .filter(o => o.deep)
       .map(o => [o.id, o])
   )
-  const oreTable = isCommandShip ? SPACE_ORES : GROUND_ORES
-  const allOres = Object.values(oreTable).filter(o => !o.deep)
+  const allOreMap = { ...GROUND_ORES, ...SPACE_ORES }
+  const allOres = Object.values(allOreMap).filter(o => !o.deep)
   const hasProduced = PRODUCED_ITEMS.some(p => (inventory[p.id] || 0) > 0)
   const hasAny = allOres.some(o => (inventory[o.id] || 0) > 0) || hasProduced
 
