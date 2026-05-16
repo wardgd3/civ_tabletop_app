@@ -1711,7 +1711,7 @@ export default function GameBoard({
     return null
   }, [tiles, activeBoard])
 
-  const resources = currentPlayer?.resources || {}
+
 
   const mobileInspectPanel = inspectedUnit ? (
     <div className="mb-3 p-3 rounded-lg flex items-center gap-3" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
@@ -1852,23 +1852,6 @@ export default function GameBoard({
         })()}
       </div>
 
-      {Object.keys(resources).length > 0 && (
-        <div className="hidden lg:block p-3 rounded" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>
-          <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5568' }}>Resources</div>
-          {Object.entries(resources).filter(([k, v]) => v > 0 && k !== 'excavations').map(([resId, amount]) => {
-            const res = RESOURCE_BY_ID[resId]
-            return (
-              <div key={resId} className="flex items-center justify-between py-0.5">
-                <div className="flex items-center gap-1.5">
-                  {res?.icon && <img src={`/assets/${res.icon}`} alt={resId} className="w-3.5 h-3.5 object-contain" />}
-                  <span className="text-xs" style={{ color: '#8b949e' }}>{res?.name || resId}</span>
-                </div>
-                <span className="text-xs font-mono" style={{ color: '#cca43b' }}>{amount}</span>
-              </div>
-            )
-          })}
-        </div>
-      )}
 
       {isMyTurn && (
         <div className="p-3 rounded space-y-2" style={{ backgroundColor: '#18191c', border: '1px solid #2a3140' }}>

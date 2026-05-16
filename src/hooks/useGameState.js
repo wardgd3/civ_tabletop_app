@@ -1599,7 +1599,7 @@ export function useGameState(gameId) {
     await fetchAll()
   }
 
-  async function loadCargoToConvoy(structId, convoyIndex, { gold = 0, resources = {} }) {
+  async function loadCargoToConvoy(structId, convoyIndex, { gold = 0 }) {
     const struct = units.find(u => u.id === structId)
     if (!struct) throw new Error('Structure not found')
 
@@ -1623,21 +1623,9 @@ export function useGameState(gameId) {
       }
     }
 
-    if (Object.keys(resources).length > 0) {
-      const playerRes = { ...(currentPlayer.resources || {}) }
-      for (const [key, amount] of Object.entries(resources)) {
-        if ((playerRes[key] || 0) < amount) throw new Error(`Not enough ${key}`)
-        playerRes[key] = (playerRes[key] || 0) - amount
-      }
-      await supabase.from('wg_game_players').update({ resources: playerRes }).eq('id', currentPlayer.id)
-    }
-
     const cargo = convoy.cargo || { gold: 0, resources: {} }
     cargo.gold = (cargo.gold || 0) + gold
     if (!cargo.resources) cargo.resources = {}
-    for (const [key, amount] of Object.entries(resources)) {
-      cargo.resources[key] = (cargo.resources[key] || 0) + amount
-    }
     convoy.cargo = cargo
     convoys[convoyIndex] = convoy
 
@@ -2467,7 +2455,7 @@ export function useGameState(gameId) {
 
   async function processConvoyTicks() {
     const CONVOY_HOSTS = new Set(['Command Center', 'Command Ship', 'Battleship'])
-    const myStructures = units.filter(u => u.owner_id === userId && CONVOY_HOSTS.has(u.wg_unit_types?.name))
+    const myStructures = units.filter(u => teamPlayerIds.includes(u.owner_id) && CONVOY_HOSTS.has(u.wg_unit_types?.name))
 
     for (const struct of myStructures) {
       const { data: freshStruct } = await supabase.from('wg_units').select('upgrades').eq('id', struct.id).single()
@@ -2546,13 +2534,8 @@ export function useGameState(gameId) {
             }
           }
           if (cargo.resources && Object.keys(cargo.resources).length > 0) {
-            const { data: freshPlayer } = await supabase.from('wg_game_players').select('*').eq('player_id', userId).eq('game_id', struct.game_id).single()
-            if (freshPlayer) {
-              const playerRes = { ...(freshPlayer.resources || {}) }
-              for (const [key, amount] of Object.entries(cargo.resources)) {
-                if (amount > 0) playerRes[key] = (playerRes[key] || 0) + amount
-              }
-              await supabase.from('wg_game_players').update({ resources: playerRes }).eq('id', freshPlayer.id)
+            for (const [key, amount] of Object.entries(cargo.resources)) {
+              if (amount > 0) inventory[key] = (inventory[key] || 0) + amount
             }
           }
 

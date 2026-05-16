@@ -535,9 +535,6 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
   const hasAnyCargo = (cargo.gold || 0) > 0 || Object.values(cargo.resources || {}).some(v => v > 0)
   const hasAnyLoad = (convoy.units || []).length > 0 || hasAnyCargo
 
-  const availableResources = Object.entries(playerResources || {}).filter(
-    ([key, amount]) => amount > 0 && key !== 'excavations'
-  )
 
   return (
     <div className="p-2 rounded" style={{ backgroundColor: '#111214', border: `1px solid ${comp.color}40` }}>
@@ -707,10 +704,6 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
         const allOreMap = { ...GROUND_ORES, ...SPACE_ORES }
         const loadOptions = []
         if (teamGold > 0) loadOptions.push({ key: '_gold', label: `Gold (${teamGold})`, type: 'gold', max: teamGold })
-        for (const [key, amount] of availableResources) {
-          const RLABELS = { iron: 'Iron', uranium: 'Uranium', aluminum: 'Aluminum', tritium: 'Tritium', ruby: 'Ruby', sapphire: 'Sapphire', diamond: 'Diamond', amethyst: 'Amethyst', quasicrystals: 'Quasicrystals', oil: 'Oil' }
-          loadOptions.push({ key, label: `${RLABELS[key] || key} (${amount})`, type: 'resource', max: amount })
-        }
         for (const [itemKey, amt] of Object.entries(inv)) {
           if (amt <= 0) continue
           const oreDef = allOreMap[itemKey]
@@ -741,8 +734,6 @@ function ConvoyDetail({ unit, convoy, convoyIndex, upgrades, onLoadUnit, onLoadF
                   const clampedQty = Math.min(Math.max(1, qty), selectedOpt.max)
                   if (selectedOpt.type === 'gold') {
                     if (clampedQty > 0) onLoadCargo(unit.id, convoyIndex, { gold: clampedQty })
-                  } else if (selectedOpt.type === 'resource') {
-                    onLoadCargo(unit.id, convoyIndex, { resources: { [selectedOpt.key]: clampedQty } })
                   } else if (selectedOpt.type === 'inventory') {
                     onLoadInventoryToConvoy?.(unit.id, convoyIndex, selectedOpt.key, clampedQty)
                   }
