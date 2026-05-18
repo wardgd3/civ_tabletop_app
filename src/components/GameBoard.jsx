@@ -737,7 +737,7 @@ export default function GameBoard({
     if (!unit?.wg_unit_types) return new Set()
     const unitName = unit.wg_unit_types.name
     const unitBoard = unit.board || 'ground'
-    const baseRange = unit.wg_unit_types.movement + (unitBoard === 'space' ? 3 : 0)
+    const baseRange = unit.wg_unit_types.movement
     const usedSoFar = unit.moves_used || 0
     const sourceTile = tileMap.get(`${unit.grid_row}-${unit.grid_col}`)
     const sourceHasRoad = sourceTile?.has_road
@@ -862,7 +862,7 @@ export default function GameBoard({
     return cells
   }
 
-  const hasRemainingMoves = selectedUnit && !selectedUnit.has_moved && (selectedUnit.moves_used || 0) < ((selectedUnit.wg_unit_types?.movement || 0) + ((selectedUnit.board || 'ground') === 'space' ? 3 : 0))
+  const hasRemainingMoves = selectedUnit && !selectedUnit.has_moved && (selectedUnit.moves_used || 0) < (selectedUnit.wg_unit_types?.movement || 0)
   const moveRange = selectedUnit && (isAdmin || hasRemainingMoves) ? getMoveRange(selectedUnit) : new Set()
   const attackRange = mode === 'attack' && selectedUnit ? getAttackRange(selectedUnit) : new Set()
   const buildRange = mode === 'build' && selectedUnit ? getBuildRange(selectedUnit) : new Set()

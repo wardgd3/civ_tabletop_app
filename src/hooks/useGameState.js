@@ -492,7 +492,6 @@ export function useGameState(gameId) {
     const destTile = boardTiles.find(t => t.grid_row === newRow && t.grid_col === newCol)
 
     let maxRange = unit.wg_unit_types.movement
-    if (unitBoard === 'space') maxRange += 3
     if (sourceTile?.has_road && destTile?.has_road) {
       maxRange += 2
     }
@@ -2965,7 +2964,6 @@ export function useGameState(gameId) {
       const path = [...unit.upgrades.autoPath]
       const unitBoard = unit.board || 'ground'
       let maxRange = unit.wg_unit_types?.movement || 0
-      if (unitBoard === 'space') maxRange += 3
       let curRow = unit.grid_row
       let curCol = unit.grid_col
       let stepsTaken = 0
