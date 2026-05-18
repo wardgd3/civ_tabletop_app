@@ -2515,46 +2515,43 @@ export function useGameState(gameId) {
 
       const remainingGuildConvoys = []
       for (const c of guildConvoys) {
-        if (!c.inTransit) {
-          remainingGuildConvoys.push(c)
+        const stillInTransit = c.inTransit && (c.turnsLeft || 1) > 1
+        if (stillInTransit) {
+          remainingGuildConvoys.push({ ...c, turnsLeft: (c.turnsLeft || 1) - 1 })
+          changed = true
           continue
         }
-        const updated = { ...c, turnsLeft: (c.turnsLeft || 1) - 1 }
-        if (updated.turnsLeft <= 0) {
-          const convoyMunitions = updated.munitions || {}
-          const shipMunitions = { ...(upgrades.munitions || { tactical: 0, cruise: 0, ipbm: 0 }) }
-          for (const [key, amount] of Object.entries(convoyMunitions)) {
-            if (amount > 0) {
-              shipMunitions[key] = Math.min(10, (shipMunitions[key] || 0) + amount)
-            }
-          }
-          upgrades.munitions = shipMunitions
 
-          const holdingBay = [...(upgrades.holdingBay || [])]
-          for (const u of (updated.units || [])) {
-            holdingBay.push(u)
+        const convoyMunitions = c.munitions || {}
+        const shipMunitions = { ...(upgrades.munitions || { tactical: 0, cruise: 0, ipbm: 0 }) }
+        for (const [key, amount] of Object.entries(convoyMunitions)) {
+          if (amount > 0) {
+            shipMunitions[key] = Math.min(10, (shipMunitions[key] || 0) + amount)
           }
-          upgrades.holdingBay = holdingBay
-
-          const cargo = updated.cargo || {}
-          if ((cargo.gold || 0) > 0 && ownerTeam.length > 0) {
-            const perPlayer = Math.ceil(cargo.gold / ownerTeam.length)
-            for (const tp of ownerTeam) {
-              await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) + perPlayer }).eq('id', tp.id)
-            }
-          }
-          if (cargo.resources && Object.keys(cargo.resources).length > 0) {
-            for (const [key, amount] of Object.entries(cargo.resources)) {
-              if (amount > 0) inventory[key] = (inventory[key] || 0) + amount
-            }
-          }
-
-          newConvoys.push({ units: [], cargo: {}, inTransit: false })
-          changed = true
-        } else {
-          remainingGuildConvoys.push(updated)
-          changed = true
         }
+        upgrades.munitions = shipMunitions
+
+        const holdingBay = [...(upgrades.holdingBay || [])]
+        for (const u of (c.units || [])) {
+          holdingBay.push(u)
+        }
+        upgrades.holdingBay = holdingBay
+
+        const cargo = c.cargo || {}
+        if ((cargo.gold || 0) > 0 && ownerTeam.length > 0) {
+          const perPlayer = Math.ceil(cargo.gold / ownerTeam.length)
+          for (const tp of ownerTeam) {
+            await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) + perPlayer }).eq('id', tp.id)
+          }
+        }
+        if (cargo.resources && Object.keys(cargo.resources).length > 0) {
+          for (const [key, amount] of Object.entries(cargo.resources)) {
+            if (amount > 0) inventory[key] = (inventory[key] || 0) + amount
+          }
+        }
+
+        newConvoys.push({ units: [], cargo: {}, inTransit: false })
+        changed = true
       }
 
       if (changed) {
