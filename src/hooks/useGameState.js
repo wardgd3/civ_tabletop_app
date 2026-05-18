@@ -2462,7 +2462,7 @@ export function useGameState(gameId) {
 
   async function processConvoyTicks() {
     const CONVOY_HOSTS = new Set(['Command Center', 'Command Ship', 'Battleship'])
-    const myStructures = units.filter(u => teamPlayerIds.includes(u.owner_id) && CONVOY_HOSTS.has(u.wg_unit_types?.name))
+    const myStructures = units.filter(u => CONVOY_HOSTS.has(u.wg_unit_types?.name))
 
     for (const struct of myStructures) {
       const { data: freshStruct } = await supabase.from('wg_units').select('upgrades').eq('id', struct.id).single()
@@ -2470,6 +2470,9 @@ export function useGameState(gameId) {
       const convoys = upgrades.convoys || []
       const guildConvoys = upgrades.guildConvoys || []
       let changed = false
+
+      const ownerPlayer = players.find(p => p.player_id === struct.owner_id)
+      const ownerTeam = players.filter(p => p.color === ownerPlayer?.color)
 
       const isCC = struct.wg_unit_types?.name === 'Command Center'
       const holdingBay = [...(upgrades.holdingBay || [])]
@@ -2503,9 +2506,9 @@ export function useGameState(gameId) {
       })
       upgrades.holdingBay = holdingBay
       upgrades.inventory = inventory
-      if (goldToDistribute > 0 && teamPlayers.length > 0) {
-        const perPlayer = Math.ceil(goldToDistribute / teamPlayers.length)
-        for (const tp of teamPlayers) {
+      if (goldToDistribute > 0 && ownerTeam.length > 0) {
+        const perPlayer = Math.ceil(goldToDistribute / ownerTeam.length)
+        for (const tp of ownerTeam) {
           await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) + perPlayer }).eq('id', tp.id)
         }
       }
@@ -2534,9 +2537,9 @@ export function useGameState(gameId) {
           upgrades.holdingBay = holdingBay
 
           const cargo = updated.cargo || {}
-          if ((cargo.gold || 0) > 0 && teamPlayers.length > 0) {
-            const perPlayer = Math.ceil(cargo.gold / teamPlayers.length)
-            for (const tp of teamPlayers) {
+          if ((cargo.gold || 0) > 0 && ownerTeam.length > 0) {
+            const perPlayer = Math.ceil(cargo.gold / ownerTeam.length)
+            for (const tp of ownerTeam) {
               await supabase.from('wg_game_players').update({ gold: (tp.gold || 0) + perPlayer }).eq('id', tp.id)
             }
           }
