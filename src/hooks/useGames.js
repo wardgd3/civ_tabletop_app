@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { generateTerrain, generateSpaceTerrain } from '../lib/terrainGen'
@@ -54,6 +54,28 @@ export function useGames() {
   useEffect(() => {
     fetchGames()
   }, [fetchGames])
+
+  const debounceRef = useRef(null)
+  const debouncedFetch = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => fetchGames(), 300)
+  }, [fetchGames])
+
+  useEffect(() => {
+    if (!userId) return
+
+    const channel = supabase
+      .channel(`lobby-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wg_games' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wg_game_players' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wg_game_invites' }, debouncedFetch)
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [userId, debouncedFetch])
 
   async function createGame(name, gridRows = 32, gridCols = 48, maxPlayers = 2, terrainTheme = 'default') {
     const { data: { session: freshSession } } = await supabase.auth.getSession()
@@ -237,11 +259,20 @@ export function useGames() {
 
     const { data: players } = await supabase
       .from('wg_game_players')
-      .select('id, player_id, color')
+      .select('id, player_id, color, is_space_general')
       .eq('game_id', gameId)
       .order('player_order')
 
     if (!players || players.length < 1) throw new Error('Need at least 1 player')
+
+    const teamColors = [...new Set(players.map(p => p.color))]
+    for (const color of teamColors) {
+      const teamMembers = players.filter(p => p.color === color)
+      if (teamMembers.length >= 2) {
+        const hasSpaceCommander = teamMembers.some(p => p.is_space_general)
+        if (!hasSpaceCommander) throw new Error('Each 2-player team must have a Space Commander')
+      }
+    }
 
     for (const p of players) {
       const updates = { production: 30 }

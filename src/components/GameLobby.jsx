@@ -281,8 +281,24 @@ export default function GameLobby() {
                         Invite
                       </button>
                       <button
-                        onClick={() => startGame(game.id)}
-                        disabled={game.players?.length < 1}
+                        onClick={async () => {
+                          try { await startGame(game.id) } catch (err) { alert(err.message) }
+                        }}
+                        disabled={game.players?.length < 1 || (() => {
+                          const teamColors = [...new Set((game.players || []).map(p => p.color))]
+                          return teamColors.some(color => {
+                            const team = game.players.filter(p => p.color === color)
+                            return team.length >= 2 && !team.some(p => p.is_space_general)
+                          })
+                        })()}
+                        title={(() => {
+                          const teamColors = [...new Set((game.players || []).map(p => p.color))]
+                          const needsSpace = teamColors.some(color => {
+                            const team = game.players.filter(p => p.color === color)
+                            return team.length >= 2 && !team.some(p => p.is_space_general)
+                          })
+                          return needsSpace ? 'Each 2-player team must have a Space Commander' : ''
+                        })()}
                         className="flex-1 sm:flex-none px-4 py-2 sm:py-1.5 text-sm font-medium rounded transition-colors disabled:opacity-40"
                         style={{ backgroundColor: '#1c3043', color: '#6cb4e6', border: '1px solid #264a6a' }}
                       >
@@ -368,6 +384,19 @@ export default function GameLobby() {
                   )
                 })}
               </div>
+
+              {game.status === 'lobby' && (() => {
+                const teamColors = [...new Set((game.players || []).map(p => p.color))]
+                const needsSpace = teamColors.some(color => {
+                  const team = game.players.filter(p => p.color === color)
+                  return team.length >= 2 && !team.some(p => p.is_space_general)
+                })
+                return needsSpace ? (
+                  <div className="text-[10px] font-medium px-2 py-1 rounded" style={{ backgroundColor: '#2a1a0a', color: '#e6a040', border: '1px solid #3d2a1a' }}>
+                    A team member must select Space Commander to start
+                  </div>
+                ) : null
+              })()}
 
               {confirmDeleteId === game.id && (
                 <div className="mt-3 p-3 rounded flex items-center justify-between" style={{ backgroundColor: '#1a0a0a', border: '1px solid #3a2020' }}>
